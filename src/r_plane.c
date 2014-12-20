@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -100,7 +109,10 @@ static void R_MapPlane(int y, int x1, int x2)
     ds_x1 = x1;
     ds_x2 = x2;
 
-    spanfunc();
+    if (ds_colormask && !fixedcolormap && brightmaps)
+        fbspanfunc();
+    else
+        spanfunc();
 }
 
 //
@@ -203,9 +215,11 @@ visplane_t *R_CheckPlane(visplane_t *pl, int start, int stop)
         intrh = stop;
     }
 
-    for (x = intrl; x <= intrh && pl->top[x] == SHRT_MAX; x++);
+    for (x = intrl; x <= intrh && pl->top[x] == UINT_MAX; x++);
 
-    if (x > intrh)
+    // [crispy] fix HOM if ceilingplane and floorplane are the same
+    // visplane (e.g. both skies)
+    if (!(pl == floorplane && markceiling && floorplane == ceilingplane) && x > intrh)
     {
         pl->minx = unionl;
         pl->maxx = unionh;
@@ -221,7 +235,7 @@ visplane_t *R_CheckPlane(visplane_t *pl, int start, int stop)
         pl = new_pl;
         pl->minx = start;
         pl->maxx = stop;
-        memset(pl->top, SHRT_MAX, sizeof(pl->top));
+        memset(pl->top, UINT_MAX, sizeof(pl->top));
     }
 
     return pl;
@@ -230,7 +244,7 @@ visplane_t *R_CheckPlane(visplane_t *pl, int start, int stop)
 //
 // R_MakeSpans
 //
-static void R_MakeSpans(int x, int t1, int b1, int t2, int b2)
+static void R_MakeSpans(int x, unsigned int t1, unsigned int b1, unsigned int t2, unsigned int b2)
 {
     for (; t1 < t2 && t1 <= b1; t1++)
         R_MapPlane(t1, spanstart[t1], x - 1);
@@ -277,7 +291,7 @@ void R_DrawPlanes(void)
                         dc_yl = pl->top[x];
                         dc_yh = pl->bottom[x];
 
-                        if (dc_yl != SHRT_MAX && dc_yl <= dc_yh)
+                        if (dc_yl != UINT_MAX && dc_yl <= dc_yh)
                         {
                             dc_x = x;
                             dc_source = R_GetColumn(skytexture,
@@ -295,12 +309,13 @@ void R_DrawPlanes(void)
                     int x;
 
                     ds_source = W_CacheLumpNum(lumpnum, PU_STATIC);
+                    ds_colormask = flatfullbright[lumpnum - firstflat];
 
                     planeheight = ABS(pl->height - viewz);
 
                     planezlight = zlight[BETWEEN(0, light, LIGHTLEVELS - 1)];
 
-                    pl->top[pl->minx - 1] = pl->top[stop] = SHRT_MAX;
+                    pl->top[pl->minx - 1] = pl->top[stop] = UINT_MAX;
 
                     for (x = pl->minx; x <= stop; x++)
                         R_MakeSpans(x, pl->top[x - 1], pl->bottom[x - 1], pl->top[x], pl->bottom[x]);

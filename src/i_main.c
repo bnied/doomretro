@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -42,26 +51,10 @@
 
 #include "d_main.h"
 #include "m_argv.h"
+
+#ifdef WIN32
 #include "SDL_syswm.h"
-
-typedef BOOL (WINAPI *SetAffinityFunc)(HANDLE hProcess, DWORD mask);
-
-static void I_SetAffinityMask(HANDLE hProcess)
-{
-    HMODULE             kernel32_dll;
-    SetAffinityFunc     SetAffinity;
-
-    // Find the kernel interface DLL.
-    kernel32_dll = LoadLibrary("kernel32.dll");
-
-    if (kernel32_dll == NULL)
-        return;
-
-    SetAffinity = (SetAffinityFunc)GetProcAddress(kernel32_dll, "SetProcessAffinityMask");
-
-    if (SetAffinity != NULL)
-        SetAffinity(hProcess, 1);
-}
+#endif
 
 void I_SetProcessPriority(HANDLE hProcess)
 {
@@ -122,8 +115,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             return true;
         }
     }
-    else if (msg == WM_SYSCOMMAND && (wParam & 0xfff0) == SC_KEYMENU)
-        return false;
+    else if (msg == WM_SYSCOMMAND)
+    {
+        if ((wParam & 0xfff0) == SC_MAXIMIZE)
+        {
+            ToggleFullScreen();
+            return true;
+        }
+        else if ((wParam & 0xfff0) == SC_KEYMENU)
+            return false;
+    }
     else if (msg == WM_SYSKEYDOWN && wParam == VK_RETURN && !(lParam & 0x40000000))
     {
         ToggleFullScreen();
@@ -219,29 +220,6 @@ void done_win32(void)
     CloseHandle(hInstanceMutex);
     I_AccessibilityShortcutKeys(true);
 }
-
-#else
-
-#include <unistd.h>
-#include <sched.h>
-
-// Unix (Linux) version:
-static void I_SetAffinityMask(void)
-{
-#ifdef CPU_SET
-    cpu_set_t   set;
-
-    CPU_ZERO(&set);
-    CPU_SET(0, &set);
-
-    sched_setaffinity(getpid(), sizeof(set), &set);
-#else
-    unsigned long       mask = 1;
-
-    sched_setaffinity(getpid(), sizeof(mask), &mask);
-#endif
-}
-
 #endif
 
 int main(int argc, char **argv)
@@ -275,10 +253,6 @@ int main(int argc, char **argv)
 #ifdef WIN32
     if (!M_CheckParm("-nopriority"))
         I_SetProcessPriority(hProcess);
-
-    I_SetAffinityMask(hProcess);
-#else
-    I_SetAffinityMask();
 #endif
 
     D_DoomMain();

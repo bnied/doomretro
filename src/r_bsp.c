@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -408,7 +417,7 @@ static boolean R_CheckBBox(const fixed_t *bspcoord)
 
     // cph - replaced old code, which was unclear and badly commented
     // Much more efficient code now
-    if ((signed)angle1 < (signed)angle2) 
+    if ((signed int)angle1 < (signed int)angle2) 
     {
         // Either angle1 or angle2 is behind us, so it doesn't matter if we
         // change it to the corect sign
@@ -418,13 +427,13 @@ static boolean R_CheckBBox(const fixed_t *bspcoord)
             angle2 = INT_MIN;
     }
 
-    if ((signed)angle2 >= (signed)clipangle)
+    if ((signed int)angle2 >= (signed int)clipangle)
         return false;                   // Both off left edge
-    if ((signed)angle1 <= -(signed)clipangle)
+    if ((signed int)angle1 <= -(signed int)clipangle)
         return false;                   // Both off right edge
-    if ((signed)angle1 >= (signed)clipangle)
+    if ((signed int)angle1 >= (signed int)clipangle)
         angle1 = clipangle;             // Clip at left edge
-    if ((signed)angle2 <= -(signed)clipangle)
+    if ((signed int)angle2 <= -(signed int)clipangle)
         angle2 = 0 - clipangle;         // Clip at right edge
 
     // Find the first clippost

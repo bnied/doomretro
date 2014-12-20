@@ -1,28 +1,37 @@
 #
 #========================================================================
 #
-#  DOOM RETRO
-#  The classic, refined DOOM source port. For Windows PC.
-#  Copyright (C) 2013-2014 Brad Harding.
+#                               DOOM RETRO
+#         The classic, refined DOOM source port. For Windows PC.
+#
+#========================================================================
+#
+#  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+#  Copyright (C) 2013-2015 Brad Harding.
 #
 #  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-#
 #  For a complete list of credits, see the accompanying AUTHORS file.
 #
 #  This file is part of DOOM RETRO.
 #
-#  DOOM RETRO is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
+#  DOOM RETRO is free software: you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation, either version 3 of the License, or (at your
+#  option) any later version.
 #
 #  DOOM RETRO is distributed in the hope that it will be useful, but
 #  WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-#  GNU General Public License for more details.
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+#  General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
 #  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+#
+#  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+#  company, in the US and/or other countries and is used without
+#  permission. All other trademarks are the property of their respective
+#  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+#  id Software LLC.
 #
 #========================================================================
 #
@@ -66,15 +75,20 @@ GOTSUIT = Radiation Shielding Suit!
 GOTMAP = Computer Area Map!
 GOTVISOR = Light Amplification Visor!
 GOTCLIP = You picked up a clip.
+GOTCLIPX2 = You picked up two clips.
+GOTHALFCLIP = You picked up half a clip.
 GOTCLIPBOX = You picked up a box of bullets.
 GOTROCKET = You picked up a rocket.
+GOTROCKETX2 = You picked up two rockets.
 GOTROCKBOX = You picked up a box of rockets.
 GOTCELL = You picked up a cell.
+GOTCELLX2 = You picked up two cells.
 GOTCELLBOX = You picked up a cell pack.
-GOTSHELLS = You picked up some shotgun shells.
+GOTSHELLS = You picked up four shotgun shells.
+GOTSHELLSX2 = You picked up eight shotgun shells.
 GOTSHELLBOX = You picked up a box of shotgun shells.
 GOTBACKPACK = You picked up a backpack full of ammo!
-GOTBFG9000 = You got a BFG 9000! Oh, yes...
+GOTBFG9000 = You got a BFG-9000! Oh, yes...
 GOTCHAINGUN = You got a chaingun!
 GOTCHAINSAW = You got a chainsaw! Find some meat!
 GOTLAUNCHER = You got a rocket launcher!
@@ -246,9 +260,9 @@ AMSTR_FOLLOWON = Follow mode ON
 AMSTR_FOLLOWOFF = Follow mode OFF
 AMSTR_GRIDON = Grid ON
 AMSTR_GRIDOFF = Grid OFF
-AMSTR_MARKEDSPOT = Marked spot %i
-AMSTR_MARKCLEARED = Mark cleared
-AMSTR_MARKSCLEARED = Marks cleared
+AMSTR_MARKEDSPOT = Mark %i added
+AMSTR_MARKCLEARED = Mark %i cleared
+AMSTR_MARKSCLEARED = All marks cleared
 AMSTR_ROTATEON = Rotate Mode ON
 AMSTR_ROTATEOFF = Rotate Mode OFF
 STSTR_MUS = Music changed to "d_%s.mus"
@@ -353,3 +367,19 @@ M_SOUNDVOLUME = Sound Volume
 M_SFXVOLUME = SFX Volume
 M_MUSICVOLUME = Music Volume
 M_PAUSED = Paused
+CAPTION_SHAREWARE = DOOM Shareware
+CAPTION_REGISTERED = DOOM Registered
+CAPTION_ULTIMATE = The Ultimate DOOM
+CAPTION_DOOM2 = DOOM II
+CAPTION_HELLONEARTH = Hell On Earth
+CAPTION_NERVE = No Rest For The Living
+CAPTION_BFGEDITION = BFG Edition
+CAPTION_PLUTONIA = Final DOOM: The Plutonia Experiment
+CAPTION_TNT = Final DOOM: TNT - Evilution
+CAPTION_CHEX = Chex Quest
+CAPTION_HACX = HacX: Twitch 'n Kill
+CAPTION_FREEDOOM1 = Freedoom: Phase 1
+CAPTION_FREEDOOM2 = Freedoom: Phase 2
+CAPTION_FREEDM = FreeDM
+CAPTION_BTSXE1 = Back To Saturn X E1: Get Out Of My Stations
+CAPTION_BTSXE2 = Back To Saturn X E2: Tower In The Fountain Of Sparks

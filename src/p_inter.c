@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -76,7 +85,7 @@ char *weapondescription[] =
     "chaingun",
     "rocket launcher",
     "plasma rifle",
-    "BFG 9000",
+    "BFG-9000",
     "chainsaw",
     "super shotgun"
 };
@@ -93,17 +102,17 @@ boolean obituaries = true;
 // P_GiveAmmo
 // Num is the number of clip loads,
 // not the individual count (0= 1/2 clip).
-// Returns false if the ammo can't be picked up at all
+// Returns the amount of ammo given to the player
 //
-boolean P_GiveAmmo(player_t *player, ammotype_t ammo, int num)
+int P_GiveAmmo(player_t *player, ammotype_t ammo, int num)
 {
     int oldammo;
 
     if (ammo == am_noammo)
-        return false;
+        return 0;
 
     if (player->ammo[ammo] == player->maxammo[ammo])
-        return false;
+        return 0;
 
     if (num)
         num *= clipammo[ammo];
@@ -122,7 +131,7 @@ boolean P_GiveAmmo(player_t *player, ammotype_t ammo, int num)
 
     // If non zero ammo, don't change up weapons, player was lower on purpose.
     if (oldammo)
-        return true;
+        return num;
 
     // We were down to zero, so select a new weapon.
     // Preferences are not user selectable.
@@ -161,7 +170,7 @@ boolean P_GiveAmmo(player_t *player, ammotype_t ammo, int num)
         default:
             break;
     }
-    return true;
+    return num;
 }
 
 void P_AddBonus(player_t *player, int amount)
@@ -356,6 +365,7 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher)
     fixed_t     delta = special->z - toucher->z;
     int         sound;
     int         weaponowned;
+    int         ammo;
     boolean     ammogiven = false;
     static int  prevsound = 0;
     static int  prevtic = 0;
@@ -578,10 +588,13 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher)
 
         // ammo
         case SPR_CLIP:
-            if (!P_GiveAmmo(player, am_clip, !(special->flags & MF_DROPPED)))
+            if (!(ammo = P_GiveAmmo(player, am_clip, !(special->flags & MF_DROPPED))))
                 return;
             if (!message_dontfuckwithme)
-                player->message = s_GOTCLIP;
+                if (ammo == clipammo[am_clip] || (deh_strlookup[p_GOTCLIP].assigned && dehacked))
+                    player->message = s_GOTCLIP;
+                else
+                    player->message = (ammo == clipammo[am_clip] / 2 ? s_GOTHALFCLIP : s_GOTCLIPX2);
             break;
 
         case SPR_AMMO:
@@ -592,10 +605,13 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher)
             break;
 
         case SPR_ROCK:
-            if (!P_GiveAmmo(player, am_misl, 1))
+            if (!(ammo = P_GiveAmmo(player, am_misl, 1)))
                 return;
             if (!message_dontfuckwithme)
-                player->message = s_GOTROCKET;
+                if (ammo == clipammo[am_misl] || (deh_strlookup[p_GOTROCKET].assigned && dehacked))
+                    player->message = s_GOTROCKET;
+                else
+                    player->message = s_GOTROCKETX2;
             break;
 
         case SPR_BROK:
@@ -606,10 +622,13 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher)
             break;
 
         case SPR_CELL:
-            if (!P_GiveAmmo(player, am_cell, 1))
+            if (!(ammo = P_GiveAmmo(player, am_cell, 1)))
                 return;
             if (!message_dontfuckwithme)
-                player->message = s_GOTCELL;
+                if (ammo == clipammo[am_cell] || (deh_strlookup[p_GOTCELL].assigned && dehacked))
+                    player->message = s_GOTCELL;
+                else
+                    player->message = s_GOTCELLX2;
             break;
 
         case SPR_CELP:
@@ -620,10 +639,13 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher)
             break;
 
         case SPR_SHEL:
-            if (!P_GiveAmmo(player, am_shell, 1))
+            if (!(ammo = P_GiveAmmo(player, am_shell, 1)))
                 return;
             if (!message_dontfuckwithme)
-                player->message = s_GOTSHELLS;
+                if (ammo == clipammo[am_shell] || (deh_strlookup[p_GOTSHELLS].assigned && dehacked))
+                    player->message = s_GOTSHELLS;
+                else
+                    player->message = s_GOTSHELLSX2;
             break;
 
         case SPR_SBOX:
@@ -1008,7 +1030,7 @@ void P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, int damage)
 
         player->damagecount = damagecount;
 
-        if (gamepadvibrate && vibrate && player == &players[consoleplayer])
+        if ((gamepadvibrate & DAMAGE) && vibrate && player == &players[consoleplayer])
         {
             XInputVibration(30000 + (100 - MIN(player->health, 100)) / 100 * 30000);
             damagevibrationtics += BETWEEN(12, damage, 100);

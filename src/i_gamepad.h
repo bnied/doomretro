@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -52,36 +61,34 @@
 #ifdef WIN32
 #define GAMEPAD_LEFT_THUMB_DEADZONE     XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE
 #define GAMEPAD_RIGHT_THUMB_DEADZONE    XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE
-#define GAMEPAD_TRIGGER_THRESHOLD       XINPUT_GAMEPAD_TRIGGER_THRESHOLD
 #else
-#define GAMEPAD_LEFT_THUMB_DEADZONE     0
-#define GAMEPAD_RIGHT_THUMB_DEADZONE    0
-#define GAMEPAD_TRIGGER_THRESHOLD       0
+#define GAMEPAD_LEFT_THUMB_DEADZONE     7849
+#define GAMEPAD_RIGHT_THUMB_DEADZONE    8689
 #endif
 
-#define gamepadthumbLXleft              (float)(-gamepadthumbLX - GAMEPAD_LEFT_THUMB_DEADZONE) /\
-                                        (32767.0f - GAMEPAD_LEFT_THUMB_DEADZONE)
-#define gamepadthumbLXright             (float)(gamepadthumbLX - GAMEPAD_LEFT_THUMB_DEADZONE) /\
-                                        (32767.0f - GAMEPAD_LEFT_THUMB_DEADZONE)
-#define gamepadthumbLYup                (float)(-gamepadthumbLY - GAMEPAD_LEFT_THUMB_DEADZONE) /\
-                                        (32767.0f - GAMEPAD_LEFT_THUMB_DEADZONE)
-#define gamepadthumbLYdown              (float)(gamepadthumbLY - GAMEPAD_LEFT_THUMB_DEADZONE) /\
-                                        (32767.0f - GAMEPAD_LEFT_THUMB_DEADZONE)
-#define gamepadthumbRXleft              pow((-gamepadthumbRX - GAMEPAD_RIGHT_THUMB_DEADZONE) /\
-                                        (32767.0f - GAMEPAD_RIGHT_THUMB_DEADZONE), 3.0f)
-#define gamepadthumbRXright             pow((gamepadthumbRX - GAMEPAD_RIGHT_THUMB_DEADZONE) /\
-                                        (32767.0f - GAMEPAD_RIGHT_THUMB_DEADZONE), 3.0f)
+#define gamepadthumbLXleft              (float)(-gamepadthumbLX - gamepadleftdeadzone) /\
+                                        ((float)SHRT_MAX - gamepadleftdeadzone)
+#define gamepadthumbLXright             (float)(gamepadthumbLX - gamepadleftdeadzone) /\
+                                        ((float)SHRT_MAX - gamepadleftdeadzone)
+#define gamepadthumbLYup                (float)(-gamepadthumbLY - gamepadleftdeadzone) /\
+                                        ((float)SHRT_MAX - gamepadleftdeadzone)
+#define gamepadthumbLYdown              (float)(gamepadthumbLY - gamepadleftdeadzone) /\
+                                        ((float)SHRT_MAX - gamepadleftdeadzone)
+#define gamepadthumbRXleft              pow((-gamepadthumbRX - gamepadrightdeadzone) /\
+                                        ((float)SHRT_MAX - gamepadrightdeadzone), 3.0f)
+#define gamepadthumbRXright             pow((gamepadthumbRX - gamepadrightdeadzone) /\
+                                        ((float)SHRT_MAX - gamepadrightdeadzone), 3.0f)
 
-#define GAMEPADSENSITIVITY_OFFSET       0.5f
-#define GAMEPADSENSITIVITY_FACTOR       1.5f
+#define GAMEPADSENSITIVITY_OFFSET       1.0f
+#define GAMEPADSENSITIVITY_FACTOR       3.0f
 
 int damagevibrationtics;
 int weaponvibrationtics;
 
 extern int      gamepadbuttons;
-extern int      gamepadthumbLX;
-extern int      gamepadthumbLY;
-extern int      gamepadthumbRX;
+extern short    gamepadthumbLX;
+extern short    gamepadthumbLY;
+extern short    gamepadthumbRX;
 extern boolean  vibrate;
 extern int      currentmotorspeed;
 extern int      idlemotorspeed;
@@ -89,13 +96,15 @@ extern int      restoremotorspeed;
 
 extern int      gamepadautomap;
 extern int      gamepadfire;
+extern int      gamepadleftdeadzone;
+extern int      gamepadrightdeadzone;
 extern boolean  gamepadlefthanded;
 extern int      gamepadmenu;
 extern int      gamepadnextweapon;
 extern int      gamepadprevweapon;
-extern int      gamepadspeed;
+extern int      gamepadrun;
 extern int      gamepaduse;
-extern boolean  gamepadvibrate;
+extern int      gamepadvibrate;
 extern int      gamepadweapon1;
 extern int      gamepadweapon2;
 extern int      gamepadweapon3;
@@ -103,6 +112,8 @@ extern int      gamepadweapon4;
 extern int      gamepadweapon5;
 extern int      gamepadweapon6;
 extern int      gamepadweapon7;
+
+extern int      gamepadsensitivity;
 
 void I_InitGamepad(void);
 void I_ShutdownGamepad(void);

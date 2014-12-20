@@ -1,34 +1,44 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
 
 #include <ctype.h>
 
+#include "d_deh.h"
 #include "doomdef.h"
 #include "doomstat.h"
 #include "sounds.h"
@@ -143,12 +153,17 @@ char *s_GOTMAP = GOTMAP;
 char *s_GOTVISOR = GOTVISOR;
 
 char *s_GOTCLIP = GOTCLIP;
+char *s_GOTCLIPX2 = GOTCLIPX2;
+char *s_GOTHALFCLIP = GOTHALFCLIP;
 char *s_GOTCLIPBOX = GOTCLIPBOX;
 char *s_GOTROCKET = GOTROCKET;
+char *s_GOTROCKETX2 = GOTROCKETX2;
 char *s_GOTROCKBOX = GOTROCKBOX;
 char *s_GOTCELL = GOTCELL;
+char *s_GOTCELLX2 = GOTCELLX2;
 char *s_GOTCELLBOX = GOTCELLBOX;
 char *s_GOTSHELLS = GOTSHELLS;
+char *s_GOTSHELLSX2 = GOTSHELLSX2;
 char *s_GOTSHELLBOX = GOTSHELLBOX;
 char *s_GOTBACKPACK = GOTBACKPACK;
 
@@ -443,6 +458,23 @@ char *s_M_SFXVOLUME = M_SFXVOLUME;
 char *s_M_MUSICVOLUME = M_MUSICVOLUME;
 char *s_M_PAUSED = M_PAUSED;
 
+char *s_CAPTION_SHAREWARE = CAPTION_SHAREWARE;
+char *s_CAPTION_REGISTERED = CAPTION_REGISTERED;
+char *s_CAPTION_ULTIMATE = CAPTION_ULTIMATE;
+char *s_CAPTION_DOOM2 = CAPTION_DOOM2;
+char *s_CAPTION_HELLONEARTH = CAPTION_HELLONEARTH;
+char *s_CAPTION_NERVE = CAPTION_NERVE;
+char *s_CAPTION_BFGEDITION = CAPTION_BFGEDITION;
+char *s_CAPTION_PLUTONIA = CAPTION_PLUTONIA;
+char *s_CAPTION_TNT = CAPTION_TNT;
+char *s_CAPTION_CHEX = CAPTION_CHEX;
+char *s_CAPTION_HACX = CAPTION_HACX;
+char *s_CAPTION_FREEDOOM1 = CAPTION_FREEDOOM1;
+char *s_CAPTION_FREEDOOM2 = CAPTION_FREEDOOM2;
+char *s_CAPTION_FREEDM = CAPTION_FREEDM;
+char *s_CAPTION_BTSXE1 = CAPTION_BTSXE1;
+char *s_CAPTION_BTSXE2 = CAPTION_BTSXE2;
+
 char *bgflatE1 = "FLOOR4_8";
 char *bgflatE2 = "SFLR6_1";
 char *bgflatE3 = "MFLR8_4";
@@ -462,13 +494,6 @@ char *bgcastcall = "BOSSBACK";
 // to a string key that is the same as the define above.  We will use
 // strdups to set these new values that we read from the file, orphaning
 // the original value set above.
-
-typedef struct
-{
-    char        **ppstr;        // doubly indirect pointer to string
-    char        *lookup;        // pointer to lookup string name
-    boolean     assigned;       // [BH] flag indicating string has been assigned
-} deh_strs;
 
 deh_strs deh_strlookup[] =
 {
@@ -514,12 +539,17 @@ deh_strs deh_strlookup[] =
     { &s_GOTVISOR,             "GOTVISOR",             false },
 
     { &s_GOTCLIP,              "GOTCLIP",              false },
+    { &s_GOTCLIPX2,            "GOTCLIPX2",            false },
+    { &s_GOTHALFCLIP,          "GOTHALFCLIP",          false },
     { &s_GOTCLIPBOX,           "GOTCLIPBOX",           false },
     { &s_GOTROCKET,            "GOTROCKET",            false },
+    { &s_GOTROCKETX2,          "GOTROCKETX2",          false },
     { &s_GOTROCKBOX,           "GOTROCKBOX",           false },
     { &s_GOTCELL,              "GOTCELL",              false },
+    { &s_GOTCELLX2,            "GOTCELLX2",            false },
     { &s_GOTCELLBOX,           "GOTCELLBOX",           false },
     { &s_GOTSHELLS,            "GOTSHELLS",            false },
+    { &s_GOTSHELLSX2,          "GOTSHELLSX2",          false },
     { &s_GOTSHELLBOX,          "GOTSHELLBOX",          false },
     { &s_GOTBACKPACK,          "GOTBACKPACK",          false },
 
@@ -813,7 +843,22 @@ deh_strs deh_strlookup[] =
     { &s_M_SFXVOLUME,          "M_SFXVOLUME",          false },
     { &s_M_MUSICVOLUME,        "M_MUSICVOLUME",        false },
     { &s_M_PAUSED,             "M_PAUSED",             false },
-
+    { &s_CAPTION_SHAREWARE,    "CAPTION_SHAREWARE",    false },
+    { &s_CAPTION_REGISTERED,   "CAPTION_REGISTERED",   false },
+    { &s_CAPTION_ULTIMATE,     "CAPTION_ULTIMATE",     false },
+    { &s_CAPTION_DOOM2,        "CAPTION_DOOM2",        false },
+    { &s_CAPTION_HELLONEARTH,  "CAPTION_HELLONEARTH",  false },
+    { &s_CAPTION_NERVE,        "CAPTION_NERVE",        false },
+    { &s_CAPTION_BFGEDITION,   "CAPTION_BFGEDITION",   false },
+    { &s_CAPTION_PLUTONIA,     "CAPTION_PLUTONIA",     false },
+    { &s_CAPTION_TNT,          "CAPTION_TNT",          false },
+    { &s_CAPTION_CHEX,         "CAPTION_CHEX",         false },
+    { &s_CAPTION_HACX,         "CAPTION_HACX",         false },
+    { &s_CAPTION_FREEDOOM1,    "CAPTION_FREEDOOM1",    false },
+    { &s_CAPTION_FREEDOOM2,    "CAPTION_FREEDOOM2",    false },
+    { &s_CAPTION_FREEDM,       "CAPTION_FREEDM",       false },
+    { &s_CAPTION_BTSXE1,       "CAPTION_BTSXE1",       false },
+    { &s_CAPTION_BTSXE2,       "CAPTION_BTSXE2",       false },
     { &bgflatE1,               "BGFLATE1",             false },
     { &bgflatE2,               "BGFLATE2",             false },
     { &bgflatE3,               "BGFLATE3",             false },
@@ -2876,7 +2921,7 @@ boolean deh_procStringSub(char *key, char *lookfor, char *newstring, FILE *fpout
                         newstring, (strlen(newstring) > 12 ? "..." : ""),
                         deh_strlookup[i].lookup);
 
-            if (!key)   // must have passed an old style string so showBEX
+            if (!key)   // must have passed an old style string so show BEX
                 if (fpout)
                     fprintf(fpout, "*BEX FORMAT:\n%s=%s\n*END BEX\n",
                         deh_strlookup[i].lookup, dehReformatStr(newstring));
@@ -2952,7 +2997,7 @@ void lfstrip(char *s)    // strip the \r and/or \n off of a line
 //
 void rstrip(char *s)    // strip trailing whitespace
 {
-    char        *p = s+strlen(s);       // killough 4/4/98: same here
+    char        *p = s + strlen(s);       // killough 4/4/98: same here
 
     while (p > s && isspace(*--p))      // break on first non-whitespace
         *p='\0';

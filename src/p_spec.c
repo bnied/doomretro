@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -337,7 +346,7 @@ fixed_t P_FindHighestCeilingSurrounding(sector_t *sec)
 int P_FindSectorFromLineTag(const line_t *line, int start)
 {
     start = (start >= 0 ? sectors[start].nexttag :
-        sectors[(unsigned)line->tag % (unsigned)numsectors].firsttag);
+        sectors[(unsigned int)line->tag % (unsigned int)numsectors].firsttag);
     while (start >= 0 && sectors[start].tag != line->tag)
         start = sectors[start].nexttag;
     return start;
@@ -347,7 +356,7 @@ int P_FindSectorFromLineTag(const line_t *line, int start)
 int P_FindLineFromLineTag(const line_t *line, int start)
 {
     start = (start >= 0 ? lines[start].nexttag :
-        lines[(unsigned)line->tag % (unsigned)numlines].firsttag);
+        lines[(unsigned int)line->tag % (unsigned int)numlines].firsttag);
     while (start >= 0 && lines[start].tag != line->tag)
         start = lines[start].nexttag;
     return start;
@@ -362,7 +371,7 @@ static void P_InitTagLists(void)
         sectors[i].firsttag = -1;
     for (i = numsectors; --i >= 0;)     // Proceed from last to first sector
     {                                   // so that lower sectors appear first
-        int     j = (unsigned)sectors[i].tag % (unsigned)numsectors; // Hash func
+        int     j = (unsigned int)sectors[i].tag % (unsigned int)numsectors;    // Hash func
 
         sectors[i].nexttag = sectors[j].firsttag;     // Prepend sector to chain
         sectors[j].firsttag = i;
@@ -373,7 +382,7 @@ static void P_InitTagLists(void)
         lines[i].firsttag = -1;
     for (i = numlines; --i >= 0;)       // Proceed from last to first linedef
     {                                   // so that lower linedefs appear first
-        int     j = (unsigned)lines[i].tag % (unsigned)numlines;    // Hash func
+        int     j = (unsigned int)lines[i].tag % (unsigned int)numlines;        // Hash func
 
         lines[i].nexttag = lines[j].firsttag;   // Prepend linedef to chain
         lines[j].firsttag = i;
@@ -905,7 +914,8 @@ void P_ShootSpecialLine(mobj_t *thing, line_t *line)
         case G1_OpenDoorStayOpen:
             EV_DoDoor(line, open);
             P_ChangeSwitchTexture(line, 1);
-            line->special = -G1_OpenDoorStayOpen;
+            if (canmodify && gamemission == doom2 && gamemap == 18)
+                line->special = -G1_OpenDoorStayOpen;
             break;
 
         case G1_RaiseFloorToNextFloorChangeFloorTextureAndType:

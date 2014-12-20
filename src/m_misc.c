@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -291,7 +300,7 @@ boolean M_StringCopy(char *dest, char *src, size_t dest_size)
 // Returns true if 's' begins with the specified prefix.
 boolean M_StringStartsWith(char *s, char *prefix)
 {
-    return (strlen(s) > strlen(prefix) && strcasecmp(s, prefix) == 0);
+    return (strlen(s) > strlen(prefix) && strncmp(s, prefix, strlen(prefix)) == 0);
 }
 
 // Returns true if 's' ends with the specified suffix.
@@ -362,7 +371,7 @@ int M_vsnprintf(char *buf, size_t buf_len, const char *s, va_list args)
 
     // If truncated, change the final char in the buffer to a \0.
     // A negative result indicates a truncated buffer on Windows.
-    if (result < 0 || (unsigned)result >= buf_len)
+    if (result < 0 || (unsigned int)result >= buf_len)
     {
         buf[buf_len - 1] = '\0';
         result = buf_len - 1;
@@ -380,4 +389,15 @@ int M_snprintf(char *buf, size_t buf_len, const char *s, ...)
     result = M_vsnprintf(buf, buf_len, s, args);
     va_end(args);
     return result;
+}
+
+char *uppercase(char *str)
+{
+    char        *newstr;
+    char        *p;
+
+    p = newstr = strdup(str);
+    while (*(p++) = toupper(*p));
+
+    return newstr;
 }

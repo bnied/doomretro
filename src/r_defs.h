@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -527,7 +536,6 @@ typedef struct msecnode_s
     struct msecnode_s   *m_tnext;       // next msecnode_t for this thing
     struct msecnode_s   *m_sprev;       // prev msecnode_t for this sector
     struct msecnode_s   *m_snext;       // next msecnode_t for this sector
-    boolean             visited;        // killough 4/4/98, 4/7/98: used in search algorithms
 } msecnode_t;
 
 //
@@ -748,12 +756,12 @@ typedef struct visplane_s
     unsigned short      pad1;
     // Here lies the rub for all
     //  dynamic resize/change of resolution.
-    unsigned short      top[SCREENWIDTH];
-    unsigned short      pad2;
-    unsigned short      pad3;
+    unsigned int        top[SCREENWIDTH];
+    unsigned int        pad2;
+    unsigned int        pad3;
     // See above.
-    unsigned short      bottom[SCREENWIDTH];
-    unsigned short      pad4;
+    unsigned int        bottom[SCREENWIDTH];
+    unsigned int        pad4;
 
     struct visplane_s   *next;  // Next visplane in hash chain -- killough
 } visplane_t;

@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -46,9 +55,7 @@ void G_RemoveChoppers(void);
 //
 
 // 16 pixels of bob
-// DHM - NERVE :: MAXBOB reduced 25%
-//#define MAXBOB  0x100000
-#define MAXBOB  0xC0000
+#define MAXBOB  0x100000
 
 int     playerbob = PLAYERBOB_DEFAULT;
 
@@ -88,8 +95,7 @@ void P_CalcHeight(player_t *player)
         // even if not on ground)
         bob = ((FixedMul(mo->momx, mo->momx) + FixedMul(mo->momy, mo->momy)) >> 2);
 
-        // DHM - NERVE :: player bob reduced by 25%, MAXBOB reduced by 25% as well
-        player->bob = MIN(bob * playerbob / 100, MAXBOB);
+        player->bob = MIN(bob, MAXBOB) * playerbob / 100;
 
         angle = (FINEANGLES / 20 * leveltime) & FINEMASK;
         bob = FixedMul(player->bob / 2, finesine[angle]);
@@ -122,12 +128,14 @@ void P_CalcHeight(player_t *player)
     else
         player->viewz = mo->z + player->viewheight;
 
-    if (player->mo->flags2 & MF2_FEETARECLIPPED
-        && player->playerstate != PST_DEAD
-        && mo->z <= mo->floorz
-        && mo->floorz == mo->subsector->sector->floorheight)
+    if (mo->flags2 & MF2_FEETARECLIPPED)
     {
-        player->viewz -= FOOTCLIPSIZE;
+        sector_t        *sec = mo->subsector->sector;
+
+        if (player->playerstate != PST_DEAD
+            && mo->z <= mo->floorz && mo->floorz == sec->floorheight
+            && sec->lines[0]->frontsector != sec->lines[0]->backsector)
+            player->viewz -= FOOTCLIPSIZE;
     }
 
     player->viewz = BETWEEN(mo->floorz + 4 * FRACUNIT, player->viewz, mo->ceilingz - 4 * FRACUNIT);

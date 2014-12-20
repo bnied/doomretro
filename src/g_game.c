@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -116,6 +125,15 @@ byte            consistency[MAXPLAYERS][BACKUPTICS];
 //
 // controls (have defaults)
 //
+int             key_automap = KEYAUTOMAP_DEFAULT;
+int             key_automap_clearmark = KEYAUTOMAPCLEARMARK_DEFAULT;
+int             key_automap_followmode = KEYAUTOMAPFOLLOWMODE_DEFAULT;
+int             key_automap_grid = KEYAUTOMAPGRID_DEFAULT;
+int             key_automap_mark = KEYAUTOMAPMARK_DEFAULT;
+int             key_automap_maxzoom = KEYAUTOMAPMAXZOOM_DEFAULT;
+int             key_automap_rotatemode = KEYAUTOMAPROTATEMODE_DEFAULT;
+int             key_automap_zoomin = KEYAUTOMAPZOOMIN_DEFAULT;
+int             key_automap_zoomout = KEYAUTOMAPZOOMOUT_DEFAULT;
 int             key_right = KEYRIGHT_DEFAULT;
 int             key_left = KEYLEFT_DEFAULT;
 int             key_up = KEYUP_DEFAULT;
@@ -129,8 +147,7 @@ int             key_straferight2 = KEYSTRAFERIGHT2_DEFAULT;
 int             key_fire = KEYFIRE_DEFAULT;
 int             key_use = KEYUSE_DEFAULT;
 int             key_strafe = KEYSTRAFE_DEFAULT;
-int             key_speed = KEYSPEED_DEFAULT;
-
+int             key_run = KEYRUN_DEFAULT;
 int             key_weapon1 = KEYWEAPON1_DEFAULT;
 int             key_weapon2 = KEYWEAPON2_DEFAULT;
 int             key_weapon3 = KEYWEAPON3_DEFAULT;
@@ -149,12 +166,24 @@ int             mousebprevweapon = MOUSEPREVWEAPON_DEFAULT;
 int             mousebnextweapon = MOUSENEXTWEAPON_DEFAULT;
 
 int             gamepadautomap = GAMEPADAUTOMAP_DEFAULT;
+int             gamepadautomapclearmark = GAMEPADAUTOMAPCLEARMARK_DEFAULT;
+int             gamepadautomapfollowmode = GAMEPADAUTOMAPFOLLOWMODE_DEFAULT;
+int             gamepadautomapgrid = GAMEPADAUTOMAPGRID_DEFAULT;
+int             gamepadautomapmark = GAMEPADAUTOMAPMARK_DEFAULT;
+int             gamepadautomapmaxzoom = GAMEPADAUTOMAPMAXZOOM_DEFAULT;
+int             gamepadautomaprotatemode = GAMEPADAUTOMAPROTATEMODE_DEFAULT;
+int             gamepadautomapzoomin = GAMEPADAUTOMAPZOOMIN_DEFAULT;
+int             gamepadautomapzoomout = GAMEPADAUTOMAPZOOMOUT_DEFAULT;
 int             gamepadfire = GAMEPADFIRE_DEFAULT;
 int             gamepadmenu = GAMEPADMENU_DEFAULT;
+int             gamepadleftdeadzone;
+int             gamepadrightdeadzone;
+boolean         gamepadlefthanded = GAMEPADLEFTHANDED_DEFAULT;
 int             gamepadnextweapon = GAMEPADNEXTWEAPON_DEFAULT;
 int             gamepadprevweapon = GAMEPADPREVWEAPON_DEFAULT;
-int             gamepadspeed = GAMEPADSPEED_DEFAULT;
+int             gamepadrun = GAMEPADRUN_DEFAULT;
 int             gamepaduse = GAMEPADUSE_DEFAULT;
+int             gamepadvibrate = GAMEPADVIBRATE_DEFAULT;
 int             gamepadweapon1 = GAMEPADWEAPON_DEFAULT;
 int             gamepadweapon2 = GAMEPADWEAPON_DEFAULT;
 int             gamepadweapon3 = GAMEPADWEAPON_DEFAULT;
@@ -162,9 +191,6 @@ int             gamepadweapon4 = GAMEPADWEAPON_DEFAULT;
 int             gamepadweapon5 = GAMEPADWEAPON_DEFAULT;
 int             gamepadweapon6 = GAMEPADWEAPON_DEFAULT;
 int             gamepadweapon7 = GAMEPADWEAPON_DEFAULT;
-
-boolean         gamepadlefthanded = GAMEPADLEFTHANDED_DEFAULT;
-boolean         gamepadvibrate = GAMEPADVIBRATE_DEFAULT;
 
 #define MAXPLMOVE       forwardmove[1]
 
@@ -324,7 +350,7 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
     int         i;
     boolean     strafe;
     boolean     bstrafe;
-    int         speed;
+    int         run;
     int         forward = 0;
     int         side = 0;
 
@@ -336,7 +362,7 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
 
     strafe = (gamekeydown[key_strafe] || mousebuttons[mousebstrafe]);
 
-    speed = (!!(gamepadbuttons & gamepadspeed) + !!gamekeydown[key_speed] + alwaysrun == 1);
+    run = (!!(gamepadbuttons & gamepadrun) + !!gamekeydown[key_run] + alwaysrun == 1);
 
     // use two stage accelerative turning
     // on the keyboard
@@ -349,43 +375,43 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
     if (strafe)
     {
         if (gamekeydown[key_right])
-            side += sidemove[speed];
+            side += sidemove[run];
 
         if (gamekeydown[key_left])
-            side -= sidemove[speed];
+            side -= sidemove[run];
     }
     else
     {
         if (gamekeydown[key_right])
-            cmd->angleturn -= angleturn[turnheld < SLOWTURNTICS ? 2 : speed];
+            cmd->angleturn -= angleturn[turnheld < SLOWTURNTICS ? 2 : run];
         else if (gamepadthumbRX > 0)
-            cmd->angleturn -= (int)(gamepadangleturn[speed] * gamepadthumbRXright * gamepadsensitivityf);
+            cmd->angleturn -= (int)(gamepadangleturn[run] * gamepadthumbRXright * gamepadsensitivityf);
 
         if (gamekeydown[key_left])
-            cmd->angleturn += angleturn[turnheld < SLOWTURNTICS ? 2 : speed];
+            cmd->angleturn += angleturn[turnheld < SLOWTURNTICS ? 2 : run];
         else if (gamepadthumbRX < 0)
-            cmd->angleturn += (int)(gamepadangleturn[speed] * gamepadthumbRXleft * gamepadsensitivityf);
+            cmd->angleturn += (int)(gamepadangleturn[run] * gamepadthumbRXleft * gamepadsensitivityf);
     }
 
     if (gamekeydown[key_up] || gamekeydown[key_up2])
-        forward += forwardmove[speed];
+        forward += forwardmove[run];
     else if (gamepadthumbLY < 0)
-        forward += (int)(forwardmove[speed] * gamepadthumbLYup);
+        forward += (int)(forwardmove[run] * gamepadthumbLYup);
 
     if (gamekeydown[key_down] || gamekeydown[key_down2])
-        forward -= forwardmove[speed];
+        forward -= forwardmove[run];
     else if (gamepadthumbLY > 0)
-        forward -= (int)(forwardmove[speed] * gamepadthumbLYdown);
+        forward -= (int)(forwardmove[run] * gamepadthumbLYdown);
 
     if (gamekeydown[key_straferight] || gamekeydown[key_straferight2])
-        side += sidemove[speed];
+        side += sidemove[run];
     else if (gamepadthumbLX > 0)
-        side += (int)(sidemove[speed] * gamepadthumbLXright);
+        side += (int)(sidemove[run] * gamepadthumbLXright);
 
     if (gamekeydown[key_strafeleft] || gamekeydown[key_strafeleft2])
-        side -= sidemove[speed];
+        side -= sidemove[run];
     else if (gamepadthumbLX < 0)
-        side -= (int)(sidemove[speed] * gamepadthumbLXleft);
+        side -= (int)(sidemove[run] * gamepadthumbLXleft);
 
     // buttons
     if (skipaction)
@@ -428,7 +454,7 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
         }
 
     if (mousebuttons[mousebforward])
-        forward += forwardmove[speed];
+        forward += forwardmove[run];
 
     if (dclick_use)
     {
@@ -642,7 +668,8 @@ boolean G_Responder(event_t *ev)
                  && ev->data1 != KEY_RALT
                  && ev->data1 != KEY_CAPSLOCK
                  && ev->data1 != KEY_NUMLOCK
-                 && (ev->data1 < KEY_F1 || ev->data1 > KEY_F12))
+                 && (ev->data1 < KEY_F1 || ev->data1 > KEY_F12)
+                 && !((ev->data1 == KEY_ENTER || ev->data1 == KEY_TAB) && altdown))
                  || (ev->type == ev_mouse
                      && mousewait < I_GetTime()
                      && ev->data1
@@ -760,16 +787,20 @@ boolean G_Responder(event_t *ev)
         case ev_gamepad:
             if (!automapactive && !menuactive && !paused)
             {
-                if (gamepadbuttons & gamepadnextweapon)
+                static int  wait = 0;
+
+                if ((gamepadbuttons & gamepadnextweapon) && wait < I_GetTime())
                 {
+                    wait = I_GetTime() + 7;
                     if (!gamepadpress || (gamepadpress && gamepadwait < I_GetTime()))
                     {
                         G_NextWeapon();
                         gamepadpress = false;
                     }
                 }
-                else if (gamepadbuttons & gamepadprevweapon)
+                else if ((gamepadbuttons & gamepadprevweapon) && wait < I_GetTime())
                 {
+                    wait = I_GetTime() + 7;
                     if (!gamepadpress || (gamepadpress && gamepadwait < I_GetTime()))
                     {
                         G_PrevWeapon();
@@ -1115,7 +1146,7 @@ boolean G_CheckSpot(int playernum, mapthing_t *mthing)
 
     // spawn a teleport fog
     ss = R_PointInSubsector(x, y);
-    an = (ANG45 * ((signed)mthing->angle / 45)) >> ANGLETOFINESHIFT;
+    an = (ANG45 * ((signed int)mthing->angle / 45)) >> ANGLETOFINESHIFT;
     xa = finecosine[an];
     ya = finesine[an];
 
@@ -1228,7 +1259,6 @@ int npars[9] =
 // G_DoCompleted
 //
 boolean         secretexit;
-extern char     *pagename;
 
 void G_ExitLevel(void)
 {

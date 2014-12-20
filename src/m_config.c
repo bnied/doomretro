@@ -1,34 +1,44 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
 
 #ifdef WIN32
 #include <ShlObj.h>
+#include <Xinput.h>
 #endif
 
 #include "doomstat.h"
@@ -39,6 +49,11 @@
 #include "m_menu.h"
 #include "m_misc.h"
 #include "version.h"
+
+float           gamepadleftdeadzone_percent = GAMEPADLEFTDEADZONE_DEFAULT;
+float           gamepadrightdeadzone_percent = GAMEPADRIGHTDEADZONE_DEFAULT;
+int             musicvolume_percent = MUSICVOLUME_DEFAULT;
+int             sfxvolume_percent = SFXVOLUME_DEFAULT;
 
 //
 // DEFAULTS
@@ -53,15 +68,25 @@ extern boolean  floatbob;
 extern boolean  footclip;
 extern int      fullscreen;
 extern int      gamepadautomap;
+extern int      gamepadautomapclearmark;
+extern int      gamepadautomapfollowmode;
+extern int      gamepadautomapgrid;
+extern int      gamepadautomapmark;
+extern int      gamepadautomapmaxzoom;
+extern int      gamepadautomaprotatemode;
+extern int      gamepadautomapzoomin;
+extern int      gamepadautomapzoomout;
 extern int      gamepadfire;
+extern int      gamepadleftdeadzone;
+extern int      gamepadrightdeadzone;
 extern boolean  gamepadlefthanded;
 extern int      gamepadmenu;
 extern int      gamepadnextweapon;
 extern int      gamepadprevweapon;
+extern int      gamepadrun;
 extern int      gamepadsensitivity;
-extern int      gamepadspeed;
 extern int      gamepaduse;
-extern boolean  gamepadvibrate;
+extern int      gamepadvibrate;
 extern int      gamepadweapon1;
 extern int      gamepadweapon2;
 extern int      gamepadweapon3;
@@ -75,6 +100,15 @@ extern boolean  grid;
 extern boolean  homindicator;
 extern int      hud;
 extern char     *iwadfolder;
+extern int      key_automap;
+extern int      key_automap_clearmark;
+extern int      key_automap_followmode;
+extern int      key_automap_grid;
+extern int      key_automap_mark;
+extern int      key_automap_maxzoom;
+extern int      key_automap_rotatemode;
+extern int      key_automap_zoomin;
+extern int      key_automap_zoomout;
 extern int      key_down;
 extern int      key_down2;
 extern int      key_fire;
@@ -82,7 +116,7 @@ extern int      key_left;
 extern int      key_nextweapon;
 extern int      key_prevweapon;
 extern int      key_right;
-extern int      key_speed;
+extern int      key_run;
 extern int      key_strafe;
 extern int      key_strafeleft;
 extern int      key_strafeleft2;
@@ -141,8 +175,10 @@ typedef enum
 {
     DEFAULT_INT,
     DEFAULT_INT_HEX,
+    DEFAULT_INT_PERCENT,
     DEFAULT_STRING,
     DEFAULT_FLOAT,
+    DEFAULT_FLOAT_PERCENT,
     DEFAULT_KEY
 } default_type_t;
 
@@ -194,109 +230,132 @@ typedef struct
     CONFIG_VARIABLE_GENERIC(name, variable, DEFAULT_INT, set)
 #define CONFIG_VARIABLE_INT_HEX(name, variable, set) \
     CONFIG_VARIABLE_GENERIC(name, variable, DEFAULT_INT_HEX, set)
+#define CONFIG_VARIABLE_INT_PERCENT(name, variable, set) \
+    CONFIG_VARIABLE_GENERIC(name, variable, DEFAULT_INT_PERCENT, set)
 #define CONFIG_VARIABLE_FLOAT(name, variable, set) \
     CONFIG_VARIABLE_GENERIC(name, variable, DEFAULT_FLOAT, set)
+#define CONFIG_VARIABLE_FLOAT_PERCENT(name, variable, set) \
+    CONFIG_VARIABLE_GENERIC(name, variable, DEFAULT_FLOAT_PERCENT, set)
 #define CONFIG_VARIABLE_STRING(name, variable, set) \
     CONFIG_VARIABLE_GENERIC(name, variable, DEFAULT_STRING, set)
 
 static default_t doom_defaults_list[] =
 {
-    CONFIG_VARIABLE_INT   (alwaysrun,            alwaysrun,            1),
-    CONFIG_VARIABLE_INT   (bloodsplats,          bloodsplats,          7),
-    CONFIG_VARIABLE_INT   (brightmaps,           brightmaps,           1),
-    CONFIG_VARIABLE_INT   (centerweapon,         centerweapon,         1),
-    CONFIG_VARIABLE_INT   (corpses,              corpses,             11),
-    CONFIG_VARIABLE_INT   (dclick_use,           dclick_use,           1),
-    CONFIG_VARIABLE_INT   (episode,              selectedepisode,      8),
-    CONFIG_VARIABLE_INT   (expansion,            selectedexpansion,    9),
-    CONFIG_VARIABLE_INT   (floatbob,             floatbob,             1),
-    CONFIG_VARIABLE_INT   (footclip,             footclip,             1),
-    CONFIG_VARIABLE_INT   (fullscreen,           fullscreen,           1),
-    CONFIG_VARIABLE_INT   (gamepad_automap,      gamepadautomap,       2),
-    CONFIG_VARIABLE_INT   (gamepad_fire,         gamepadfire,          2),
-    CONFIG_VARIABLE_INT   (gamepad_lefthanded,   gamepadlefthanded,    1),
-    CONFIG_VARIABLE_INT   (gamepad_menu,         gamepadmenu,          2),
-    CONFIG_VARIABLE_INT   (gamepad_prevweapon,   gamepadprevweapon,    2),
-    CONFIG_VARIABLE_INT   (gamepad_nextweapon,   gamepadnextweapon,    2),
-    CONFIG_VARIABLE_INT   (gamepad_sensitivity,  gamepadsensitivity,   0),
-    CONFIG_VARIABLE_INT   (gamepad_speed,        gamepadspeed,         2),
-    CONFIG_VARIABLE_INT   (gamepad_use,          gamepaduse,           2),
-    CONFIG_VARIABLE_INT   (gamepad_vibrate,      gamepadvibrate,       1),
-    CONFIG_VARIABLE_INT   (gamepad_weapon1,      gamepadweapon1,       2),
-    CONFIG_VARIABLE_INT   (gamepad_weapon2,      gamepadweapon2,       2),
-    CONFIG_VARIABLE_INT   (gamepad_weapon3,      gamepadweapon3,       2),
-    CONFIG_VARIABLE_INT   (gamepad_weapon4,      gamepadweapon4,       2),
-    CONFIG_VARIABLE_INT   (gamepad_weapon5,      gamepadweapon5,       2),
-    CONFIG_VARIABLE_INT   (gamepad_weapon6,      gamepadweapon6,       2),
-    CONFIG_VARIABLE_INT   (gamepad_weapon7,      gamepadweapon7,       2),
-    CONFIG_VARIABLE_FLOAT (gammacorrectionlevel, gammalevel,          13),
-    CONFIG_VARIABLE_INT   (graphicdetail,        graphicdetail,        6),
-    CONFIG_VARIABLE_INT   (grid,                 grid,                 1),
-    CONFIG_VARIABLE_INT   (homindicator,         homindicator,         1),
-    CONFIG_VARIABLE_INT   (hud,                  hud,                  1),
-    CONFIG_VARIABLE_STRING(iwadfolder,           iwadfolder,           0),
-    CONFIG_VARIABLE_KEY   (key_down,             key_down,             3),
-    CONFIG_VARIABLE_KEY   (key_down2,            key_down2,            3),
-    CONFIG_VARIABLE_KEY   (key_fire,             key_fire,             3),
-    CONFIG_VARIABLE_KEY   (key_left,             key_left,             3),
-    CONFIG_VARIABLE_KEY   (key_prevweapon,       key_prevweapon,       3),
-    CONFIG_VARIABLE_KEY   (key_nextweapon,       key_nextweapon,       3),
-    CONFIG_VARIABLE_KEY   (key_right,            key_right,            3),
-    CONFIG_VARIABLE_KEY   (key_speed,            key_speed,            3),
-    CONFIG_VARIABLE_KEY   (key_strafe,           key_strafe,           3),
-    CONFIG_VARIABLE_KEY   (key_strafeleft,       key_strafeleft,       3),
-    CONFIG_VARIABLE_KEY   (key_strafeleft2,      key_strafeleft2,      3),
-    CONFIG_VARIABLE_KEY   (key_straferight,      key_straferight,      3),
-    CONFIG_VARIABLE_KEY   (key_straferight2,     key_straferight2,     3),
-    CONFIG_VARIABLE_KEY   (key_up,               key_up,               3),
-    CONFIG_VARIABLE_KEY   (key_up2,              key_up2,              3),
-    CONFIG_VARIABLE_KEY   (key_use,              key_use,              3),
-    CONFIG_VARIABLE_KEY   (key_weapon1,          key_weapon1,          3),
-    CONFIG_VARIABLE_KEY   (key_weapon2,          key_weapon2,          3),
-    CONFIG_VARIABLE_KEY   (key_weapon3,          key_weapon3,          3),
-    CONFIG_VARIABLE_KEY   (key_weapon4,          key_weapon4,          3),
-    CONFIG_VARIABLE_KEY   (key_weapon5,          key_weapon5,          3),
-    CONFIG_VARIABLE_KEY   (key_weapon6,          key_weapon6,          3),
-    CONFIG_VARIABLE_KEY   (key_weapon7,          key_weapon7,          3),
-    CONFIG_VARIABLE_INT   (mapfixes,             mapfixes,            15),
-    CONFIG_VARIABLE_INT   (messages,             messages,             1),
-    CONFIG_VARIABLE_INT   (mirrorweapons,        mirrorweapons,        1),
-    CONFIG_VARIABLE_FLOAT (mouse_acceleration,   mouse_acceleration,   0),
-    CONFIG_VARIABLE_INT   (mouse_fire,           mousebfire,           4),
-    CONFIG_VARIABLE_INT   (mouse_forward,        mousebforward,        4),
-    CONFIG_VARIABLE_INT   (mouse_prevweapon,     mousebprevweapon,     4),
-    CONFIG_VARIABLE_INT   (mouse_nextweapon,     mousebnextweapon,     4),
-    CONFIG_VARIABLE_INT   (mouse_sensitivity,    mousesensitivity,     0),
-    CONFIG_VARIABLE_INT   (mouse_strafe,         mousebstrafe,         4),
-    CONFIG_VARIABLE_INT   (mouse_threshold,      mouse_threshold,      0),
-    CONFIG_VARIABLE_INT   (mouse_use,            mousebuse,            4),
-    CONFIG_VARIABLE_INT   (music_volume,         musicVolume,          0),
-    CONFIG_VARIABLE_INT   (novert,               novert,               1),
-    CONFIG_VARIABLE_INT   (pixelwidth,           pixelwidth,           0),
-    CONFIG_VARIABLE_INT   (pixelheight,          pixelheight,          0),
-    CONFIG_VARIABLE_INT   (playerbob,            playerbob,           12),
-    CONFIG_VARIABLE_INT   (rotatemode,           rotatemode,           1),
-    CONFIG_VARIABLE_INT   (runcount,             runcount,             0),
-    CONFIG_VARIABLE_FLOAT (saturation,           saturation,           0),
-    CONFIG_VARIABLE_INT   (savegame,             selectedsavegame,     0),
-    CONFIG_VARIABLE_INT   (screensize,           screensize,           0),
-    CONFIG_VARIABLE_INT   (screenwidth,          screenwidth,          5),
-    CONFIG_VARIABLE_INT   (screenheight,         screenheight,         5),
-    CONFIG_VARIABLE_INT   (sfx_volume,           sfxVolume,            0),
-    CONFIG_VARIABLE_INT   (shadows,              shadows,              1),
-    CONFIG_VARIABLE_INT   (skilllevel,           selectedskilllevel,  10),
-    CONFIG_VARIABLE_INT   (smoketrails,          smoketrails,         14),
-    CONFIG_VARIABLE_INT   (snd_maxslicetime_ms,  snd_maxslicetime_ms,  0),
-    CONFIG_VARIABLE_STRING(timidity_cfg_path,    timidity_cfg_path,    0),
-    CONFIG_VARIABLE_INT   (translucency,         translucency,         1),
-    CONFIG_VARIABLE_STRING(version,              version,              0),
+    CONFIG_VARIABLE_INT          (alwaysrun,                  alwaysrun,                     1),
+    CONFIG_VARIABLE_INT          (bloodsplats,                bloodsplats,                   7),
+    CONFIG_VARIABLE_INT          (brightmaps,                 brightmaps,                    1),
+    CONFIG_VARIABLE_INT          (centerweapon,               centerweapon,                  1),
+    CONFIG_VARIABLE_INT          (corpses,                    corpses,                      11),
+    CONFIG_VARIABLE_INT          (dclick_use,                 dclick_use,                    1),
+    CONFIG_VARIABLE_INT          (episode,                    selectedepisode,               8),
+    CONFIG_VARIABLE_INT          (expansion,                  selectedexpansion,             9),
+    CONFIG_VARIABLE_INT          (floatbob,                   floatbob,                      1),
+    CONFIG_VARIABLE_INT          (footclip,                   footclip,                      1),
+    CONFIG_VARIABLE_INT          (fullscreen,                 fullscreen,                    1),
+    CONFIG_VARIABLE_INT          (gamepad_automap,            gamepadautomap,                2),
+    CONFIG_VARIABLE_INT          (gamepad_automap_clearmark,  gamepadautomapclearmark,       2),
+    CONFIG_VARIABLE_INT          (gamepad_automap_followmode, gamepadautomapfollowmode,      2),
+    CONFIG_VARIABLE_INT          (gamepad_automap_grid,       gamepadautomapgrid,            2),
+    CONFIG_VARIABLE_INT          (gamepad_automap_mark,       gamepadautomapmark,            2),
+    CONFIG_VARIABLE_INT          (gamepad_automap_maxzoom,    gamepadautomapmaxzoom,         2),
+    CONFIG_VARIABLE_INT          (gamepad_automap_rotatemode, gamepadautomaprotatemode,      2),
+    CONFIG_VARIABLE_INT          (gamepad_automap_zoomin,     gamepadautomapzoomin,          2),
+    CONFIG_VARIABLE_INT          (gamepad_automap_zoomout,    gamepadautomapzoomout,         2),
+    CONFIG_VARIABLE_INT          (gamepad_fire,               gamepadfire,                   2),
+    CONFIG_VARIABLE_FLOAT_PERCENT(gamepad_leftdeadzone,       gamepadleftdeadzone_percent,   0),
+    CONFIG_VARIABLE_FLOAT_PERCENT(gamepad_rightdeadzone,      gamepadrightdeadzone_percent,  0),
+    CONFIG_VARIABLE_INT          (gamepad_lefthanded,         gamepadlefthanded,             1),
+    CONFIG_VARIABLE_INT          (gamepad_menu,               gamepadmenu,                   2),
+    CONFIG_VARIABLE_INT          (gamepad_prevweapon,         gamepadprevweapon,             2),
+    CONFIG_VARIABLE_INT          (gamepad_nextweapon,         gamepadnextweapon,             2),
+    CONFIG_VARIABLE_INT          (gamepad_run,                gamepadrun,                    2),
+    CONFIG_VARIABLE_INT          (gamepad_sensitivity,        gamepadsensitivity,            0),
+    CONFIG_VARIABLE_INT          (gamepad_use,                gamepaduse,                    2),
+    CONFIG_VARIABLE_INT          (gamepad_vibrate,            gamepadvibrate,               15),
+    CONFIG_VARIABLE_INT          (gamepad_weapon1,            gamepadweapon1,                2),
+    CONFIG_VARIABLE_INT          (gamepad_weapon2,            gamepadweapon2,                2),
+    CONFIG_VARIABLE_INT          (gamepad_weapon3,            gamepadweapon3,                2),
+    CONFIG_VARIABLE_INT          (gamepad_weapon4,            gamepadweapon4,                2),
+    CONFIG_VARIABLE_INT          (gamepad_weapon5,            gamepadweapon5,                2),
+    CONFIG_VARIABLE_INT          (gamepad_weapon6,            gamepadweapon6,                2),
+    CONFIG_VARIABLE_INT          (gamepad_weapon7,            gamepadweapon7,                2),
+    CONFIG_VARIABLE_FLOAT        (gammacorrectionlevel,       gammalevel,                   12),
+    CONFIG_VARIABLE_INT          (graphicdetail,              graphicdetail,                 6),
+    CONFIG_VARIABLE_INT          (grid,                       grid,                          1),
+    CONFIG_VARIABLE_INT          (homindicator,               homindicator,                  1),
+    CONFIG_VARIABLE_INT          (hud,                        hud,                           1),
+    CONFIG_VARIABLE_STRING       (iwadfolder,                 iwadfolder,                    0),
+    CONFIG_VARIABLE_KEY          (key_automap,                key_automap,                   3),
+    CONFIG_VARIABLE_KEY          (key_automap_clearmark,      key_automap_clearmark,         3),
+    CONFIG_VARIABLE_KEY          (key_automap_followmode,     key_automap_followmode,        3),
+    CONFIG_VARIABLE_KEY          (key_automap_grid,           key_automap_grid,              3),
+    CONFIG_VARIABLE_KEY          (key_automap_mark,           key_automap_mark,              3),
+    CONFIG_VARIABLE_KEY          (key_automap_maxzoom,        key_automap_maxzoom,           3),
+    CONFIG_VARIABLE_KEY          (key_automap_rotatemode,     key_automap_rotatemode,        3),
+    CONFIG_VARIABLE_KEY          (key_automap_zoomin,         key_automap_zoomin,            3),
+    CONFIG_VARIABLE_KEY          (key_automap_zoomout,        key_automap_zoomout,           3),
+    CONFIG_VARIABLE_KEY          (key_down,                   key_down,                      3),
+    CONFIG_VARIABLE_KEY          (key_down2,                  key_down2,                     3),
+    CONFIG_VARIABLE_KEY          (key_fire,                   key_fire,                      3),
+    CONFIG_VARIABLE_KEY          (key_left,                   key_left,                      3),
+    CONFIG_VARIABLE_KEY          (key_prevweapon,             key_prevweapon,                3),
+    CONFIG_VARIABLE_KEY          (key_nextweapon,             key_nextweapon,                3),
+    CONFIG_VARIABLE_KEY          (key_right,                  key_right,                     3),
+    CONFIG_VARIABLE_KEY          (key_run,                    key_run,                       3),
+    CONFIG_VARIABLE_KEY          (key_strafe,                 key_strafe,                    3),
+    CONFIG_VARIABLE_KEY          (key_strafeleft,             key_strafeleft,                3),
+    CONFIG_VARIABLE_KEY          (key_strafeleft2,            key_strafeleft2,               3),
+    CONFIG_VARIABLE_KEY          (key_straferight,            key_straferight,               3),
+    CONFIG_VARIABLE_KEY          (key_straferight2,           key_straferight2,              3),
+    CONFIG_VARIABLE_KEY          (key_up,                     key_up,                        3),
+    CONFIG_VARIABLE_KEY          (key_up2,                    key_up2,                       3),
+    CONFIG_VARIABLE_KEY          (key_use,                    key_use,                       3),
+    CONFIG_VARIABLE_KEY          (key_weapon1,                key_weapon1,                   3),
+    CONFIG_VARIABLE_KEY          (key_weapon2,                key_weapon2,                   3),
+    CONFIG_VARIABLE_KEY          (key_weapon3,                key_weapon3,                   3),
+    CONFIG_VARIABLE_KEY          (key_weapon4,                key_weapon4,                   3),
+    CONFIG_VARIABLE_KEY          (key_weapon5,                key_weapon5,                   3),
+    CONFIG_VARIABLE_KEY          (key_weapon6,                key_weapon6,                   3),
+    CONFIG_VARIABLE_KEY          (key_weapon7,                key_weapon7,                   3),
+    CONFIG_VARIABLE_INT          (mapfixes,                   mapfixes,                     14),
+    CONFIG_VARIABLE_INT          (messages,                   messages,                      1),
+    CONFIG_VARIABLE_INT          (mirrorweapons,              mirrorweapons,                 1),
+    CONFIG_VARIABLE_FLOAT        (mouse_acceleration,         mouse_acceleration,            0),
+    CONFIG_VARIABLE_INT          (mouse_fire,                 mousebfire,                    4),
+    CONFIG_VARIABLE_INT          (mouse_forward,              mousebforward,                 4),
+    CONFIG_VARIABLE_INT          (mouse_prevweapon,           mousebprevweapon,              4),
+    CONFIG_VARIABLE_INT          (mouse_nextweapon,           mousebnextweapon,              4),
+    CONFIG_VARIABLE_INT          (mouse_sensitivity,          mousesensitivity,              0),
+    CONFIG_VARIABLE_INT          (mouse_strafe,               mousebstrafe,                  4),
+    CONFIG_VARIABLE_INT          (mouse_threshold,            mouse_threshold,               0),
+    CONFIG_VARIABLE_INT          (mouse_use,                  mousebuse,                     4),
+    CONFIG_VARIABLE_INT_PERCENT  (musicvolume,                musicvolume_percent,           0),
+    CONFIG_VARIABLE_INT          (novert,                     novert,                        1),
+    CONFIG_VARIABLE_INT          (pixelwidth,                 pixelwidth,                    0),
+    CONFIG_VARIABLE_INT          (pixelheight,                pixelheight,                   0),
+    CONFIG_VARIABLE_INT_PERCENT  (playerbob,                  playerbob,                     0),
+    CONFIG_VARIABLE_INT          (rotatemode,                 rotatemode,                    1),
+    CONFIG_VARIABLE_INT          (runcount,                   runcount,                      0),
+    CONFIG_VARIABLE_FLOAT        (saturation,                 saturation,                    0),
+    CONFIG_VARIABLE_INT          (savegame,                   selectedsavegame,              0),
+    CONFIG_VARIABLE_INT          (screensize,                 screensize,                    0),
+    CONFIG_VARIABLE_INT          (screenwidth,                screenwidth,                   5),
+    CONFIG_VARIABLE_INT          (screenheight,               screenheight,                  5),
+    CONFIG_VARIABLE_INT_PERCENT  (sfxvolume,                  sfxvolume_percent,             0),
+    CONFIG_VARIABLE_INT          (shadows,                    shadows,                       1),
+    CONFIG_VARIABLE_INT          (skilllevel,                 selectedskilllevel,           10),
+    CONFIG_VARIABLE_INT          (smoketrails,                smoketrails,                  13),
+    CONFIG_VARIABLE_INT          (snd_maxslicetime_ms,        snd_maxslicetime_ms,           0),
+    CONFIG_VARIABLE_STRING       (timidity_cfg_path,          timidity_cfg_path,             0),
+    CONFIG_VARIABLE_INT          (translucency,               translucency,                  1),
+    CONFIG_VARIABLE_STRING       (version,                    version,                       0),
 #ifdef WIN32
-    CONFIG_VARIABLE_STRING(videodriver,          videodriver,          0),
+    CONFIG_VARIABLE_STRING       (videodriver,                videodriver,                   0),
 #endif
-    CONFIG_VARIABLE_INT   (widescreen,           widescreen,           1),
-    CONFIG_VARIABLE_STRING(windowposition,       windowposition,       0),
-    CONFIG_VARIABLE_INT   (windowwidth,          windowwidth,          0),
-    CONFIG_VARIABLE_INT   (windowheight,         windowheight,         0)
+    CONFIG_VARIABLE_INT          (widescreen,                 widescreen,                    1),
+    CONFIG_VARIABLE_STRING       (windowposition,             windowposition,                0),
+    CONFIG_VARIABLE_INT          (windowwidth,                windowwidth,                   0),
+    CONFIG_VARIABLE_INT          (windowheight,               windowheight,                  0)
 };
 
 static default_collection_t doom_defaults =
@@ -380,7 +439,9 @@ static alias_t alias[] =
     { "Y",                                  32768,  2 },
     { "-",                                      0,  3 },
     { "none",                                   0,  3 },
+    { "\'+\'",                                 13,  3 },
     { "backspace",                             14,  3 },
+    { "tab",                                   15,  3 },
     { "enter",                                 28,  3 },
     { "ctrl",                                  29,  3 },
     { "shift",                                 42,  3 },
@@ -491,144 +552,159 @@ static alias_t alias[] =
     { "moreblood|slide|smearblood|mirror",     15, 11 },
     { "moreblood|smearblood|mirror|slide",     15, 11 },
     { "moreblood|smearblood|slide|mirror",     15, 11 },
-    { "0%",                                     0, 12 },
-    { "75%",                                   75, 12 },
-    { "100%",                                 100, 12 },
-    { "off",                                    1, 13 },
+    { "off",                                    1, 12 },
+    { "-",                                      0, 13 },
+    { "none",                                   0, 13 },
+    { "player",                                 1, 13 },
+    { "revenant1",                              2, 13 },
+    { "player|revenant1",                       3, 13 },
+    { "revenant1|player",                       3, 13 },
+    { "revenant2",                              4, 13 },
+    { "player|revenant2",                       5, 13 },
+    { "revenant2|player",                       5, 13 },
+    { "revenant1|revenant2",                    6, 13 },
+    { "revenant2|revenant1",                    6, 13 },
+    { "player|revenant1|revenant2",             7, 13 },
+    { "revenant1|player|revenant2",             7, 13 },
+    { "revenant1|revenant2|player",             7, 13 },
+    { "player|revenant2|revenant1",             7, 13 },
+    { "revenant2|player|revenant1",             7, 13 },
+    { "revenant2|revenant1|player",             7, 13 },
+    { "cyberdemon",                             8, 13 },
+    { "player|cyberdemon",                      9, 13 },
+    { "cyberdemon|player",                      9, 13 },
+    { "revenant1|cyberdemon",                  10, 13 },
+    { "cyberdemon|revenant1",                  10, 13 },
+    { "player|revenant1|cyberdemon",           11, 13 },
+    { "revenant1|player|cyberdemon",           11, 13 },
+    { "revenant1|cyberdemon|player",           11, 13 },
+    { "player|cyberdemon|revenant1",           11, 13 },
+    { "cyberdemon|player|revenant1",           11, 13 },
+    { "cyberdemon|revenant1|player",           11, 13 },
+    { "revenant2|cyberdemon",                  12, 13 },
+    { "cyberdemon|revenant2",                  12, 13 },
+    { "player|revenant2|cyberdemon",           13, 13 },
+    { "revenant2|player|cyberdemon",           13, 13 },
+    { "revenant2|cyberdemon|player",           13, 13 },
+    { "player|cyberdemon|revenant2",           13, 13 },
+    { "cyberdemon|player|revenant2",           13, 13 },
+    { "cyberdemon|revenant2|player",           13, 13 },
+    { "revenant1|revenant2|cyberdemon",        14, 13 },
+    { "revenant2|revenant1|cyberdemon",        14, 13 },
+    { "revenant2|cyberdemon|revenant1",        14, 13 },
+    { "revenant1|cyberdemon|revenant2",        14, 13 },
+    { "cyberdemon|revenant1|revenant2",        14, 13 },
+    { "cyberdemon|revenant2|revenant1",        14, 13 },
+    { "player|revenant1|revenant2|cyberdemon", 15, 13 },
+    { "player|revenant1|cyberdemon|revenant2", 15, 13 },
+    { "player|revenant2|revenant1|cyberdemon", 15, 13 },
+    { "player|revenant2|cyberdemon|revenant1", 15, 13 },
+    { "player|cyberdemon|revenant1|revenant2", 15, 13 },
+    { "player|cyberdemon|revenant2|revenant1", 15, 13 },
+    { "revenant1|player|revenant2|cyberdemon", 15, 13 },
+    { "revenant1|player|cyberdemon|revenant2", 15, 13 },
+    { "revenant1|revenant2|player|cyberdemon", 15, 13 },
+    { "revenant1|revenant2|cyberdemon|player", 15, 13 },
+    { "revenant1|cyberdemon|player|revenant2", 15, 13 },
+    { "revenant1|cyberdemon|revenant2|player", 15, 13 },
+    { "revenant2|player|revenant1|cyberdemon", 15, 13 },
+    { "revenant2|player|cyberdemon|revenant1", 15, 13 },
+    { "revenant2|revenant1|player|cyberdemon", 15, 13 },
+    { "revenant2|revenant1|cyberdemon|player", 15, 13 },
+    { "revenant2|cyberdemon|player|revenant1", 15, 13 },
+    { "revenant2|cyberdemon|revenant1|player", 15, 13 },
+    { "cyberdemon|player|revenant1|revenant2", 15, 13 },
+    { "cyberdemon|player|revenant2|revenant1", 15, 13 },
+    { "cyberdemon|revenant1|player|revenant2", 15, 13 },
+    { "cyberdemon|revenant1|revenant2|player", 15, 13 },
+    { "cyberdemon|revenant2|player|revenant1", 15, 13 },
+    { "cyberdemon|revenant2|revenant1|player", 15, 13 },
     { "-",                                      0, 14 },
     { "none",                                   0, 14 },
-    { "player",                                 1, 14 },
-    { "revenant1",                              2, 14 },
-    { "player|revenant1",                       3, 14 },
-    { "revenant1|player",                       3, 14 },
-    { "revenant2",                              4, 14 },
-    { "player|revenant2",                       5, 14 },
-    { "revenant2|player",                       5, 14 },
-    { "revenant1|revenant2",                    6, 14 },
-    { "revenant2|revenant1",                    6, 14 },
-    { "player|revenant1|revenant2",             7, 14 },
-    { "revenant1|player|revenant2",             7, 14 },
-    { "revenant1|revenant2|player",             7, 14 },
-    { "player|revenant2|revenant1",             7, 14 },
-    { "revenant2|player|revenant1",             7, 14 },
-    { "revenant2|revenant1|player",             7, 14 },
-    { "cyberdemon",                             8, 14 },
-    { "player|cyberdemon",                      9, 14 },
-    { "cyberdemon|player",                      9, 14 },
-    { "revenant1|cyberdemon",                  10, 14 },
-    { "cyberdemon|revenant1",                  10, 14 },
-    { "player|revenant1|cyberdemon",           11, 14 },
-    { "revenant1|player|cyberdemon",           11, 14 },
-    { "revenant1|cyberdemon|player",           11, 14 },
-    { "player|cyberdemon|revenant1",           11, 14 },
-    { "cyberdemon|player|revenant1",           11, 14 },
-    { "cyberdemon|revenant1|player",           11, 14 },
-    { "revenant2|cyberdemon",                  12, 14 },
-    { "cyberdemon|revenant2",                  12, 14 },
-    { "player|revenant2|cyberdemon",           13, 14 },
-    { "revenant2|player|cyberdemon",           13, 14 },
-    { "revenant2|cyberdemon|player",           13, 14 },
-    { "player|cyberdemon|revenant2",           13, 14 },
-    { "cyberdemon|player|revenant2",           13, 14 },
-    { "cyberdemon|revenant2|player",           13, 14 },
-    { "revenant1|revenant2|cyberdemon",        14, 14 },
-    { "revenant2|revenant1|cyberdemon",        14, 14 },
-    { "revenant2|cyberdemon|revenant1",        14, 14 },
-    { "revenant1|cyberdemon|revenant2",        14, 14 },
-    { "cyberdemon|revenant1|revenant2",        14, 14 },
-    { "cyberdemon|revenant2|revenant1",        14, 14 },
-    { "player|revenant1|revenant2|cyberdemon", 15, 14 },
-    { "player|revenant1|cyberdemon|revenant2", 15, 14 },
-    { "player|revenant2|revenant1|cyberdemon", 15, 14 },
-    { "player|revenant2|cyberdemon|revenant1", 15, 14 },
-    { "player|cyberdemon|revenant1|revenant2", 15, 14 },
-    { "player|cyberdemon|revenant2|revenant1", 15, 14 },
-    { "revenant1|player|revenant2|cyberdemon", 15, 14 },
-    { "revenant1|player|cyberdemon|revenant2", 15, 14 },
-    { "revenant1|revenant2|player|cyberdemon", 15, 14 },
-    { "revenant1|revenant2|cyberdemon|player", 15, 14 },
-    { "revenant1|cyberdemon|player|revenant2", 15, 14 },
-    { "revenant1|cyberdemon|revenant2|player", 15, 14 },
-    { "revenant2|player|revenant1|cyberdemon", 15, 14 },
-    { "revenant2|player|cyberdemon|revenant1", 15, 14 },
-    { "revenant2|revenant1|player|cyberdemon", 15, 14 },
-    { "revenant2|revenant1|cyberdemon|player", 15, 14 },
-    { "revenant2|cyberdemon|player|revenant1", 15, 14 },
-    { "revenant2|cyberdemon|revenant1|player", 15, 14 },
-    { "cyberdemon|player|revenant1|revenant2", 15, 14 },
-    { "cyberdemon|player|revenant2|revenant1", 15, 14 },
-    { "cyberdemon|revenant1|player|revenant2", 15, 14 },
-    { "cyberdemon|revenant1|revenant2|player", 15, 14 },
-    { "cyberdemon|revenant2|player|revenant1", 15, 14 },
-    { "cyberdemon|revenant2|revenant1|player", 15, 14 },
+    { "linedefs",                               1, 14 },
+    { "sectors",                                2, 14 },
+    { "linedefs|sectors",                       3, 14 },
+    { "sectors|linedefs",                       3, 14 },
+    { "things",                                 4, 14 },
+    { "linedefs|things",                        5, 14 },
+    { "things|linedefs",                        5, 14 },
+    { "sectors|things",                         6, 14 },
+    { "things|sectors",                         6, 14 },
+    { "linedefs|sectors|things",                7, 14 },
+    { "sectors|linedefs|things",                7, 14 },
+    { "sectors|things|linedefs",                7, 14 },
+    { "linedefs|things|sectors",                7, 14 },
+    { "things|linedefs|sectors",                7, 14 },
+    { "things|sectors|linedefs",                7, 14 },
+    { "vertexes",                               8, 14 },
+    { "linedefs|vertexes",                      9, 14 },
+    { "vertexes|linedefs",                      9, 14 },
+    { "sectors|vertexes",                      10, 14 },
+    { "vertexes|sectors",                      10, 14 },
+    { "linedefs|sectors|vertexes",             11, 14 },
+    { "sectors|linedefs|vertexes",             11, 14 },
+    { "sectors|vertexes|linedefs",             11, 14 },
+    { "linedefs|vertexes|sectors",             11, 14 },
+    { "vertexes|linedefs|sectors",             11, 14 },
+    { "vertexes|sectors|linedefs",             11, 14 },
+    { "things|vertexes",                       12, 14 },
+    { "vertexes|things",                       12, 14 },
+    { "linedefs|things|vertexes",              13, 14 },
+    { "things|linedefs|vertexes",              13, 14 },
+    { "things|vertexes|linedefs",              13, 14 },
+    { "linedefs|vertexes|things",              13, 14 },
+    { "vertexes|linedefs|things",              13, 14 },
+    { "vertexes|things|linedefs",              13, 14 },
+    { "sectors|things|vertexes",               14, 14 },
+    { "things|sectors|vertexes",               14, 14 },
+    { "things|vertexes|sectors",               14, 14 },
+    { "sectors|vertexes|things",               14, 14 },
+    { "vertexes|sectors|things",               14, 14 },
+    { "vertexes|things|sectors",               14, 14 },
+    { "linedefs|sectors|things|vertexes",      15, 14 },
+    { "linedefs|sectors|vertexes|things",      15, 14 },
+    { "linedefs|things|sectors|vertexes",      15, 14 },
+    { "linedefs|things|vertexes|sectors",      15, 14 },
+    { "linedefs|vertexes|sectors|things",      15, 14 },
+    { "linedefs|vertexes|things|sectors",      15, 14 },
+    { "sectors|linedefs|things|vertexes",      15, 14 },
+    { "sectors|linedefs|vertexes|things",      15, 14 },
+    { "sectors|things|linedefs|vertexes",      15, 14 },
+    { "sectors|things|vertexes|linedefs",      15, 14 },
+    { "sectors|vertexes|linedefs|things",      15, 14 },
+    { "sectors|vertexes|things|linedefs",      15, 14 },
+    { "things|linedefs|sectors|vertexes",      15, 14 },
+    { "things|linedefs|vertexes|sectors",      15, 14 },
+    { "things|sectors|linedefs|vertexes",      15, 14 },
+    { "things|sectors|vertexes|linedefs",      15, 14 },
+    { "things|vertexes|linedefs|sectors",      15, 14 },
+    { "things|vertexes|sectors|linedefs",      15, 14 },
+    { "vertexes|linedefs|sectors|things",      15, 14 },
+    { "vertexes|linedefs|things|sectors",      15, 14 },
+    { "vertexes|sectors|linedefs|things",      15, 14 },
+    { "vertexes|sectors|things|linedefs",      15, 14 },
+    { "vertexes|things|linedefs|sectors",      15, 14 },
+    { "vertexes|things|sectors|linedefs",      15, 14 },
     { "-",                                      0, 15 },
     { "none",                                   0, 15 },
-    { "linedefs",                               1, 15 },
-    { "sectors",                                2, 15 },
-    { "linedefs|sectors",                       3, 15 },
-    { "sectors|linedefs",                       3, 15 },
-    { "things",                                 4, 15 },
-    { "linedefs|things",                        5, 15 },
-    { "things|linedefs",                        5, 15 },
-    { "sectors|things",                         6, 15 },
-    { "things|sectors",                         6, 15 },
-    { "linedefs|sectors|things",                7, 15 },
-    { "sectors|linedefs|things",                7, 15 },
-    { "sectors|things|linedefs",                7, 15 },
-    { "linedefs|things|sectors",                7, 15 },
-    { "things|linedefs|sectors",                7, 15 },
-    { "things|sectors|linedefs",                7, 15 },
-    { "vertexes",                               8, 15 },
-    { "linedefs|vertexes",                      9, 15 },
-    { "vertexes|linedefs",                      9, 15 },
-    { "sectors|vertexes",                      10, 15 },
-    { "vertexes|sectors",                      10, 15 },
-    { "linedefs|sectors|vertexes",             11, 15 },
-    { "sectors|linedefs|vertexes",             11, 15 },
-    { "sectors|vertexes|linedefs",             11, 15 },
-    { "linedefs|vertexes|sectors",             11, 15 },
-    { "vertexes|linedefs|sectors",             11, 15 },
-    { "vertexes|sectors|linedefs",             11, 15 },
-    { "things|vertexes",                       12, 15 },
-    { "vertexes|things",                       12, 15 },
-    { "linedefs|things|vertexes",              13, 15 },
-    { "things|linedefs|vertexes",              13, 15 },
-    { "things|vertexes|linedefs",              13, 15 },
-    { "linedefs|vertexes|things",              13, 15 },
-    { "vertexes|linedefs|things",              13, 15 },
-    { "vertexes|things|linedefs",              13, 15 },
-    { "sectors|things|vertexes",               14, 15 },
-    { "things|sectors|vertexes",               14, 15 },
-    { "things|vertexes|sectors",               14, 15 },
-    { "sectors|vertexes|things",               14, 15 },
-    { "vertexes|sectors|things",               14, 15 },
-    { "vertexes|things|sectors",               14, 15 },
-    { "linedefs|sectors|things|vertexes",      15, 15 },
-    { "linedefs|sectors|vertexes|things",      15, 15 },
-    { "linedefs|things|sectors|vertexes",      15, 15 },
-    { "linedefs|things|vertexes|sectors",      15, 15 },
-    { "linedefs|vertexes|sectors|things",      15, 15 },
-    { "linedefs|vertexes|things|sectors",      15, 15 },
-    { "sectors|linedefs|things|vertexes",      15, 15 },
-    { "sectors|linedefs|vertexes|things",      15, 15 },
-    { "sectors|things|linedefs|vertexes",      15, 15 },
-    { "sectors|things|vertexes|linedefs",      15, 15 },
-    { "sectors|vertexes|linedefs|things",      15, 15 },
-    { "sectors|vertexes|things|linedefs",      15, 15 },
-    { "things|linedefs|sectors|vertexes",      15, 15 },
-    { "things|linedefs|vertexes|sectors",      15, 15 },
-    { "things|sectors|linedefs|vertexes",      15, 15 },
-    { "things|sectors|vertexes|linedefs",      15, 15 },
-    { "things|vertexes|linedefs|sectors",      15, 15 },
-    { "things|vertexes|sectors|linedefs",      15, 15 },
-    { "vertexes|linedefs|sectors|things",      15, 15 },
-    { "vertexes|linedefs|things|sectors",      15, 15 },
-    { "vertexes|sectors|linedefs|things",      15, 15 },
-    { "vertexes|sectors|things|linedefs",      15, 15 },
-    { "vertexes|things|linedefs|sectors",      15, 15 },
-    { "vertexes|things|sectors|linedefs",      15, 15 },
+    { "damage",                                 1, 15 },
+    { "weapons",                                2, 15 },
+    { "damage|weapons",                         3, 15 },
+    { "weapons|damage",                         3, 15 },
     { "",                                       0,  0 }
 };
+
+static char *striptrailingzero(float value)
+{
+    size_t      len;
+    static char result[100];
+    
+    M_snprintf(result, 100, "%.1f", value);
+    len = strlen(result);
+    if (len > 2 && result[len - 2] == '.' && result[len - 1] == '0')
+        result[len - 2] = '\0';
+    return result;
+}
 
 static void SaveDefaultCollection(default_collection_t *collection)
 {
@@ -751,6 +827,27 @@ static void SaveDefaultCollection(default_collection_t *collection)
                 fprintf(f, "0x%x", *(int *)defaults[i].location);
                 break;
 
+            case DEFAULT_INT_PERCENT:
+            {
+                int         j = 0;
+                boolean     flag = false;
+                int         v = *(int *)defaults[i].location;
+
+                while (alias[j].text[0])
+                {
+                    if (v == alias[j].value && defaults[i].set == alias[j].set)
+                    {
+                        fprintf(f, "%s", alias[j].text);
+                        flag = true;
+                        break;
+                    }
+                    j++;
+                }
+                if (!flag)
+                    fprintf(f, "%i%%", *(int *)defaults[i].location);
+                break;
+            }
+
             case DEFAULT_FLOAT:
             {
                 int         j = 0;
@@ -772,6 +869,26 @@ static void SaveDefaultCollection(default_collection_t *collection)
                 break;
             }
 
+            case DEFAULT_FLOAT_PERCENT:
+            {
+                int         j = 0;
+                boolean     flag = false;
+                float       v = *(float *)defaults[i].location;
+
+                while (alias[j].text[0])
+                {
+                    if (v == alias[j].value && defaults[i].set == alias[j].set)
+                    {
+                        fprintf(f, "%s", alias[j].text);
+                        flag = true;
+                        break;
+                    }
+                    j++;
+                }
+                if (!flag)
+                    fprintf(f, "%s%%", striptrailingzero(*(float *)defaults[i].location));
+                break;
+            }
 
             case DEFAULT_STRING:
                 fprintf(f, "\"%s\"", *(char **)defaults[i].location);
@@ -787,27 +904,20 @@ static void SaveDefaultCollection(default_collection_t *collection)
 // Parses integer values in the configuration file
 static int ParseIntParameter(char *strparm, int set)
 {
-    int         parm;
+    int parm;
+    int i = 0;
+
+    while (alias[i].text[0])
+    {
+        if (!strcasecmp(strparm, alias[i].text) && set == alias[i].set)
+            return alias[i].value;
+        i++;
+    }
 
     if (strparm[0] == '\'' && strparm[2] == '\'')
-    {
-        int     s;
-
-        for (s = 0; s < 128; ++s)
-            if (tolower(strparm[1]) == scantokey[s])
-                return s;
-    }
-    else
-    {
-        int     i = 0;
-
-        while (alias[i].text[0])
-        {
-            if (!strcasecmp(strparm, alias[i].text) && set == alias[i].set)
-                return alias[i].value;
-            i++;
-        }
-    }
+        for (i = 0; i < 128; ++i)
+            if (tolower(strparm[1]) == scantokey[i])
+                return i;
 
     if (strparm[0] == '0' && strparm[1] == 'x')
         sscanf(strparm + 2, "%x", &parm);
@@ -866,10 +976,7 @@ static void LoadDefaultCollection(default_collection_t *collection)
             int         intparm;
 
             if (strcmp(defname, def->name) != 0)
-            {
-                // not this one
-                continue;
-            }
+                continue;       // not this one
 
             // parameter found
             switch (def->type)
@@ -885,8 +992,14 @@ static void LoadDefaultCollection(default_collection_t *collection)
                     *(int *)def->location = ParseIntParameter(strparm, def->set);
                     break;
 
-                case DEFAULT_KEY:
+                case DEFAULT_INT_PERCENT:
+                    s = strdup(strparm);
+                    if (s[strlen(s) - 1] == '%')
+                        s[strlen(s) - 1] = '\0';
+                    *(int *)def->location = ParseIntParameter(s, def->set);
+                    break;
 
+                case DEFAULT_KEY:
                     // translate scancodes read from config
                     // file (save the old value in untranslated)
                     intparm = ParseIntParameter(strparm, def->set);
@@ -898,6 +1011,13 @@ static void LoadDefaultCollection(default_collection_t *collection)
                     break;
 
                 case DEFAULT_FLOAT:
+                    *(float *)def->location = ParseFloatParameter(strparm, def->set);
+                    break;
+
+                case DEFAULT_FLOAT_PERCENT:
+                    s = strdup(strparm);
+                    if (s[strlen(s) - 1] == '%')
+                        s[strlen(s) - 1] = '\0';
                     *(float *)def->location = ParseFloatParameter(strparm, def->set);
                     break;
             }
@@ -927,8 +1047,7 @@ static void M_CheckDefaults(void)
     if (alwaysrun != false && alwaysrun != true)
         alwaysrun = ALWAYSRUN_DEFAULT;
 
-    if (bloodsplats < BLOODSPLATS_MIN || BLOODSPLATS_MAX)
-        bloodsplats = BLOODSPLATS_DEFAULT;
+    bloodsplats = BETWEEN(BLOODSPLATS_MIN, bloodsplats, BLOODSPLATS_MAX);
 
     if (brightmaps != false && brightmaps != true)
         brightmaps = BRIGHTMAPS_DEFAULT;
@@ -936,8 +1055,7 @@ static void M_CheckDefaults(void)
     if (centerweapon != false && centerweapon != true)
         centerweapon = CENTERWEAPON_DEFAULT;
 
-    if (corpses < CORPSES_MIN || corpses > CORPSES_MAX)
-        corpses = CORPSES_DEFAULT;
+    corpses = BETWEEN(CORPSES_MIN, corpses, CORPSES_MAX);
 
     if (dclick_use != false && dclick_use != true)
         dclick_use = DCLICKUSE_DEFAULT;
@@ -951,11 +1069,50 @@ static void M_CheckDefaults(void)
     if (fullscreen != false && fullscreen != true)
         fullscreen = FULLSCREEN_DEFAULT;
 
-    if (gamepadautomap < 0 || gamepadautomap > GAMEPAD_Y || (gamepadautomap & (gamepadautomap - 1)))
+    if (gamepadautomap < 0 || gamepadautomap > GAMEPAD_Y
+        || (gamepadautomap & (gamepadautomap - 1)))
         gamepadautomap = GAMEPADAUTOMAP_DEFAULT;
+
+    if (gamepadautomapclearmark < 0 || gamepadautomapclearmark > GAMEPAD_Y
+        || (gamepadautomapclearmark & (gamepadautomapclearmark - 1)))
+        gamepadautomapclearmark = GAMEPADAUTOMAPCLEARMARK_DEFAULT;
+
+    if (gamepadautomapfollowmode < 0 || gamepadautomapfollowmode > GAMEPAD_Y
+        || (gamepadautomapfollowmode & (gamepadautomapfollowmode - 1)))
+        gamepadautomapfollowmode = GAMEPADAUTOMAPFOLLOWMODE_DEFAULT;
+
+    if (gamepadautomapgrid < 0 || gamepadautomapgrid > GAMEPAD_Y
+        || (gamepadautomapgrid & (gamepadautomapgrid - 1)))
+        gamepadautomapgrid = GAMEPADAUTOMAPGRID_DEFAULT;
+
+    if (gamepadautomapmark < 0 || gamepadautomapmark > GAMEPAD_Y
+        || (gamepadautomapmark & (gamepadautomapmark - 1)))
+        gamepadautomapmark = GAMEPADAUTOMAPMARK_DEFAULT;
+
+    if (gamepadautomapmaxzoom < 0 || gamepadautomapmaxzoom > GAMEPAD_Y
+        || (gamepadautomapmaxzoom & (gamepadautomapmaxzoom - 1)))
+        gamepadautomapmaxzoom = GAMEPADAUTOMAPMAXZOOM_DEFAULT;
+
+    if (gamepadautomaprotatemode < 0 || gamepadautomaprotatemode > GAMEPAD_Y
+        || (gamepadautomaprotatemode & (gamepadautomaprotatemode - 1)))
+        gamepadautomaprotatemode = GAMEPADAUTOMAPROTATEMODE_DEFAULT;
+
+    if (gamepadautomapzoomin < 0 || gamepadautomapzoomin > GAMEPAD_Y
+        || (gamepadautomapzoomin & (gamepadautomapzoomin - 1)))
+        gamepadautomapzoomin = GAMEPADAUTOMAPZOOMIN_DEFAULT;
+
+    if (gamepadautomapzoomout < 0 || gamepadautomapzoomout > GAMEPAD_Y
+        || (gamepadautomapzoomout & (gamepadautomapzoomout - 1)))
+        gamepadautomapzoomout = GAMEPADAUTOMAPZOOMOUT_DEFAULT;
 
     if (gamepadfire < 0 || gamepadfire > GAMEPAD_Y || (gamepadfire & (gamepadfire - 1)))
         gamepadfire = GAMEPADFIRE_DEFAULT;
+
+    gamepadleftdeadzone = (int)(BETWEENF(GAMEPADLEFTDEADZONE_MIN, gamepadleftdeadzone_percent,
+        GAMEPADLEFTDEADZONE_MAX) * (float)SHRT_MAX / 100.0f);
+
+    gamepadrightdeadzone = (int)(BETWEENF(GAMEPADRIGHTDEADZONE_MIN, gamepadrightdeadzone_percent,
+        GAMEPADRIGHTDEADZONE_MAX) * (float)SHRT_MAX / 100.0f);
 
     if (gamepadlefthanded != false && gamepadlefthanded != true)
         gamepadlefthanded = GAMEPADLEFTHANDED_DEFAULT;
@@ -963,25 +1120,27 @@ static void M_CheckDefaults(void)
     if (gamepadmenu < 0 || gamepadmenu > GAMEPAD_Y || (gamepadmenu & (gamepadmenu - 1)))
         gamepadmenu = GAMEPADMENU_DEFAULT;
 
-    if (gamepadnextweapon < 0 || gamepadnextweapon > GAMEPAD_Y || (gamepadnextweapon & (gamepadnextweapon - 1)))
+    if (gamepadnextweapon < 0 || gamepadnextweapon > GAMEPAD_Y
+        || (gamepadnextweapon & (gamepadnextweapon - 1)))
         gamepadnextweapon = GAMEPADNEXTWEAPON_DEFAULT;
 
-    if (gamepadprevweapon < 0 || gamepadprevweapon > GAMEPAD_Y || (gamepadprevweapon & (gamepadprevweapon - 1)))
+    if (gamepadprevweapon < 0 || gamepadprevweapon > GAMEPAD_Y
+        || (gamepadprevweapon & (gamepadprevweapon - 1)))
         gamepadprevweapon = GAMEPADPREVWEAPON_DEFAULT;
 
-    if (gamepadsensitivity < GAMEPADSENSITIVITY_MIN || gamepadsensitivity > GAMEPADSENSITIVITY_MAX)
-        gamepadsensitivity = GAMEPADSENSITIVITY_DEFAULT;
+    gamepadsensitivity = BETWEEN(GAMEPADSENSITIVITY_MIN, gamepadsensitivity,
+        GAMEPADSENSITIVITY_MAX);
     gamepadsensitivityf = (!gamepadsensitivity ? 0.0f :
-        GAMEPADSENSITIVITY_OFFSET + gamepadsensitivity / (float)GAMEPADSENSITIVITY_MAX * GAMEPADSENSITIVITY_FACTOR);
+        GAMEPADSENSITIVITY_OFFSET + gamepadsensitivity / (float)GAMEPADSENSITIVITY_MAX *
+        GAMEPADSENSITIVITY_FACTOR);
 
-    if (gamepadspeed < 0 || gamepadspeed > GAMEPAD_Y || (gamepadspeed & (gamepadspeed - 1)))
-        gamepadspeed = GAMEPADSPEED_DEFAULT;
+    if (gamepadrun < 0 || gamepadrun > GAMEPAD_Y || (gamepadrun & (gamepadrun - 1)))
+        gamepadrun = GAMEPADRUN_DEFAULT;
 
     if (gamepaduse < 0 || gamepaduse > GAMEPAD_Y || (gamepaduse & (gamepaduse - 1)))
         gamepaduse = GAMEPADUSE_DEFAULT;
 
-    if (gamepadvibrate != false && gamepadvibrate != true)
-        gamepadvibrate = GAMEPADVIBRATE_DEFAULT;
+    gamepadvibrate = BETWEEN(GAMEPADVIBRATE_MIN, gamepadvibrate, GAMEPADVIBRATE_MAX);
 
     if (gamepadweapon1 < 0 || gamepadweapon1 > GAMEPAD_Y || (gamepadweapon1 & (gamepadweapon1 - 1)))
         gamepadweapon1 = GAMEPADWEAPON_DEFAULT;
@@ -1004,8 +1163,7 @@ static void M_CheckDefaults(void)
     if (gamepadweapon7 < 0 || gamepadweapon7 > GAMEPAD_Y || (gamepadweapon7 & (gamepadweapon7 - 1)))
         gamepadweapon7 = GAMEPADWEAPON_DEFAULT;
 
-    if (gammalevel < GAMMALEVEL_MIN || gammalevel > GAMMALEVEL_MAX)
-        gammalevel = GAMMALEVEL_DEFAULT;
+    gammalevel = BETWEENF(GAMMALEVEL_MIN, gammalevel, GAMMALEVEL_MAX);
     gammaindex = 0;
     while (gammaindex < GAMMALEVELS)
         if (gammalevels[gammaindex++] == gammalevel)
@@ -1029,6 +1187,33 @@ static void M_CheckDefaults(void)
     if (hud != false && hud != true)
         hud = HUD_DEFAULT;
 
+    if (key_automap == INVALIDKEY)
+        key_automap = KEYAUTOMAP_DEFAULT;
+
+    if (key_automap_clearmark == INVALIDKEY)
+        key_automap_clearmark = KEYAUTOMAPCLEARMARK_DEFAULT;
+
+    if (key_automap_followmode == INVALIDKEY)
+        key_automap_followmode = KEYAUTOMAPFOLLOWMODE_DEFAULT;
+
+    if (key_automap_grid == INVALIDKEY)
+        key_automap_grid = KEYAUTOMAPGRID_DEFAULT;
+
+    if (key_automap_mark == INVALIDKEY)
+        key_automap_mark = KEYAUTOMAPMARK_DEFAULT;
+
+    if (key_automap_maxzoom == INVALIDKEY)
+        key_automap_maxzoom = KEYAUTOMAPMAXZOOM_DEFAULT;
+
+    if (key_automap_rotatemode == INVALIDKEY)
+        key_automap_rotatemode = KEYAUTOMAPROTATEMODE_DEFAULT;
+
+    if (key_automap_zoomin == INVALIDKEY)
+        key_automap_zoomin = KEYAUTOMAPZOOMIN_DEFAULT;
+
+    if (key_automap_zoomout == INVALIDKEY)
+        key_automap_zoomout = KEYAUTOMAPZOOMOUT_DEFAULT;
+
     if (key_down == INVALIDKEY)
         key_down = KEYDOWN_DEFAULT;
 
@@ -1050,8 +1235,8 @@ static void M_CheckDefaults(void)
     if (key_right == INVALIDKEY)
         key_right = KEYRIGHT_DEFAULT;
 
-    if (key_speed == INVALIDKEY)
-        key_speed = KEYSPEED_DEFAULT;
+    if (key_run == INVALIDKEY)
+        key_run = KEYRUN_DEFAULT;
 
     if (key_strafe == INVALIDKEY)
         key_strafe = KEYSTRAFE_DEFAULT;
@@ -1098,8 +1283,7 @@ static void M_CheckDefaults(void)
     if (key_weapon7 == INVALIDKEY)
         key_weapon7 = KEYWEAPON7_DEFAULT;
 
-    if (mapfixes < MAPFIXES_MIN || mapfixes > MAPFIXES_MAX)
-        mapfixes = MAPFIXES_DEFAULT;
+    mapfixes = BETWEEN(MAPFIXES_MIN, mapfixes, MAPFIXES_MAX);
 
     if (messages != false && messages != true)
         messages = MESSAGES_DEFAULT;
@@ -1110,8 +1294,7 @@ static void M_CheckDefaults(void)
     if (mousebfire < -1 || mousebfire > MAX_MOUSE_BUTTONS)
         mousebfire = MOUSEFIRE_DEFAULT;
 
-    if (mousebforward < -1 || mousebforward > MAX_MOUSE_BUTTONS
-        || mousebforward == mousebfire)
+    if (mousebforward < -1 || mousebforward > MAX_MOUSE_BUTTONS || mousebforward == mousebfire)
         mousebforward = MOUSEFORWARD_DEFAULT;
 
     if (mousebprevweapon < -1 || mousebprevweapon > MAX_MOUSE_BUTTONS
@@ -1123,50 +1306,41 @@ static void M_CheckDefaults(void)
         || mousebnextweapon == mousebprevweapon)
         mousebnextweapon = MOUSENEXTWEAPON_DEFAULT;
 
-    if (mousesensitivity < MOUSESENSITIVITY_MIN || mousesensitivity > MOUSESENSITIVITY_MAX)
-        mousesensitivity = MOUSESENSITIVITY_DEFAULT;
+    mousesensitivity = BETWEEN(MOUSESENSITIVITY_MIN, mousesensitivity, MOUSESENSITIVITY_MAX);
 
-    if (mousebstrafe < -1 || mousebstrafe > MAX_MOUSE_BUTTONS
-        || mousebstrafe == mousebfire || mousebstrafe == mousebforward
-        || mousebstrafe == mousebprevweapon || mousebstrafe == mousebnextweapon)
+    if (mousebstrafe < -1 || mousebstrafe > MAX_MOUSE_BUTTONS || mousebstrafe == mousebfire
+        || mousebstrafe == mousebforward || mousebstrafe == mousebprevweapon
+        || mousebstrafe == mousebnextweapon)
         mousebstrafe = MOUSESTRAFE_DEFAULT;
 
-    if (mousebuse < -1 || mousebuse > MAX_MOUSE_BUTTONS
-        || mousebuse == mousebfire || mousebuse == mousebforward
-        || mousebuse == mousebprevweapon || mousebuse == mousebnextweapon
-        || mousebuse == mousebstrafe)
+    if (mousebuse < -1 || mousebuse > MAX_MOUSE_BUTTONS || mousebuse == mousebfire
+        || mousebuse == mousebforward || mousebuse == mousebprevweapon
+        || mousebuse == mousebnextweapon || mousebuse == mousebstrafe)
         mousebuse = MOUSEUSE_DEFAULT;
 
-    if (musicVolume < MUSICVOLUME_MIN || musicVolume > MUSICVOLUME_MAX)
-        musicVolume = MUSICVOLUME_DEFAULT;
+    musicVolume = (BETWEEN(MUSICVOLUME_MIN, musicvolume_percent, MUSICVOLUME_MAX) * 15 + 50) / 100;
 
     if (novert != false && novert != true)
         novert = NOVERT_DEFAULT;
 
-    if (pixelwidth < PIXELWIDTH_MIN || pixelwidth > PIXELWIDTH_MAX)
-        pixelwidth = PIXELWIDTH_DEFAULT;
+    pixelwidth = BETWEEN(PIXELWIDTH_MIN, pixelwidth, PIXELWIDTH_MAX);
     while (SCREENWIDTH % pixelwidth)
         --pixelwidth;
 
-    if (pixelheight < PIXELHEIGHT_MIN || pixelheight > PIXELHEIGHT_MAX)
-        pixelheight = PIXELHEIGHT_DEFAULT;
+    pixelheight = BETWEEN(PIXELHEIGHT_MIN, pixelheight, PIXELHEIGHT_MAX);
     while (SCREENHEIGHT % pixelheight)
         --pixelheight;
 
-    if (playerbob < PLAYERBOB_MIN || playerbob > PLAYERBOB_MAX)
-        playerbob = PLAYERBOB_DEFAULT;
+    playerbob = BETWEEN(PLAYERBOB_MIN, playerbob, PLAYERBOB_MAX);
 
     if (rotatemode != false && rotatemode != true)
         rotatemode = ROTATEMODE_DEFAULT;
 
-    if (runcount < 0 || runcount > RUNCOUNT_MAX)
-        runcount = 0;
+    runcount = BETWEEN(0, runcount, RUNCOUNT_MAX);
 
-    if (saturation < SATURATION_MIN || saturation > SATURATION_MAX)
-        saturation = SATURATION_DEFAULT;
+    saturation = BETWEENF(SATURATION_MIN, saturation, SATURATION_MAX);
 
-    if (screensize < SCREENSIZE_MIN || screensize > SCREENSIZE_MAX)
-        screensize = SCREENSIZE_DEFAULT;
+    screensize = BETWEEN(SCREENSIZE_MIN, screensize, SCREENSIZE_MAX);
 
     if (screenwidth && screenheight
         && (screenwidth < SCREENWIDTH || screenheight < SCREENHEIGHT * 3 / 4))
@@ -1175,29 +1349,20 @@ static void M_CheckDefaults(void)
         screenheight = SCREENHEIGHT_DEFAULT;
     }
 
-    if ((gamemode == registered && (selectedepisode < EPISODE_MIN || selectedepisode > EPISODE_MAX - 1))
-        || (gamemode == retail && (selectedepisode < EPISODE_MIN || selectedepisode > EPISODE_MAX)))
-        selectedepisode = EPISODE_DEFAULT;
+    selectedepisode = BETWEEN(EPISODE_MIN, selectedepisode, EPISODE_MAX - (gamemode == registered));
 
-    if (selectedexpansion < EXPANSION_MIN || selectedexpansion > EXPANSION_MAX)
-        selectedexpansion = EXPANSION_DEFAULT;
+    selectedexpansion = BETWEEN(EXPANSION_MIN, selectedexpansion, EXPANSION_MAX);
 
-    if (selectedsavegame < 0)
-        selectedsavegame = 0;
-    else if (selectedsavegame > 5)
-        selectedsavegame = 5;
+    selectedsavegame = BETWEEN(0, selectedsavegame, 5);
 
-    if (selectedskilllevel < SKILLLEVEL_MIN || selectedskilllevel > SKILLLEVEL_MAX)
-        selectedskilllevel = SKILLLEVEL_DEFAULT;
+    selectedskilllevel = BETWEEN(SKILLLEVEL_MIN, selectedskilllevel, SKILLLEVEL_MAX);
 
-    if (sfxVolume < SFXVOLUME_MIN || sfxVolume > SFXVOLUME_MAX)
-        sfxVolume = SFXVOLUME_DEFAULT;
+    sfxVolume = (BETWEEN(SFXVOLUME_MIN, sfxvolume_percent, SFXVOLUME_MAX) * 15 + 50) / 100;
 
     if (shadows != false && shadows != true)
         shadows = SHADOWS_DEFAULT;
 
-    if (smoketrails < SMOKETRAILS_MIN || smoketrails > SMOKETRAILS_MAX)
-        smoketrails = SMOKETRAILS_DEFAULT;
+    smoketrails = BETWEEN(SMOKETRAILS_MIN, smoketrails, SMOKETRAILS_MAX);
 
     if (translucency != false && translucency != true)
         translucency = TRANSLUCENCY_DEFAULT;
@@ -1211,23 +1376,19 @@ static void M_CheckDefaults(void)
         videodriver = VIDEODRIVER_DEFAULT;
 #endif
 
-    if (!widescreen)
-        hud = true;
-    if (fullscreen && screensize == SCREENSIZE_MAX)
-    {
-        widescreen = true;
-        screensize = SCREENSIZE_MAX - 1;
-    }
-    if (widescreen)
+    if (widescreen != false && widescreen != true)
+        widescreen = WIDESCREEN_DEFAULT;
+    if (widescreen || screensize == SCREENSIZE_MAX)
     {
         returntowidescreen = true;
         widescreen = false;
     }
+    else
+        hud = true;
+
     if (windowwidth < SCREENWIDTH || windowheight < SCREENWIDTH * 3 / 4)
-    {
-        windowwidth = WINDOWWIDTH_DEFAULT;
         windowheight = WINDOWHEIGHT_DEFAULT;
-    }
+    windowwidth = windowheight * 4 / 3;
 
     M_SaveDefaults();
 }

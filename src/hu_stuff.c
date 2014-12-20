@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -45,8 +54,8 @@
 //
 // Locally used constants, shortcuts.
 //
-#define HU_TITLEX       0
-#define HU_TITLEY       ((SCREENHEIGHT - SBARHEIGHT) / 2 - SHORT(hu_font[0]->height) - 2)
+#define HU_TITLEX       (fullscreen && !widescreen ? 0 : 3)
+#define HU_TITLEY       (ORIGINALHEIGHT - 32 * (screensize < SCREENSIZE_MAX) - 9)
 
 char                    chat_char;
 static player_t         *plr;
@@ -73,16 +82,17 @@ extern int              cardsfound;
 extern patch_t          *tallnum[10];
 extern patch_t          *tallpercent;
 extern boolean          emptytallpercent;
+extern int              fps;
 
 static boolean          headsupactive = false;
 
 byte                    *tempscreen;
 int                     hud_y;
 
-static patch_t          *healthpatch;
-static patch_t          *berserkpatch;
-static patch_t          *greenarmorpatch;
-static patch_t          *bluearmorpatch;
+static patch_t          *healthpatch = NULL;
+static patch_t          *berserkpatch = NULL;
+static patch_t          *greenarmorpatch = NULL;
+static patch_t          *bluearmorpatch = NULL;
 
 void (*hudfunc)(int, int, patch_t *, boolean);
 void (*hudnumfunc)(int, int, patch_t *, boolean);
@@ -160,7 +170,8 @@ void HU_Stop(void)
 
 patch_t *HU_LoadHUDAmmoPatch(int ammopicnum)
 {
-    if (mobjinfo[ammopic[ammopicnum].mobjnum].flags & MF_SPECIAL)
+    if ((mobjinfo[ammopic[ammopicnum].mobjnum].flags & MF_SPECIAL)
+        && W_CheckNumForName(ammopic[ammopicnum].patchname) >= 0)
         return W_CacheLumpNum(W_GetNumForName(ammopic[ammopicnum].patchname), PU_CACHE);
     else
         return NULL;
@@ -168,10 +179,12 @@ patch_t *HU_LoadHUDAmmoPatch(int ammopicnum)
 
 patch_t *HU_LoadHUDKeyPatch(int keypicnum)
 {
-    if (dehacked)
+    if (dehacked && W_CheckNumForName(keypic[keypicnum].patchnamea) >= 0)
         return W_CacheLumpNum(W_GetNumForName(keypic[keypicnum].patchnamea), PU_CACHE);
-    else
+    else if (W_CheckNumForName(keypic[keypicnum].patchnameb) >= 0)
         return W_CacheLumpNum(W_GetNumForName(keypic[keypicnum].patchnameb), PU_CACHE);
+    else
+        return NULL;
 }
 
 void HU_Start(void)
@@ -226,10 +239,16 @@ void HU_Start(void)
         godhudfunc = V_DrawYellowHUDPatch;
     }
 
-    healthpatch = W_CacheLumpNum(W_GetNumForName("MEDIA0"), PU_CACHE);
-    berserkpatch = W_CacheLumpNum(W_GetNumForName(gamemode != shareware ? "PSTRA0" : "MEDIA0"), PU_CACHE);
-    greenarmorpatch = W_CacheLumpNum(W_GetNumForName("ARM1A0"), PU_CACHE);
-    bluearmorpatch = W_CacheLumpNum(W_GetNumForName("ARM2A0"), PU_CACHE);
+    if (W_CheckNumForName("MEDIA0"))
+        healthpatch = W_CacheLumpNum(W_GetNumForName("MEDIA0"), PU_CACHE);
+    if (gamemode != shareware && W_CheckNumForName("PSTRA0"))
+        berserkpatch = W_CacheLumpNum(W_GetNumForName("PSTRA0"), PU_CACHE);
+    else
+        berserkpatch = healthpatch;
+    if (W_CheckNumForName("ARM1A0"))
+        greenarmorpatch = W_CacheLumpNum(W_GetNumForName("ARM1A0"), PU_CACHE);
+    if (W_CheckNumForName("ARM2A0"))
+        bluearmorpatch = W_CacheLumpNum(W_GetNumForName("ARM2A0"), PU_CACHE);
 
     ammopic[am_clip].patch = HU_LoadHUDAmmoPatch(am_clip);
     ammopic[am_shell].patch = HU_LoadHUDAmmoPatch(am_shell);
@@ -298,10 +317,13 @@ static void HU_DrawHUD(void)
 
         invert = ((health <= HUD_HEALTH_MIN && healthanim) || health > HUD_HEALTH_MIN
             || menuactive || paused);
-        if ((plr->cheats & CF_GODMODE) || invulnerability > 128 || (invulnerability & 8))
-            godhudfunc(HUD_HEALTH_X - 14, HUD_HEALTH_Y - (SHORT(patch->height) - 17), patch, invert);
-        else
-            hudfunc(HUD_HEALTH_X - 14, HUD_HEALTH_Y - (SHORT(patch->height) - 17), patch, invert);
+        if (patch)
+            if ((plr->cheats & CF_GODMODE) || invulnerability > 128 || (invulnerability & 8))
+                godhudfunc(HUD_HEALTH_X - 14, HUD_HEALTH_Y - (SHORT(patch->height) - 17), patch,
+                    invert);
+            else
+                hudfunc(HUD_HEALTH_X - 14, HUD_HEALTH_Y - (SHORT(patch->height) - 17), patch,
+                    invert);
         DrawHUDNumber(health_x, HUD_HEALTH_Y, health, invert, hudnumfunc);
         if (!emptytallpercent)
             hudnumfunc(health_x + 50, HUD_HEALTH_Y, tallpercent, invert);
@@ -393,17 +415,20 @@ static void HU_DrawHUD(void)
                 {
                     patch_t     *patch = keypic[plr->neededcard].patch;
 
-                    if (!menuactive && !paused)
+                    if (patch)
                     {
-                        plr->neededcardtics--;
-                        if (!--keyanimcounter)
+                        if (!menuactive && !paused)
                         {
-                            showkey = !showkey;
-                            keyanimcounter = HUD_KEY_TICS;
+                            plr->neededcardtics--;
+                            if (!--keyanimcounter)
+                            {
+                                showkey = !showkey;
+                                keyanimcounter = HUD_KEY_TICS;
+                            }
                         }
+                        if (showkey)
+                            hudfunc(keypic_x - (SHORT(patch->width) + 6), HUD_KEYS_Y, patch, true);
                     }
-                    if (showkey)
-                        hudfunc(keypic_x - (SHORT(patch->width) + 6), HUD_KEYS_Y, patch, true);
                 }
             }
             else
@@ -417,8 +442,9 @@ static void HU_DrawHUD(void)
                 {
                     patch_t     *patch = keypic[i].patch;
 
-                    hudfunc(keypic_x + (SHORT(patch->width) + 6) * (cardsfound - plr->cards[i]),
-                        HUD_KEYS_Y, patch, true);
+                    if (patch)
+                        hudfunc(keypic_x + (SHORT(patch->width) + 6) * (cardsfound - plr->cards[i]),
+                            HUD_KEYS_Y, patch, true);
                 }
         }
 
@@ -434,19 +460,21 @@ static void HU_DrawHUD(void)
                 DrawHUDNumber(HUD_ARMOR_X, HUD_ARMOR_Y, armor, true, hudnumfunc);
                 hudnumfunc(HUD_ARMOR_X + 50, HUD_ARMOR_Y, tallpercent, true);
             }
-            hudfunc(HUD_ARMOR_X + 70, HUD_ARMOR_Y - (SHORT(patch->height) - 16), patch, true);
+            if (patch)
+                hudfunc(HUD_ARMOR_X + 70, HUD_ARMOR_Y - (SHORT(patch->height) - 16), patch, true);
         }
     }
 }
 
 void HU_Drawer(void)
 {
-    w_message.l->x = (automapactive && fullscreen && !widescreen ? 0 : 3);
+    w_message.l->x = HU_MSGX;
     w_message.l->y = HU_MSGY;
     HUlib_drawSText(&w_message);
     if (automapactive)
     {
-        w_title.x = (fullscreen && !widescreen ? 0 : 3);
+        w_title.x = HU_TITLEX;
+        w_title.y = HU_TITLEY;
         HUlib_drawTextLine(&w_title);
     }
     else if ((widescreen || screensize == SCREENSIZE_MAX) && hud)
@@ -470,8 +498,6 @@ extern int      direction;
 
 void HU_Ticker(void)
 {
-    static int  lasttic = -1;
-    int         tic, fps;
     static char fps_str[8] = "";
 
     // tick down message counter if message is up
@@ -534,14 +560,6 @@ void HU_Ticker(void)
     }
     else if (devparm)
     {
-        // [BH] display and constantly update FPS for -DEVPARM
-        tic = I_GetTime();
-        fps = (lasttic == -1 ? TICRATE : TICRATE - (tic - lasttic) + 1);
-        if (fps < 1)
-            fps = 1;
-        if (fps > TICRATE)
-            fps = TICRATE;
-        lasttic = tic;
         M_snprintf(fps_str, sizeof(fps_str), "%i FPS", fps);
         HUlib_addMessageToSText(&w_message, 0, fps_str);
         message_on = true;

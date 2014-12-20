@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -1052,17 +1061,17 @@ extern char     **mapnamesp[];
 extern char     **mapnamest[];
 extern char     **mapnamesn[];
 
-char *RemoveMapNum(char *maptitle)
+const char *RemoveMapNum(const char *str)
 {
-    char *pos;
+    char        *pos;
 
-    if ((pos = strchr(maptitle, ':')))
+    if ((pos = strchr(str, ':')) != NULL)
     {
-        strcpy(maptitle, pos + 1);
-        if (maptitle[0] == ' ')
-            strcpy(maptitle, &maptitle[1]);
+        str = pos + 1;
+        while (str[0] == ' ')
+            str++;
     }
-    return maptitle;
+    return str;
 }
 
 void M_UpdateSaveGameName(int i)
@@ -1332,18 +1341,20 @@ void M_SfxVol(int choice)
         switch (choice)
         {
             case 0:
-                if (sfxVolume > SFXVOLUME_MIN)
+                if (sfxVolume > 0)
                 {
                     S_SetSfxVolume((int)(--sfxVolume * (127.0f / 15.0f)));
                     S_StartSound(NULL, sfx_stnmov);
+                    sfxvolume_percent = sfxVolume * 100 / 15;
                     M_SaveDefaults();
                 }
                 break;
             case 1:
-                if (sfxVolume < SFXVOLUME_MAX)
+                if (sfxVolume < 15)
                 {
                     S_SetSfxVolume((int)(++sfxVolume * (127.0f / 15.0f)));
                     S_StartSound(NULL, sfx_stnmov);
+                    sfxvolume_percent = sfxVolume * 100 / 15;
                     M_SaveDefaults();
                 }
                 break;
@@ -1358,18 +1369,20 @@ void M_MusicVol(int choice)
         switch (choice)
         {
             case 0:
-                if (musicVolume > MUSICVOLUME_MIN)
+                if (musicVolume > 0)
                 {
                     S_SetMusicVolume((int)(--musicVolume * (127.0f / 15.0f)));
                     S_StartSound(NULL, sfx_stnmov);
+                    musicvolume_percent = musicVolume * 100 / 15;
                     M_SaveDefaults();
                 }
                 break;
             case 1:
-                if (musicVolume < MUSICVOLUME_MAX)
+                if (musicVolume < 15)
                 {
                     S_SetMusicVolume((int)(++musicVolume * (127.0f / 15.0f)));
                     S_StartSound(NULL, sfx_stnmov);
+                    musicvolume_percent = musicVolume * 100 / 15;
                     M_SaveDefaults();
                 }
                 break;
@@ -1469,22 +1482,26 @@ void M_DrawEpisode(void)
         M_DrawCenteredString(44 + OFFSET, s_M_WHICHEPISODE);
 }
 
-void M_UpdateWindowCaption(void)
+#ifdef SDL20
+extern SDL_Window *sdl_window;
+#endif
+
+void M_SetWindowCaption(void)
 {
-    static char caption[64];
+    static char caption[128];
 
     if (usergame)
-        return;
-
-    if (currentMenu == &ExpDef || currentMenu == &NewDef)
-    {
-        M_snprintf(caption, 64, "%s: %s", gamedescription,
-            (selectedexpansion == ex1 ? "Hell On Earth" : "No Rest For The Living"));
-        if (bfgedition)
-            M_snprintf(caption, 64, "%s (BFG Edition)", caption);
-    }
+        M_StringCopy(caption, mapnumandtitle, sizeof(caption));
     else
-        M_StringCopy(caption, gamedescription, 64);
+    {
+        if (nerve && (currentMenu == &ExpDef || currentMenu == &NewDef))
+            M_snprintf(caption, sizeof(caption), "%s: %s", gamedescription,
+            (selectedexpansion == ex1 ? s_CAPTION_HELLONEARTH : s_CAPTION_NERVE));
+        else
+            M_StringCopy(caption, gamedescription, sizeof(caption));
+        if (bfgedition)
+            M_snprintf(caption, sizeof(caption), "%s (%s)", caption, s_CAPTION_BFGEDITION);
+    }
 
 #ifdef SDL20
     SDL_SetWindowTitle(sdl_window, caption);
@@ -1678,6 +1695,8 @@ void M_EndGameResponse(int key)
         ToggleWideScreen(false);
         returntowidescreen = true;
     }
+    usergame = false;
+    M_SetWindowCaption();
     D_StartTitle(1);
 }
 
@@ -2726,7 +2745,7 @@ boolean M_Responder(event_t *ev)
                 M_SaveDefaults();
             }
             keywait = I_GetTime() + 2;
-            M_UpdateWindowCaption();
+            M_SetWindowCaption();
             return false;
         }
         else if (key == KEY_UPARROW && keywait < I_GetTime())
@@ -2789,7 +2808,7 @@ boolean M_Responder(event_t *ev)
                 M_SaveDefaults();
             }
             keywait = I_GetTime() + 2;
-            M_UpdateWindowCaption();
+            M_SetWindowCaption();
             return false;
         }
 
@@ -2859,12 +2878,12 @@ boolean M_Responder(event_t *ev)
                     currentMenu->menuitems[itemOn].routine(itemOn);
                 }
             }
-            M_UpdateWindowCaption();
+            M_SetWindowCaption();
             skipaction = (currentMenu == &LoadDef || currentMenu == &SaveDef);
             return skipaction;
         }
 
-        else if (key == KEY_ESCAPE && !keydown)
+        else if ((key == KEY_ESCAPE || key == KEY_BACKSPACE) && !keydown)
         {
             // Deactivate menu or go back to previous menu
             keydown = key;
@@ -2891,7 +2910,7 @@ boolean M_Responder(event_t *ev)
                 if (returntowidescreen)
                     ToggleWideScreen(true);
             }
-            M_UpdateWindowCaption();
+            M_SetWindowCaption();
             return true;
         }
 
@@ -2942,7 +2961,7 @@ boolean M_Responder(event_t *ev)
                         SaveDef.lastOn = selectedsavegame = itemOn;
                         M_SaveDefaults();
                     }
-                    M_UpdateWindowCaption();
+                    M_SetWindowCaption();
                     return false;
                 }
             }
@@ -2991,7 +3010,7 @@ boolean M_Responder(event_t *ev)
                         SaveDef.lastOn = selectedsavegame = itemOn;
                         M_SaveDefaults();
                     }
-                    M_UpdateWindowCaption();
+                    M_SetWindowCaption();
                     return false;
                 }
             }

@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -32,6 +41,7 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "d_deh.h"
 #include "doomdef.h"
 #include "doomstat.h"
 #include "i_system.h"
@@ -494,9 +504,7 @@ static char *SaveGameIWADName(void)
     // Note that we match on gamemission rather than on IWAD name.
     // This ensures that doom1.wad and doom.wad saves are stored
     // in the same place.
-    if (nerve)
-        return "NERVE.WAD";
-    else if (chex)
+    if (chex)
         return "CHEX.WAD";
     else if (BTSXE1)
         return "BTSX_E1.WAD";
@@ -588,30 +596,24 @@ void D_SetGameDescription(void)
     gamedescription = PACKAGE_NAME;
 
     if (chex)
-        gamedescription = "Chex Quest";
+        gamedescription = s_CAPTION_CHEX;
     else if (hacx)
-        gamedescription = "HacX: Twitch 'n Kill";
+        gamedescription = s_CAPTION_HACX;
     else if (BTSXE1)
-        gamedescription = "Back to Saturn X E1: Get Out Of My Stations";
+        gamedescription = s_CAPTION_BTSXE1;
     else if (BTSXE2)
-        gamedescription = "Back to Saturn X E2: Tower in the Fountain of Sparks";
+        gamedescription = s_CAPTION_BTSXE2;
     else if (gamemission == doom)
     {
         // Doom 1. But which version?
         if (FREEDOOM)
-            gamedescription = "Freedoom: Phase 1";
+            gamedescription = s_CAPTION_FREEDOOM1;
         else if (gamemode == retail)
-        {
-            // Ultimate Doom
-            if (bfgedition)
-                gamedescription = "The Ultimate DOOM (BFG Edition)";
-            else
-                gamedescription = "The Ultimate DOOM";
-        }
+            gamedescription = s_CAPTION_ULTIMATE;
         else if (gamemode == registered)
-            gamedescription = "DOOM Registered";
+            gamedescription = s_CAPTION_REGISTERED;
         else if (gamemode == shareware)
-            gamedescription = "DOOM Shareware";
+            gamedescription = s_CAPTION_SHAREWARE;
     }
     else
     {
@@ -619,27 +621,17 @@ void D_SetGameDescription(void)
         if (FREEDOOM)
         {
             if (FREEDM)
-                gamedescription = "FreeDM";
+                gamedescription = s_CAPTION_FREEDM;
             else
-                gamedescription = "Freedoom: Phase 2";
+                gamedescription = s_CAPTION_FREEDOOM2;
         }
         else if (nerve)
-        {
-                if (bfgedition)
-                    gamedescription = "DOOM II (BFG Edition)";
-                else
-                    gamedescription = "DOOM II";
-        }
+            gamedescription = s_CAPTION_DOOM2;
         else if (gamemission == doom2)
-        {
-            if (bfgedition)
-                gamedescription = "DOOM II: Hell On Earth (BFG Edition)";
-            else
-                gamedescription = "DOOM II: Hell On Earth";
-        }
+            gamedescription = M_StringJoin(s_CAPTION_DOOM2, ": ", s_CAPTION_HELLONEARTH, NULL);
         else if (gamemission == pack_plut)
-            gamedescription = "Final DOOM: The Plutonia Experiment";
+            gamedescription = s_CAPTION_PLUTONIA;
         else if (gamemission == pack_tnt)
-            gamedescription = "Final DOOM: TNT - Evilution";
+            gamedescription = s_CAPTION_TNT;
     }
 }

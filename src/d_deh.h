@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -32,7 +41,28 @@
 
 #include "doomtype.h"
 
+typedef enum
+{
+    p_GOTARMOR = 17, p_GOTMEGA, p_GOTHTHBONUS, p_GOTARMBONUS, p_GOTSTIM, p_GOTMEDINEED,
+    p_GOTMEDIKIT, p_GOTSUPER, p_GOTBLUECARD, p_GOTYELWCARD, p_GOTREDCARD, p_GOTBLUESKUL,
+    p_GOTYELWSKUL, p_GOTREDSKULL, p_GOTINVUL, p_GOTBERSERK, p_GOTINVIS, p_GOTSUIT, p_GOTMAP,
+    p_GOTVISOR, p_GOTCLIP, p_GOTCLIPX2, p_GOTHALFCLIP, p_GOTCLIPBOX, p_GOTROCKET, p_GOTROCKETX2,
+    p_GOTROCKBOX, p_GOTCELL, p_GOTCELLX2, p_GOTCELLBOX, p_GOTSHELLS, p_GOTSHELLSX2, p_GOTSHELLBOX,
+    p_GOTBACKPACK, p_GOTBFG9000, p_GOTCHAINGUN, p_GOTCHAINSAW, p_GOTLAUNCHER, p_GOTMSPHERE,
+    p_GOTPLASMA, p_GOTSHOTGUN, p_GOTSHOTGUN2, p_PD_BLUEO, p_PD_BLUEO2, p_PD_REDO, p_PD_REDO2,
+    p_PD_YELLOWO, p_PD_YELLOWO2, p_PD_BLUEK, p_PD_BLUEK2, p_PD_REDK, p_PD_REDK2, p_PD_YELLOWK,
+    p_PD_YELLOWK2
+} pickupmessage_t;
+
+typedef struct
+{
+    char        **ppstr;        // doubly indirect pointer to string
+    char        *lookup;        // pointer to lookup string name
+    boolean     assigned;       // [BH] flag indicating string has been assigned
+} deh_strs;
+
 extern boolean  dehacked;
+extern deh_strs deh_strlookup[];
 
 extern char     *s_PRESSKEY;
 extern char     *s_PRESSYN;
@@ -76,12 +106,17 @@ extern char     *s_GOTMAP;
 extern char     *s_GOTVISOR;
 
 extern char     *s_GOTCLIP;
+extern char     *s_GOTCLIPX2;
+extern char     *s_GOTHALFCLIP;
 extern char     *s_GOTCLIPBOX;
 extern char     *s_GOTROCKET;
+extern char     *s_GOTROCKETX2;
 extern char     *s_GOTROCKBOX;
 extern char     *s_GOTCELL;
+extern char     *s_GOTCELLX2;
 extern char     *s_GOTCELLBOX;
 extern char     *s_GOTSHELLS;
+extern char     *s_GOTSHELLSX2;
 extern char     *s_GOTSHELLBOX;
 extern char     *s_GOTBACKPACK;
 
@@ -375,6 +410,23 @@ extern char     *s_M_SOUNDVOLUME;
 extern char     *s_M_SFXVOLUME;
 extern char     *s_M_MUSICVOLUME;
 extern char     *s_M_PAUSED;
+
+extern char     *s_CAPTION_SHAREWARE;
+extern char     *s_CAPTION_REGISTERED;
+extern char     *s_CAPTION_ULTIMATE;
+extern char     *s_CAPTION_DOOM2;
+extern char     *s_CAPTION_HELLONEARTH;
+extern char     *s_CAPTION_NERVE;
+extern char     *s_CAPTION_BFGEDITION;
+extern char     *s_CAPTION_PLUTONIA;
+extern char     *s_CAPTION_TNT;
+extern char     *s_CAPTION_CHEX;
+extern char     *s_CAPTION_HACX;
+extern char     *s_CAPTION_FREEDOOM1;
+extern char     *s_CAPTION_FREEDOOM2;
+extern char     *s_CAPTION_FREEDM;
+extern char     *s_CAPTION_BTSXE1;
+extern char     *s_CAPTION_BTSXE2;
 
 extern char     *bgflatE1;
 extern char     *bgflatE2;

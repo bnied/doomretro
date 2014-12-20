@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -228,7 +237,7 @@ state_t states[NUMSTATES] =
     { SPR_PLSF,  0 | FF_FULLBRIGHT,                4,               A_Light1,        S_LIGHTDONE,     0,     0     }, // S_PLASMAFLASH1
     { SPR_PLSF,  1 | FF_FULLBRIGHT,                4,               A_Light1,        S_LIGHTDONE,     0,     0     }, // S_PLASMAFLASH2
 
-    // BFG 9000
+    // BFG-9000
     { SPR_BFGG,  0,                                1,               A_WeaponReady,   S_BFG,           0,     0     }, // S_BFG
     { SPR_BFGG,  0,                                1,               A_Lower,         S_BFGDOWN,       0,     0     }, // S_BFGDOWN
     { SPR_BFGG,  0,                                1,               A_Raise,         S_BFGUP,         0,     0     }, // S_BFGUP
@@ -276,7 +285,7 @@ state_t states[NUMSTATES] =
     // Rocket Launcher Projectile (MT_ROCKET)
     { SPR_MISL,  0 | FF_FULLBRIGHT,                1,               NULL,            S_ROCKET,        0,     0     }, // S_ROCKET
 
-    // BFG 9000 Projectile (MT_BFG)
+    // BFG-9000 Projectile (MT_BFG)
     { SPR_BFS1,  0 | FF_FULLBRIGHT,                4,               NULL,            S_BFGSHOT2,      0,     0     }, // S_BFGSHOT
     { SPR_BFS1,  1 | FF_FULLBRIGHT,                4,               NULL,            S_BFGSHOT,       0,     0     }, // S_BFGSHOT2
     { SPR_BFE1,  0 | FF_FULLBRIGHT,                8,               NULL,            S_BFGLAND2,      0,     0     }, // S_BFGLAND
@@ -286,7 +295,7 @@ state_t states[NUMSTATES] =
     { SPR_BFE1,  4 | FF_FULLBRIGHT,                8,               NULL,            S_BFGLAND6,      0,     0     }, // S_BFGLAND5
     { SPR_BFE1,  5 | FF_FULLBRIGHT,                8,               NULL,            S_NULL,          0,     0     }, // S_BFGLAND6
 
-    // BFG 9000 Secondary Projectile (MT_EXTRABFG)
+    // BFG-9000 Secondary Projectile (MT_EXTRABFG)
     { SPR_BFE2,  0 | FF_FULLBRIGHT,                8,               NULL,            S_BFGEXP2,       0,     0     }, // S_BFGEXP
     { SPR_BFE2,  1 | FF_FULLBRIGHT,                8,               NULL,            S_BFGEXP3,       0,     0     }, // S_BFGEXP2
     { SPR_BFE2,  2 | FF_FULLBRIGHT,                8,               NULL,            S_BFGEXP4,       0,     0     }, // S_BFGEXP3
@@ -1184,7 +1193,7 @@ state_t states[NUMSTATES] =
     // Backpack (MT_MISC24)
     { SPR_BPAK,  0,                               -1,               NULL,            S_NULL,          0,     0     }, // S_BPAK
 
-    // BFG 9000 (MT_MISC25)
+    // BFG-9000 (MT_MISC25)
     { SPR_BFUG,  0,                               -1,               NULL,            S_NULL,          0,     0     }, // S_BFUG
 
     // Chaingun (MT_CHAINGUN)
@@ -1391,8 +1400,8 @@ state_t states[NUMSTATES] =
     // Smoke Trail (MT_TRAIL)
     { SPR_PUFF,  0 | FF_FULLBRIGHT,                4,               NULL,            S_TRAIL2,        0,     0     }, // S_TRAIL
     { SPR_PUFF,  1,                                4,               NULL,            S_TRAIL3,        0,     0     }, // S_TRAIL2
-    { SPR_PUFF,  2,                                8,               NULL,            S_TRAIL4,        0,     0     }, // S_TRAIL3
-    { SPR_PUFF,  3,                               12,               NULL,            S_NULL,          0,     0     }  // S_TRAIL4
+    { SPR_PUFF,  2,                               10,               NULL,            S_TRAIL4,        0,     0     }, // S_TRAIL3
+    { SPR_PUFF,  3,                               14,               NULL,            S_NULL,          0,     0     }  // S_TRAIL4
 };
 
 mobjinfo_t mobjinfo[NUMMOBJTYPES] =
@@ -1422,7 +1431,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_None,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_DROPOFF | MF_PICKUP | MF_NOTDMATCH,
-        /* flags2               */ MF2_PASSMOBJ | MF2_DONOTMAP,
+        /* flags2               */ MF2_PASSMOBJ | MF2_DONOTMAP | MF2_CRUSHABLE,
         /* raisestate           */ S_NULL,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -1454,7 +1463,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_posact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_POSS_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -1486,7 +1495,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_posact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_SPOS_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -1518,7 +1527,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_vilact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_NULL,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -1582,7 +1591,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_skeact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_SKEL_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -1646,7 +1655,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_None,
         /* flags                */ MF_NOBLOCKMAP | MF_NOGRAVITY,
-        /* flags2               */ MF2_TRANSLUCENT,
+        /* flags2               */ MF2_TRANSLUCENT_33,
         /* raisestate           */ S_NULL,
         /* frames               */ 0,
         /* blood                */ 0,
@@ -1678,7 +1687,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_posact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_FATT_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -1742,7 +1751,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_posact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_CPOS_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -1774,7 +1783,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_bgact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_TROO_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -1806,7 +1815,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_dmact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_SARG_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -1838,7 +1847,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_dmact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_FUZZ | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_SARG_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_FUZZYBLOOD,
@@ -1870,7 +1879,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_dmact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_FLOAT | MF_NOGRAVITY | MF_COUNTKILL,
-        /* flags2               */ MF2_PASSMOBJ | MF2_SHADOW,
+        /* flags2               */ MF2_PASSMOBJ | MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_HEAD_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_BLUEBLOOD,
@@ -1902,7 +1911,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_dmact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_BOSS_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_GREENBLOOD,
@@ -1966,7 +1975,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_dmact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_BOS2_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_GREENBLOOD,
@@ -2030,7 +2039,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_dmact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_NULL,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -2062,7 +2071,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_bspact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_BSPI_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -2094,7 +2103,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_dmact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_NULL,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -2158,7 +2167,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_posact,
         /* flags                */ MF_SOLID | MF_SHOOTABLE | MF_COUNTKILL,
-        /* flags2               */ MF2_SHADOW,
+        /* flags2               */ MF2_SHADOW | MF2_CRUSHABLE,
         /* raisestate           */ S_SSWV_RAISE1,
         /* frames               */ 0,
         /* blood                */ MT_BLOOD,
@@ -2517,7 +2526,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* description          */ ""
     },
 
-    // BFG 9000 Projectile (MT_BFG)
+    // BFG-9000 Projectile (MT_BFG)
     {
         /* doomednum            */ -1,
         /* spawnstate           */ S_BFGSHOT,
@@ -2606,7 +2615,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_None,
         /* flags                */ MF_NOBLOCKMAP | MF_NOGRAVITY,
-        /* flags2               */ MF2_TRANSLUCENT,
+        /* flags2               */ MF2_TRANSLUCENT_33,
         /* raisestate           */ S_NULL,
         /* frames               */ 0,
         /* blood                */ 0,
@@ -2741,7 +2750,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* description          */ "",
     },
 
-    // BFG 9000 Secondary Projectile (MT_EXTRABFG)
+    // BFG-9000 Secondary Projectile (MT_EXTRABFG)
     {
         /* doomednum            */ -1,
         /* spawnstate           */ S_BFGEXP,
@@ -3701,7 +3710,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* description          */ "a backpack"
     },
 
-    // BFG 9000 (MT_MISC25)
+    // BFG-9000 (MT_MISC25)
     {
         /* doomednum            */ BFG9000,
         /* spawnstate           */ S_BFUG,
@@ -3730,7 +3739,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* raisestate           */ S_NULL,
         /* frames               */ 0,
         /* blood                */ 0,
-        /* description          */ "a BFG 9000"
+        /* description          */ "a BFG-9000"
     },
 
     // Chaingun (MT_CHAINGUN)
@@ -5934,7 +5943,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* damage               */ 0,
         /* activesound          */ sfx_None,
         /* flags                */ MF_NOBLOCKMAP | MF_NOGRAVITY,
-        /* flags2               */ MF2_TRANSLUCENT,
+        /* flags2               */ MF2_TRANSLUCENT_33,
         /* raisestate           */ S_NULL,
         /* frames               */ 0,
         /* blood                */ 0,

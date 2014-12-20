@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -120,13 +129,13 @@ void P_BringUpWeapon(player_t *player)
 boolean P_CheckAmmo(player_t *player)
 {
     ammotype_t  ammo = weaponinfo[player->readyweapon].ammo;
-    int         count = 1;       // Regular.
+    int         count = 1;      // Regular.
 
     // Minimal amount for one shot varies.
     if (player->readyweapon == wp_bfg)
         count = bfgcells;
     else if (player->readyweapon == wp_supershotgun)
-        count = 2;      // Double barrel.
+        count = 2;              // Double barrel.
 
     // Some do not need ammunition anyway.
     // Return if current ammunition sufficient.
@@ -138,7 +147,7 @@ boolean P_CheckAmmo(player_t *player)
     if (player->weaponowned[wp_plasma] && player->ammo[am_cell])
         player->pendingweapon = wp_plasma;
     else if (player->weaponowned[wp_supershotgun] && player->ammo[am_shell] >= 2
-                && player->preferredshotgun == wp_supershotgun)
+             && player->preferredshotgun == wp_supershotgun)
         player->pendingweapon = wp_supershotgun;
     else if (player->weaponowned[wp_chaingun] && player->ammo[am_clip])
         player->pendingweapon = wp_chaingun;
@@ -182,7 +191,7 @@ void P_FireWeapon(player_t *player)
 
     P_NoiseAlert(player->mo, player->mo);
 
-    if (gamepadvibrate && vibrate)
+    if ((gamepadvibrate & WEAPONS) && vibrate)
     {
         int     motorspeed = weaponinfo[readyweapon].motorspeed;
 
@@ -232,7 +241,7 @@ void A_WeaponReady(player_t *player, pspdef_t *psp)
     //  if player is dead, put the weapon away
     if (pendingweapon != wp_nochange || !player->health)
     {
-        if (gamepadvibrate && vibrate)
+        if ((gamepadvibrate & WEAPONS) && vibrate)
         {
             if (pendingweapon == wp_chainsaw)
             {

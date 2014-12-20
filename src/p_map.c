@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -1271,20 +1280,20 @@ stairstep:
 //
 // P_LineAttack
 //
-mobj_t         *linetarget;    // who got hit (or NULL)
-mobj_t         *shootthing;
+mobj_t          *linetarget;    // who got hit (or NULL)
+mobj_t          *shootthing;
 
 // height if not aiming up or down
-fixed_t        shootz;
+fixed_t         shootz;
 
-int            la_damage;
-fixed_t        attackrange;
+int             la_damage;
+fixed_t         attackrange;
 
-fixed_t        aimslope;
+fixed_t         aimslope;
 
 // slopes to top and bottom of target
-static fixed_t topslope;
-static fixed_t bottomslope;
+static fixed_t  topslope;
+static fixed_t  bottomslope;
 
 //
 // PTR_AimTraverse
@@ -1292,16 +1301,15 @@ static fixed_t bottomslope;
 //
 boolean PTR_AimTraverse(intercept_t *in)
 {
-    line_t  *li;
-    mobj_t  *th;
-    fixed_t slope;
-    fixed_t thingtopslope;
-    fixed_t thingbottomslope;
-    fixed_t dist;
+    mobj_t      *th;
+    fixed_t     slope;
+    fixed_t     thingtopslope;
+    fixed_t     thingbottomslope;
+    fixed_t     dist;
 
     if (in->isaline)
     {
-        li = in->d.line;
+        line_t  *li = in->d.line;
 
         if (!(li->flags & ML_TWOSIDED))
             return false;               // stop
@@ -1374,21 +1382,19 @@ boolean PTR_AimTraverse(intercept_t *in)
 //
 boolean PTR_ShootTraverse(intercept_t *in)
 {
-    fixed_t x;
-    fixed_t y;
-    fixed_t z;
-    fixed_t frac;
-
-    mobj_t  *th;
-
-    fixed_t slope;
-    fixed_t dist;
-    fixed_t thingtopslope;
-    fixed_t thingbottomslope;
+    fixed_t     x;
+    fixed_t     y;
+    fixed_t     z;
+    fixed_t     frac;
+    mobj_t      *th;
+    fixed_t     slope;
+    fixed_t     dist;
+    fixed_t     thingtopslope;
+    fixed_t     thingbottomslope;
 
     if (in->isaline)
     {
-        line_t *li = in->d.line;
+        line_t  *li = in->d.line;
 
         if (li->special)
             P_ShootSpecialLine(shootthing, li);
@@ -1506,7 +1512,7 @@ hitline:
 //
 fixed_t P_AimLineAttack(mobj_t *t1, angle_t angle, fixed_t distance)
 {
-    fixed_t x2, y2;
+    fixed_t     x2, y2;
 
     if (!t1)
         return 0;
@@ -1540,7 +1546,7 @@ fixed_t P_AimLineAttack(mobj_t *t1, angle_t angle, fixed_t distance)
 //
 void P_LineAttack(mobj_t *t1, angle_t angle, fixed_t distance, fixed_t slope, int damage)
 {
-    fixed_t x2, y2;
+    fixed_t     x2, y2;
 
     shootangle = angle;
     angle >>= ANGLETOFINESHIFT;
@@ -1564,7 +1570,7 @@ static mobj_t *usething;
 
 static boolean PTR_UseTraverse(intercept_t *in)
 {
-    int  side;
+    int side;
 
     if (!in->d.line->special)
     {
@@ -1738,8 +1744,10 @@ void P_RadiusAttack(mobj_t *spot, mobj_t *source, int damage)
 //  the way it was and call P_ChangeSector again
 //  to undo the changes.
 //
-static boolean crushchange;
-static boolean nofit;
+static boolean  crushchange;
+static boolean  nofit;
+static boolean  isliquidsector;
+static fixed_t  floorheight;
 
 void (*P_BloodSplatSpawner)(fixed_t, fixed_t, int, int);
 
@@ -1748,51 +1756,39 @@ void (*P_BloodSplatSpawner)(fixed_t, fixed_t, int, int);
 //
 boolean PIT_ChangeSector(mobj_t *thing)
 {
-    player_t    *player;
-    mobjtype_t  type = thing->type;
-    int         flags = thing->flags;
+    int flags = thing->flags;
+    int flags2 = thing->flags2;
 
-    if (isliquid[thing->subsector->sector->floorpic])
+    if (isliquidsector)
     {
         thing->flags2 |= MF2_FEETARECLIPPED;
-        if ((thing->flags2 & MF2_SHADOW) && thing->shadow)
+        if (thing->shadow)
             thing->shadow->flags2 |= MF2_FEETARECLIPPED;
     }
-    else if (thing->flags2 & MF2_FEETARECLIPPED)
+    else if (flags2 & MF2_FEETARECLIPPED)
     {
         thing->flags2 &= ~MF2_FEETARECLIPPED;
-        if ((thing->flags2 & MF2_SHADOW) && thing->shadow)
+        if (thing->shadow)
             thing->shadow->flags2 &= ~MF2_FEETARECLIPPED;
     }
 
     if (P_ThingHeightClip(thing))
         return true;    // keep checking
 
-    player = &players[consoleplayer];
-
-    if (type == MT_PLAYER
-        && (player->health <= 0
-            || player->powers[pw_invulnerability]
-            || (player->cheats & CF_GODMODE)))
-    {
-        nofit = true;
-        return true;
-    }
-
-    // crunch dropped items
-    if (flags & MF_DROPPED)
-    {
-        P_RemoveMobj(thing);
-        if (thing->shadow)
-            P_RemoveMobj(thing->shadow);
-
-        // keep checking
-        return true;
-    }
-
     // crunch bodies to giblets
-    if (thing->health <= 0 && type != MT_BARREL && type != MT_SKULL && type != MT_PAIN && !chex)
+    if (thing->health <= 0 && (flags2 & MF2_CRUSHABLE))
     {
+        if (thing->type == MT_PLAYER)
+        {
+            player_t    *player = thing->player;
+
+            if (player->powers[pw_invulnerability] || (player->cheats & CF_GODMODE))
+            {
+                nofit = true;
+                return true;
+            }
+        }
+
         if (!(flags & MF_FUZZ) && !(flags & MF_NOBLOOD))
         {
             int i;
@@ -1816,6 +1812,17 @@ boolean PIT_ChangeSector(mobj_t *thing)
         return true;
     }
 
+    // crunch dropped items
+    if (flags & MF_DROPPED)
+    {
+        P_RemoveMobj(thing);
+        if (thing->shadow)
+            P_RemoveMobj(thing->shadow);
+
+        // keep checking
+        return true;
+    }
+
     if (!(flags & MF_SHOOTABLE))
         return true;    // assume it is bloody gibs or something
 
@@ -1830,11 +1837,9 @@ boolean PIT_ChangeSector(mobj_t *thing)
 
 static void P_UpdateBloodSplat(mobj_t *splat)
 {
-    sector_t    *sec = splat->subsector->sector;
+    splat->z = floorheight;
 
-    splat->z = sec->floorheight;
-
-    if (isliquid[sec->floorpic])
+    if (isliquidsector)
     {
         P_UnsetThingPosition(splat);
         ((thinker_t *)splat)->function.acv = (actionf_v)(-1);
@@ -1843,7 +1848,7 @@ static void P_UpdateBloodSplat(mobj_t *splat)
 
 static void P_UpdateShadow(mobj_t *shadow)
 {
-    shadow->z = shadow->subsector->sector->floorheight;
+    shadow->z = floorheight;
 }
 
 //
@@ -1859,39 +1864,21 @@ boolean P_ChangeSector(sector_t *sector, boolean crunch)
 
     nofit = false;
     crushchange = crunch;
+    isliquidsector = isliquid[sector->floorpic];
+    floorheight = sector->floorheight;
 
-    // killough 4/4/98: scan list front-to-back until empty or exhausted,
-    // restarting from beginning after each thing is processed. Avoids
-    // crashes, and is sure to examine all things in the sector, and only
-    // the things which are in the sector, until a steady-state is reached.
-    // Things can arbitrarily be inserted and removed and it won't mess up.
-    //
-    // killough 4/7/98: simplified to avoid using complicated counter
-
-    // Mark all things invalid
-    for (n = sector->touching_thinglist; n; n = n->m_snext)
-        n->visited = false;
-
-    do
+    for (n = sector->touching_thinglist; n; n = n->m_snext)     // go through list
     {
-        for (n = sector->touching_thinglist; n; n = n->m_snext) // go through list
-        {
-            if (!n->visited)                                    // unprocessed thing found
-            {
-                mobj_t  *mobj = n->m_thing;
+        mobj_t  *mobj = n->m_thing;
 
-                n->visited = true;                              // mark thing as processed
-                if (mobj->type == MT_BLOODSPLAT)
-                    P_UpdateBloodSplat(mobj);
-                else if (mobj->type == MT_SHADOW)
-                    P_UpdateShadow(mobj);
-                else if (!(mobj->flags & MF_NOBLOCKMAP))        // jff 4/7/98 don't do these
-                    PIT_ChangeSector(mobj);                     // process it
-                break;                                          // exit and start over
-            }
-        }
+        if (mobj)
+            if (mobj->type == MT_BLOODSPLAT)
+                P_UpdateBloodSplat(mobj);
+            else if (mobj->type == MT_SHADOW)
+                P_UpdateShadow(mobj);
+            else if (!(mobj->flags & MF_NOBLOCKMAP))            // jff 4/7/98 don't do these
+                PIT_ChangeSector(mobj);                         // process it
     }
-    while (n);  // repeat from scratch until all things left are marked valid
 
     return nofit;
 }
@@ -1955,8 +1942,6 @@ static msecnode_t *P_AddSecnode(sector_t *s, mobj_t *thing, msecnode_t *nextnode
     // Couldn't find an existing node for this sector. Add one at the head
     // of the list.
     node = P_GetSecnode();
-
-    node->visited = 0;                          // killough 4/4/98, 4/7/98: mark new nodes unvisited.
 
     node->m_sector = s;                         // sector
     node->m_thing = thing;                      // mobj

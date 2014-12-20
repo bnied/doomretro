@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -226,19 +235,13 @@ void R_DrawSolidShadowColumn(void)
 {
     int32_t     count = dc_yh - dc_yl + 1;
     byte        *dest = R_ADDRESS(0, dc_x, dc_yl);
-    byte        edge = dc_colormap[1];
 
-    if (--count)
-    {
-        *dest = edge;
-        dest += SCREENWIDTH;
-    }
     while (--count > 0)
     {
         *dest = 0;
         dest += SCREENWIDTH;
     }
-    *dest = edge;
+    *dest = 0;
 }
 
 void R_DrawBloodSplatColumn(void)
@@ -247,17 +250,12 @@ void R_DrawBloodSplatColumn(void)
     byte                *dest = R_ADDRESS(0, dc_x, dc_yl);
     const fixed_t       blood = dc_blood;
 
-    if (--count)
-    {
-        *dest = tinttab50[*dest + blood];
-        dest += SCREENWIDTH;
-    }
     while (--count > 0)
     {
-        *dest = tinttab66[*dest + blood];
+        *dest = tinttab75[*dest + blood];
         dest += SCREENWIDTH;
     }
-    *dest = tinttab50[*dest + blood];
+    *dest = tinttab75[*dest + blood];
 }
 
 void R_DrawSolidBloodSplatColumn(void)
@@ -1175,6 +1173,7 @@ fixed_t         ds_ystep;
 
 // start of a 64*64 tile image
 byte            *ds_source;
+byte            *ds_colormask;
 
 //
 // Draws the actual span.
@@ -1209,6 +1208,48 @@ void R_DrawSpan(void)
     while (count-- > 0)
     {
         *dest++ = colormap[source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)]];
+        xfrac += xstep;
+        yfrac += ystep;
+    }
+}
+
+void R_DrawFullbrightSpan(void)
+{
+    unsigned int        count = ds_x2 - ds_x1 + 1;
+    byte                *dest = R_ADDRESS(0, ds_x1, ds_y);
+    fixed_t             xfrac = ds_xfrac;
+    fixed_t             yfrac = ds_yfrac;
+    const fixed_t       xstep = ds_xstep;
+    const fixed_t       ystep = ds_ystep;
+    const byte          *source = ds_source;
+    const byte          *colormask = ds_colormask;
+    const lighttable_t  *colormap = ds_colormap;
+    byte                dot;
+
+    while (count >= 4)
+    {
+        dot = source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)];
+        *dest++ = (colormask[dot] ? dot : colormap[dot]);
+        xfrac += xstep;
+        yfrac += ystep;
+        dot = source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)];
+        *dest++ = (colormask[dot] ? dot : colormap[dot]);
+        xfrac += xstep;
+        yfrac += ystep;
+        dot = source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)];
+        *dest++ = (colormask[dot] ? dot : colormap[dot]);
+        xfrac += xstep;
+        yfrac += ystep;
+        dot = source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)];
+        *dest++ = (colormask[dot] ? dot : colormap[dot]);
+        xfrac += xstep;
+        yfrac += ystep;
+        count -= 4;
+    }
+    while (count-- > 0)
+    {
+        dot = source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)];
+        *dest++ = (colormask[dot] ? dot : colormap[dot]);
         xfrac += xstep;
         yfrac += ystep;
     }

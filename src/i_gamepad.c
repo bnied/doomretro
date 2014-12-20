@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -51,9 +60,9 @@ static XINPUTSETSTATE pXInputSetState;
 static SDL_Joystick     *gamepad = NULL;
 
 int                     gamepadbuttons = 0;
-int                     gamepadthumbLX;
-int                     gamepadthumbLY;
-int                     gamepadthumbRX;
+short                   gamepadthumbLX;
+short                   gamepadthumbLY;
+short                   gamepadthumbRX;
 
 boolean                 vibrate = false;
 
@@ -137,35 +146,30 @@ void I_ShutdownGamepad(void)
     }
 }
 
-static int __inline clamp(int value, int deadzone)
+static short __inline clamp(short value, short deadzone)
 {
-    if (value > -deadzone && value < deadzone)
-        return 0;
-    return MAX(-32767, value);
+    return (ABS(value) < deadzone ? 0 : MAX(-SHRT_MAX, value));
 }
 
 void I_PollThumbs_DirectInput_RightHanded(short LX, short LY, short RX, short RY)
 {
-    gamepadthumbLX = clamp(SDL_JoystickGetAxis(gamepad, LX), GAMEPAD_LEFT_THUMB_DEADZONE);
-    gamepadthumbLY = clamp(SDL_JoystickGetAxis(gamepad, LY), GAMEPAD_LEFT_THUMB_DEADZONE);
-    gamepadthumbRX = clamp(SDL_JoystickGetAxis(gamepad, RX), GAMEPAD_RIGHT_THUMB_DEADZONE);
+    gamepadthumbLX = clamp(SDL_JoystickGetAxis(gamepad, LX), gamepadleftdeadzone);
+    gamepadthumbLY = clamp(SDL_JoystickGetAxis(gamepad, LY), gamepadleftdeadzone);
+    gamepadthumbRX = clamp(SDL_JoystickGetAxis(gamepad, RX), gamepadrightdeadzone);
 }
 
 void I_PollThumbs_DirectInput_LeftHanded(short LX, short LY, short RX, short RY)
 {
-    gamepadthumbLX = clamp(SDL_JoystickGetAxis(gamepad, RX), GAMEPAD_RIGHT_THUMB_DEADZONE);
-    gamepadthumbLY = clamp(SDL_JoystickGetAxis(gamepad, RY), GAMEPAD_RIGHT_THUMB_DEADZONE);
-    gamepadthumbRX = clamp(SDL_JoystickGetAxis(gamepad, LX), GAMEPAD_LEFT_THUMB_DEADZONE);
+    gamepadthumbLX = clamp(SDL_JoystickGetAxis(gamepad, RX), gamepadrightdeadzone);
+    gamepadthumbLY = clamp(SDL_JoystickGetAxis(gamepad, RY), gamepadrightdeadzone);
+    gamepadthumbRX = clamp(SDL_JoystickGetAxis(gamepad, LX), gamepadleftdeadzone);
 }
 
 void I_PollDirectInputGamepad(void)
 {
     if (gamepad)
     {
-        event_t         ev;
-        int             hat = SDL_JoystickGetHat(gamepad, 0);
-
-        gamepadthumbsfunc(0, 1, 2, 3);
+        int     hat = SDL_JoystickGetHat(gamepad, 0);
 
         gamepadbuttons = (GAMEPAD_X * SDL_JoystickGetButton(gamepad, 0)
             | GAMEPAD_A * SDL_JoystickGetButton(gamepad, 1)
@@ -195,9 +199,22 @@ void I_PollDirectInputGamepad(void)
             }
         }
 
-        ev.type = ev_gamepad;
-        ev.data1 = gamepadbuttons;
-        D_PostEvent(&ev);
+        if (gamepadsensitivity || menuactive || (gamepadbuttons & gamepadmenu))
+        {
+            event_t     ev;
+
+            ev.type = ev_gamepad;
+            D_PostEvent(&ev);
+
+            gamepadthumbsfunc(0, 1, 2, 3);
+        }
+        else
+        {
+            gamepadbuttons = 0;
+            gamepadthumbLX = 0;
+            gamepadthumbLY = 0;
+            gamepadthumbRX = 0;
+        }
     }
 }
 
@@ -221,16 +238,16 @@ void XInputVibration(int motorspeed)
 
 void I_PollThumbs_XInput_RightHanded(short LX, short LY, short RX, short RY)
 {
-    gamepadthumbLX = clamp(LX, GAMEPAD_LEFT_THUMB_DEADZONE);
-    gamepadthumbLY = -clamp(LY, GAMEPAD_LEFT_THUMB_DEADZONE);
-    gamepadthumbRX = clamp(RX, GAMEPAD_RIGHT_THUMB_DEADZONE);
+    gamepadthumbLX = clamp(LX, gamepadleftdeadzone);
+    gamepadthumbLY = -clamp(LY, gamepadleftdeadzone);
+    gamepadthumbRX = clamp(RX, gamepadrightdeadzone);
 }
 
 void I_PollThumbs_XInput_LeftHanded(short LX, short LY, short RX, short RY)
 {
-    gamepadthumbLX = clamp(RX, GAMEPAD_RIGHT_THUMB_DEADZONE);
-    gamepadthumbLY = -clamp(RY, GAMEPAD_RIGHT_THUMB_DEADZONE);
-    gamepadthumbRX = clamp(LX, GAMEPAD_LEFT_THUMB_DEADZONE);
+    gamepadthumbLX = clamp(RX, gamepadrightdeadzone);
+    gamepadthumbLY = -clamp(RY, gamepadrightdeadzone);
+    gamepadthumbRX = clamp(LX, gamepadleftdeadzone);
 }
 
 void I_PollXInputGamepad(void)
@@ -238,7 +255,6 @@ void I_PollXInputGamepad(void)
 #ifdef WIN32
     if (gamepad)
     {
-        event_t         ev;
         XINPUT_STATE    state;
         XINPUT_GAMEPAD  Gamepad;
 
@@ -246,11 +262,9 @@ void I_PollXInputGamepad(void)
         pXInputGetState(0, &state);
         Gamepad = state.Gamepad;
 
-        gamepadthumbsfunc(Gamepad.sThumbLX, Gamepad.sThumbLY, Gamepad.sThumbRX, Gamepad.sThumbRY);
-
-        gamepadbuttons = (state.Gamepad.wButtons
-            | GAMEPAD_LEFT_TRIGGER * (state.Gamepad.bLeftTrigger > GAMEPAD_TRIGGER_THRESHOLD)
-            | GAMEPAD_RIGHT_TRIGGER * (state.Gamepad.bRightTrigger > GAMEPAD_TRIGGER_THRESHOLD));
+        gamepadbuttons = (Gamepad.wButtons
+            | GAMEPAD_LEFT_TRIGGER * (Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
+            | GAMEPAD_RIGHT_TRIGGER * (Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD));
 
         if (damagevibrationtics)
             if (!--damagevibrationtics && !weaponvibrationtics)
@@ -272,9 +286,22 @@ void I_PollXInputGamepad(void)
             }
         }
 
-        ev.type = ev_gamepad;
-        ev.data1 = gamepadbuttons;
-        D_PostEvent(&ev);
+        if (gamepadsensitivity || menuactive || (gamepadbuttons & gamepadmenu))
+        {
+            event_t      ev;
+
+            ev.type = ev_gamepad;
+            D_PostEvent(&ev);
+
+            gamepadthumbsfunc(Gamepad.sThumbLX, Gamepad.sThumbLY, Gamepad.sThumbRX, Gamepad.sThumbRY);
+        }
+        else
+        {
+            gamepadbuttons = 0;
+            gamepadthumbLX = 0;
+            gamepadthumbLY = 0;
+            gamepadthumbRX = 0;
+        }
     }
 #endif
 }

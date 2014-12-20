@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -118,20 +127,16 @@ byte    *gridcolor;
 #define AM_PANLEFTKEY           key_left
 #define AM_PANLEFTKEY2          key_strafeleft
 #define AM_PANLEFTKEY3          key_strafeleft2
-#define AM_ZOOMINKEY            KEY_EQUALS
-#define AM_ZOOMOUTKEY           KEY_MINUS
-#define AM_STARTKEY             KEY_TAB
-#define AM_ENDKEY               KEY_TAB
-#define AM_GOBIGKEY             '0'
-#define AM_FOLLOWKEY            'f'
-#define AM_GRIDKEY              'g'
-#define AM_MARKKEY              'm'
-#define AM_CLEARMARKKEY         'c'
-#define AM_ROTATEKEY            'r'
-
-#define MAPWIDTH                SCREENWIDTH
-#define MAPHEIGHT               (SCREENHEIGHT - SBARHEIGHT)
-#define MAPAREA                 (MAPWIDTH * MAPHEIGHT)
+#define AM_ZOOMINKEY            key_automap_zoomin
+#define AM_ZOOMOUTKEY           key_automap_zoomout
+#define AM_STARTKEY             key_automap
+#define AM_ENDKEY               key_automap
+#define AM_GOBIGKEY             key_automap_maxzoom
+#define AM_FOLLOWKEY            key_automap_followmode
+#define AM_GRIDKEY              key_automap_grid
+#define AM_MARKKEY              key_automap_mark
+#define AM_CLEARMARKKEY         key_automap_clearmark
+#define AM_ROTATEKEY            key_automap_rotatemode
 
 // scale on entry
 #define INITSCALEMTOF           (0.2 * FRACUNIT)
@@ -150,7 +155,7 @@ byte    *gridcolor;
 #define MTOF(x)                 (fixed_t)((((int64_t)(x) * scale_mtof) >> FRACBITS) >> FRACBITS)
 // translates between frame-buffer and map coordinates
 #define CXMTOF(x)               MTOF(x - m_x)
-#define CYMTOF(y)               (MAPHEIGHT - MTOF(y - m_y))
+#define CYMTOF(y)               (mapheight - MTOF(y - m_y))
 
 typedef struct
 {
@@ -219,6 +224,11 @@ boolean         grid = GRID_DEFAULT;
 
 boolean         automapactive = false;
 
+static unsigned int     mapwidth;
+static unsigned int     mapheight;
+static unsigned int     maparea;
+static unsigned int     mapbottom;
+
 static mpoint_t m_paninc;                       // how far the window pans each tic (map coords)
 static fixed_t  mtof_zoommul;                   // how far the window zooms in each tic (map coords)
 static fixed_t  ftom_zoommul;                   // how far the window zooms in each tic (fb coords)
@@ -286,8 +296,8 @@ static void AM_activateNewScale(void)
 {
     m_x += (m_w >> 1);
     m_y += (m_h >> 1);
-    m_w = FTOM(MAPWIDTH);
-    m_h = FTOM(MAPHEIGHT);
+    m_w = FTOM(mapwidth);
+    m_h = FTOM(mapheight);
     m_x -= (m_w >> 1);
     m_y -= (m_h >> 1);
     m_x2 = m_x + m_w;
@@ -320,35 +330,8 @@ static void AM_restoreScaleAndLoc(void)
     m_y2 = m_y + m_h;
 
     // Change the scaling multipliers
-    scale_mtof = FixedDiv(MAPWIDTH << FRACBITS, m_w);
+    scale_mtof = FixedDiv(mapwidth << FRACBITS, m_w);
     scale_ftom = FixedDiv(FRACUNIT, scale_mtof);
-}
-
-//
-// adds a marker at the current location
-//
-static void AM_addMark(void)
-{
-    int         i;
-    int         x = m_x + (m_w >> 1);
-    int         y = m_y + (m_h >> 1);
-    static char message[32];
-
-    for (i = 0; i < markpointnum; ++i)
-        if (markpoints[i].x == x && markpoints[i].y == y)
-            return;
-
-    if (markpointnum >= markpointnum_max)
-    {
-        markpointnum_max = (markpointnum_max ? markpointnum_max << 1 : 16);
-        markpoints = (mpoint_t *)realloc(markpoints, markpointnum_max * sizeof(*markpoints));
-    }
-
-    markpoints[markpointnum].x = x;
-    markpoints[markpointnum].y = y;
-    M_snprintf(message, sizeof(message), s_AMSTR_MARKEDSPOT, ++markpointnum);
-    plr->message = message;
-    message_dontfuckwithme = true;
 }
 
 //
@@ -384,11 +367,11 @@ static void AM_findMinMaxBoundaries(void)
     min_y -= FRACUNIT * 24;
     max_y += FRACUNIT * 24;
 
-    a = FixedDiv(MAPWIDTH << FRACBITS, max_x - min_x);
-    b = FixedDiv(MAPHEIGHT << FRACBITS, max_y - min_y);
+    a = FixedDiv(mapwidth << FRACBITS, max_x - min_x);
+    b = FixedDiv(mapheight << FRACBITS, max_y - min_y);
 
     min_scale_mtof = MIN(a, b);
-    max_scale_mtof = FixedDiv(MAPHEIGHT << FRACBITS, PLAYERRADIUS << 1);
+    max_scale_mtof = FixedDiv(mapheight << FRACBITS, PLAYERRADIUS << 1);
 }
 
 static void AM_changeWindowLoc(void)
@@ -478,7 +461,7 @@ static void AM_initVariables(void)
 {
     automapactive = true;
 
-    area = *screens + MAPAREA;
+    area = *screens + maparea;
 
     f_oldloc.x = INT_MAX;
 
@@ -486,8 +469,8 @@ static void AM_initVariables(void)
     ftom_zoommul = FRACUNIT;
     mtof_zoommul = FRACUNIT;
 
-    m_w = FTOM(MAPWIDTH);
-    m_h = FTOM(MAPHEIGHT);
+    m_w = FTOM(mapwidth);
+    m_h = FTOM(mapheight);
 
     // find player to center on initially
     if (playeringame[consoleplayer])
@@ -555,6 +538,11 @@ void AM_Start(void)
         AM_Stop();
     stopped = false;
 
+    mapwidth = SCREENWIDTH;
+    mapheight = (unsigned int)viewheight2;
+    maparea = mapwidth * mapheight;
+    mapbottom = maparea - mapwidth;
+
     if (!idbehold && !(players[consoleplayer].cheats & CF_MYPOS) && !devparm)
         HU_clearMessages();
 
@@ -593,9 +581,117 @@ SDL_Keymod      modstate;
 SDLMod          modstate;
 #endif
 
+boolean         speedtoggle;
+
 static boolean AM_getSpeedToggle(void)
 {
     return (!!(gamepadbuttons & GAMEPAD_LEFT_TRIGGER) + !!(modstate & KMOD_SHIFT) == 1);
+}
+
+static void AM_toggleZoomOut(void)
+{
+    speedtoggle = AM_getSpeedToggle();
+    mtof_zoommul = M_ZOOMOUT;
+    ftom_zoommul = M_ZOOMIN;
+}
+
+static void AM_toggleZoomIn(void)
+{
+    speedtoggle = AM_getSpeedToggle();
+    mtof_zoommul = M_ZOOMIN;
+    ftom_zoommul = M_ZOOMOUT;
+    bigstate = false;
+}
+
+static void AM_toggleMaxZoom(void)
+{
+    if (bigstate)
+    {
+        bigstate = false;
+        AM_restoreScaleAndLoc();
+    }
+    else if (scale_mtof != min_scale_mtof)
+    {
+        bigstate = true;
+        AM_saveScaleAndLoc();
+        AM_minOutWindowScale();
+    }
+}
+
+static void AM_toggleFollowMode(void)
+{
+    followplayer = !followplayer;
+    if (followplayer)
+        m_paninc.x = m_paninc.y = 0;
+    f_oldloc.x = INT_MAX;
+    plr->message = (followplayer ? s_AMSTR_FOLLOWON : s_AMSTR_FOLLOWOFF);
+    message_dontfuckwithme = true;
+}
+
+static void AM_toggleGrid(void)
+{
+    grid = !grid;
+    plr->message = (grid ? s_AMSTR_GRIDON : s_AMSTR_GRIDOFF);
+    message_dontfuckwithme = true;
+}
+
+//
+// adds a marker at the current location
+//
+static void AM_addMark(void)
+{
+    int         i;
+    int         x = m_x + (m_w >> 1);
+    int         y = m_y + (m_h >> 1);
+    static char message[32];
+
+    for (i = 0; i < markpointnum; ++i)
+        if (markpoints[i].x == x && markpoints[i].y == y)
+            return;
+
+    if (markpointnum >= markpointnum_max)
+    {
+        markpointnum_max = (markpointnum_max ? markpointnum_max << 1 : 16);
+        markpoints = (mpoint_t *)realloc(markpoints, markpointnum_max * sizeof(*markpoints));
+    }
+
+    markpoints[markpointnum].x = x;
+    markpoints[markpointnum].y = y;
+    M_snprintf(message, sizeof(message), s_AMSTR_MARKEDSPOT, ++markpointnum);
+    plr->message = message;
+    message_dontfuckwithme = true;
+}
+
+int     markpress = 0;
+
+static void AM_clearMarks(void)
+{
+    if (markpointnum)
+    {
+        if (++markpress == 5)
+        {
+            // clear all marks
+            plr->message = s_AMSTR_MARKSCLEARED;
+            message_dontfuckwithme = true;
+            markpointnum = 0;
+        }
+        else if (markpress == 1)
+        {
+            static char message[32];
+
+            // clear one mark
+            M_snprintf(message, sizeof(message), s_AMSTR_MARKCLEARED, markpointnum--);
+            plr->message = message;
+            message_dontfuckwithme = true;
+        }
+    }
+}
+
+static void AM_toggleRotateMode(void)
+{
+    rotatemode = !rotatemode;
+    plr->message = (rotatemode ? s_AMSTR_ROTATEON : s_AMSTR_ROTATEOFF);
+    message_dontfuckwithme = true;
 }
 
 //
@@ -606,8 +702,6 @@ boolean AM_Responder(event_t *ev)
     int                 key;
     int                 rc = false;
     static boolean      backbuttondown = false;
-    boolean             speedtoggle;
-    static int          markpress = 0;
 
     direction = 0;
     modstate = SDL_GetModState();
@@ -709,19 +803,14 @@ boolean AM_Responder(event_t *ev)
                 else if (key == AM_ZOOMOUTKEY && !movement)
                 {
                     keydown = key;
-                    speedtoggle = AM_getSpeedToggle();
-                    mtof_zoommul = M_ZOOMOUT;
-                    ftom_zoommul = M_ZOOMIN;
+                    AM_toggleZoomOut();
                 }
 
                 // zoom in
                 else if (key == AM_ZOOMINKEY && !movement)
                 {
                     keydown = key;
-                    speedtoggle = AM_getSpeedToggle();
-                    mtof_zoommul = M_ZOOMIN;
-                    ftom_zoommul = M_ZOOMOUT;
-                    bigstate = false;
+                    AM_toggleZoomIn();
                 }
 
                 // leave automap
@@ -738,17 +827,7 @@ boolean AM_Responder(event_t *ev)
                     if (keydown != AM_GOBIGKEY)
                     {
                         keydown = key;
-                        if (bigstate)
-                        {
-                            bigstate = false;
-                            AM_restoreScaleAndLoc();
-                        }
-                        else if (scale_mtof != min_scale_mtof)
-                        {
-                            bigstate = true;
-                            AM_saveScaleAndLoc();
-                            AM_minOutWindowScale();
-                        }
+                        AM_toggleMaxZoom();
                     }
                 }
 
@@ -758,12 +837,7 @@ boolean AM_Responder(event_t *ev)
                     if (keydown != AM_FOLLOWKEY)
                     {
                         keydown = key;
-                        followplayer = !followplayer;
-                        if (followplayer)
-                            m_paninc.x = m_paninc.y = 0;
-                        f_oldloc.x = INT_MAX;
-                        plr->message = (followplayer ? s_AMSTR_FOLLOWON : s_AMSTR_FOLLOWOFF);
-                        message_dontfuckwithme = true;
+                        AM_toggleFollowMode();
                     }
                 }
 
@@ -773,15 +847,12 @@ boolean AM_Responder(event_t *ev)
                     if (keydown != AM_GRIDKEY)
                     {
                         keydown = key;
-                        grid = !grid;
-                        plr->message = (grid ? s_AMSTR_GRIDON : s_AMSTR_GRIDOFF);
-                        message_dontfuckwithme = true;
+                        AM_toggleGrid();
                     }
                 }
 
                 // mark spot
-                else if (key == AM_MARKKEY
-                         && plr->health)
+                else if (key == AM_MARKKEY && plr->health)
                 {
                     if (keydown != AM_MARKKEY)
                     {
@@ -792,25 +863,7 @@ boolean AM_Responder(event_t *ev)
 
                 // clear mark(s)
                 else if (key == AM_CLEARMARKKEY)
-                {
-                    if (markpointnum)
-                    {
-                        if (++markpress == 5)
-                        {
-                            // clear all marks
-                            plr->message = (markpointnum == 1 ? s_AMSTR_MARKCLEARED : s_AMSTR_MARKSCLEARED);
-                            message_dontfuckwithme = true;
-                            markpointnum = 0;
-                        }
-                        else if (markpress == 1)
-                        {
-                            // clear one mark
-                            plr->message = s_AMSTR_MARKCLEARED;
-                            message_dontfuckwithme = true;
-                            markpointnum--;
-                        }
-                    }
-                }
+                    AM_clearMarks();
 
                 // toggle rotate mode
                 else if (key == AM_ROTATEKEY)
@@ -818,9 +871,7 @@ boolean AM_Responder(event_t *ev)
                     if (keydown != AM_ROTATEKEY)
                     {
                         keydown = key;
-                        rotatemode = !rotatemode;
-                        plr->message = (rotatemode ? s_AMSTR_ROTATEON : s_AMSTR_ROTATEOFF);
-                        message_dontfuckwithme = true;
+                        AM_toggleRotateMode();
                     }
                 }
                 else
@@ -833,9 +884,7 @@ boolean AM_Responder(event_t *ev)
                 if (key == AM_CLEARMARKKEY)
                     markpress = 0;
                 keydown = 0;
-                if ((key == AM_ZOOMOUTKEY
-                     || key == AM_ZOOMINKEY)
-                    && !movement)
+                if ((key == AM_ZOOMOUTKEY || key == AM_ZOOMINKEY) && !movement)
                 {
                     mtof_zoommul = FRACUNIT;
                     ftom_zoommul = FRACUNIT;
@@ -922,6 +971,7 @@ boolean AM_Responder(event_t *ev)
                     ftom_zoommul = M_ZOOMOUT - 2000;
                     bigstate = false;
                 }
+
                 // zoom out
                 else if (ev->data1 & MOUSE_WHEELDOWN)
                 {
@@ -940,25 +990,46 @@ boolean AM_Responder(event_t *ev)
                     AM_Stop();
                 }
 
-                if ((gamepadbuttons & GAMEPAD_RIGHT_SHOULDER)
-                    && !(gamepadbuttons & GAMEPAD_LEFT_SHOULDER))
+                // zoom out
+                else if ((gamepadbuttons & gamepadautomapzoomout)
+                         && !(gamepadbuttons & gamepadautomapzoomin))
                 {
                     movement = true;
-                    speedtoggle = AM_getSpeedToggle();
-                    mtof_zoommul = M_ZOOMIN;
-                    ftom_zoommul = M_ZOOMOUT;
-                    bigstate = false;
-                }
-                else if ((gamepadbuttons & GAMEPAD_LEFT_SHOULDER)
-                         && !(gamepadbuttons & GAMEPAD_RIGHT_SHOULDER))
-                {
-                    movement = true;
-                    speedtoggle = AM_getSpeedToggle();
-                    mtof_zoommul = M_ZOOMOUT;
-                    ftom_zoommul = M_ZOOMIN;
+                    AM_toggleZoomOut();
                 }
 
-#ifdef WIN32
+                // zoom in
+                else if ((gamepadbuttons & gamepadautomapzoomin)
+                         && !(gamepadbuttons & gamepadautomapzoomout))
+                {
+                    movement = true;
+                    AM_toggleZoomIn();
+                }
+
+                // toggle maximum zoom
+                else if ((gamepadbuttons & gamepadautomapmaxzoom) && !idclev && !idmus)
+                    AM_toggleMaxZoom();
+
+                // toggle follow mode
+                else if (gamepadbuttons & gamepadautomapfollowmode)
+                    AM_toggleFollowMode();
+
+                // toggle grid
+                else if (gamepadbuttons & gamepadautomapgrid)
+                    AM_toggleGrid();
+
+                // mark spot
+                else if ((gamepadbuttons & gamepadautomapmark) && plr->health)
+                    AM_addMark();
+
+                // clear mark(s)
+                else if (gamepadbuttons & gamepadautomapclearmark)
+                    AM_clearMarks();
+
+                // toggle rotate mode
+                else if (gamepadbuttons & gamepadautomaprotatemode)
+                    AM_toggleRotateMode();
+
                 if (!followplayer)
                 {
                     // pan right
@@ -993,7 +1064,6 @@ boolean AM_Responder(event_t *ev)
                         m_paninc.y = -FTOM(MTOF((fixed_t)(FTOM(F_PANINC) * gamepadthumbLYdown * 1.2f)));
                     }
                 }
-#endif
             }
 
             if ((plr->cheats & CF_MYPOS) && !followplayer && (m_paninc.x || m_paninc.y))
@@ -1109,7 +1179,7 @@ void AM_Ticker(void)
 //
 static void AM_clearFB(void)
 {
-    memset(*screens, BACKGROUNDCOLOR, MAPAREA);
+    memset(*screens, BACKGROUNDCOLOR, maparea);
 }
 
 //
@@ -1134,24 +1204,24 @@ static boolean AM_clipMline(int *x0, int *y0, int *x1, int *y1)
     *x0 = CXMTOF(*x0);
     if (*x0 < -1)
         outcode1 = LEFT;
-    else if (*x0 >= MAPWIDTH)
+    else if (*x0 >= (int)mapwidth)
         outcode1 = RIGHT;
     *x1 = CXMTOF(*x1);
     if (*x1 < -1)
         outcode2 = LEFT;
-    else if (*x1 >= MAPWIDTH)
+    else if (*x1 >= (int)mapwidth)
         outcode2 = RIGHT;
     if (outcode1 & outcode2)
         return false;
     *y0 = CYMTOF(*y0);
     if (*y0 < -1)
         outcode1 |= TOP;
-    else if (*y0 >= MAPHEIGHT)
+    else if (*y0 >= (int)mapheight)
         outcode1 |= BOTTOM;
     *y1 = CYMTOF(*y1);
     if (*y1 < -1)
         outcode2 |= TOP;
-    else if (*y1 >= MAPHEIGHT)
+    else if (*y1 >= (int)mapheight)
         outcode2 |= BOTTOM;
     return !(outcode1 & outcode2);
 }
@@ -1163,44 +1233,44 @@ static __inline void _PUTDOT(byte *dot, byte *color)
 
 static __inline void PUTDOT(unsigned int x, unsigned int y, byte *color)
 {
-    if (x < MAPWIDTH && y < MAPAREA)
+    if (x < mapwidth && y < maparea)
         _PUTDOT(*screens + y + x, color);
 }
 
 static __inline void PUTBIGDOT(unsigned int x, unsigned int y, byte *color)
 {
-    if (x < MAPWIDTH)
+    if (x < mapwidth)
     {
         byte    *dot = *screens + y + x;
-        boolean top = (y < MAPAREA);
-        boolean bottom = (y + MAPWIDTH < MAPAREA);
+        boolean top = (y < maparea);
+        boolean bottom = (y < mapbottom);
 
         if (top)
             _PUTDOT(dot, color);
         if (bottom)
-            _PUTDOT(dot + MAPWIDTH, color);
-        if (x + 1 < MAPWIDTH)
+            _PUTDOT(dot + mapwidth, color);
+        if (x + 1 < mapwidth)
         {
             if (top)
                 _PUTDOT(dot + 1, color);
             if (bottom)
-                _PUTDOT(dot + MAPWIDTH + 1, color);
+                _PUTDOT(dot + mapwidth + 1, color);
         }
     }
-    else if (++x < MAPWIDTH)
+    else if (++x < mapwidth)
     {
         byte    *dot = *screens + y + x;
 
-        if (y < MAPAREA)
+        if (y < maparea)
             _PUTDOT(dot, color);
-        if (y + MAPWIDTH < MAPAREA)
-            _PUTDOT(dot + MAPWIDTH, color);
+        if (y < mapbottom)
+            _PUTDOT(dot + mapwidth, color);
     }
 }
 
 static __inline void PUTTRANSDOT(unsigned int x, unsigned int y, byte *color)
 {
-    if (x < MAPWIDTH && y < MAPAREA)
+    if (x < mapwidth && y < maparea)
     {
         byte    *dot = *screens + y + x;
 
@@ -1220,54 +1290,50 @@ static void AM_drawFline(int x0, int y0, int x1, int y1, byte *color,
 
     if (!dy)
     {
-        // horizontal line
-        int     sx = SIGN(dx);
+        if (dx)
+        {
+            // horizontal line
+            int     sx = SIGN(dx);
 
-        x0 = BETWEEN(-1, x0, MAPWIDTH - 1);
-        x1 = BETWEEN(-1, x1, MAPWIDTH - 1);
+            x0 = BETWEEN(-1, x0, mapwidth - 1);
+            x1 = BETWEEN(-1, x1, mapwidth - 1);
 
-        y0 *= MAPWIDTH;
+            y0 *= mapwidth;
 
-        putdot(x0, y0, color);
-        while (x0 != x1)
-            putdot(x0 += sx, y0, color);
-
-        return;
+            putdot(x0, y0, color);
+            while (x0 != x1)
+                putdot(x0 += sx, y0, color);
+        }
     }
     else if (!dx)
     {
         // vertical line
-        int     sy = SIGN(dy) * MAPWIDTH;
+        int     sy = SIGN(dy) * mapwidth;
 
-        y0 = BETWEEN(-MAPWIDTH, y0 * MAPWIDTH, MAPAREA - MAPWIDTH);
-        y1 = BETWEEN(-MAPWIDTH, y1 * MAPWIDTH, MAPAREA - MAPWIDTH);
+        y0 = BETWEEN(-(int)mapwidth, y0 * mapwidth, mapbottom);
+        y1 = BETWEEN(-(int)mapwidth, y1 * mapwidth, mapbottom);
 
         putdot(x0, y0, color);
         while (y0 != y1)
             putdot(x0, y0 += sy, color);
-
-        return;
     }
     else
     {
         int     sx = SIGN(dx);
-        int     sy = SIGN(dy) * MAPWIDTH;
+        int     sy = SIGN(dy) * mapwidth;
 
         dx = ABS(dx);
         dy = ABS(dy);
-        y0 *= MAPWIDTH;
+        y0 *= mapwidth;
+        putdot(x0, y0, color);
         if (dx == dy)
         {
             // diagonal line
-            putdot(x0, y0, color);
             while (x0 != x1)
                 putdot(x0 += sx, y0 += sy, color);
-
-            return;
         }
         else
         {
-            putdot(x0, y0, color);
             if (dx > dy)
             {
                 // x-major line
@@ -1281,7 +1347,6 @@ static void AM_drawFline(int x0, int y0, int x1, int y1, byte *color,
                     putdot(x0 += sx, y0 += (sy & mask), color);
                     error += dy - (dx & mask);
                 }
-                return;
             }
             else
             {
@@ -1289,7 +1354,7 @@ static void AM_drawFline(int x0, int y0, int x1, int y1, byte *color,
                 int     error = (dx <<= 1) - dy;
 
                 dy <<= 1;
-                y1 *= MAPWIDTH;
+                y1 *= mapwidth;
                 while (y0 != y1)
                 {
                     int mask = ~(error >> 31);
@@ -1297,7 +1362,6 @@ static void AM_drawFline(int x0, int y0, int x1, int y1, byte *color,
                     putdot(x0 += (sx & mask), y0 += sy, color);
                     error += dx - (dy & mask);
                 }
-                return;
             }
         }
     }
@@ -1622,7 +1686,7 @@ static void AM_drawThings(void)
                     fx = CXMTOF(x);
                     fy = CYMTOF(y);
 
-                    if (fx >= -w && fx <= MAPWIDTH + w && fy >= -w && fy <= MAPHEIGHT + w)
+                    if (fx >= -w && fx <= (int)mapwidth + w && fy >= -w && fy <= (int)mapwidth + w)
                         AM_drawLineCharacter(thingtriangle, THINGTRIANGLELINES, w, thing->angle,
                                              thingcolor, x, y);
                 }
@@ -1694,14 +1758,14 @@ static void AM_drawMarks(void)
             {
                 int fx = x + j % MARKWIDTH;
 
-                if ((unsigned)fx < MAPWIDTH)
+                if ((unsigned int)fx < mapwidth)
                 {
                     int fy = y + j / MARKWIDTH;
 
-                    if ((unsigned)fy < MAPHEIGHT)
+                    if ((unsigned int)fy < mapheight)
                     {
-                        char src = marknums[digit][j];
-                        byte *dest = *screens + fy * MAPWIDTH + fx;
+                        char    src = marknums[digit][j];
+                        byte    *dest = *screens + fy * mapwidth + fx;
 
                         if (src == '2')
                             *dest = MARKCOLOR;
@@ -1719,12 +1783,12 @@ static void AM_drawMarks(void)
 
 static __inline void AM_DrawScaledPixel(int x, int y, byte *color)
 {
-    byte        *dest = *screens + ((y << 1) - 1) * MAPWIDTH + (x << 1) - 1;
+    byte        *dest = *screens + ((y << 1) - 1) * mapwidth + (x << 1) - 1;
 
     *dest = *(*dest + color);
     ++dest;
     *dest = *(*dest + color);
-    dest += MAPWIDTH;
+    dest += mapwidth;
     *dest = *(*dest + color);
     --dest;
     *dest = *(*dest + color);
@@ -1759,21 +1823,21 @@ static void AM_darkenEdges(void)
         byte    *colormap = colormaps + (DARKLEVELS - i) * 1024;
         int     x, y;
 
-        for (x = i; x < MAPWIDTH - i; ++x)
+        for (x = i; x < (int)mapwidth - i; ++x)
         {
-            byte        *dot = *screens + i * MAPWIDTH + x;
+            byte        *dot = *screens + i * mapwidth + x;
 
             *dot = *(*dot + colormap);
-            dot = *screens + (MAPHEIGHT - i - 1) * MAPWIDTH + x;
+            dot = *screens + (mapheight - i - 1) * mapwidth + x;
             *dot = *(*dot + colormap);
         }
 
-        for (y = i + 1; y < MAPHEIGHT - i - 1; ++y)
+        for (y = i + 1; y < (int)mapheight - i - 1; ++y)
         {
-            byte        *dot = *screens + y * MAPWIDTH + i;
+            byte        *dot = *screens + y * mapwidth + i;
 
             *dot = *(*dot + colormap);
-            dot = *screens + (y + 1) * MAPWIDTH - i - 1;
+            dot = *screens + (y + 1) * mapwidth - i - 1;
             *dot = *(*dot + colormap);
         }
     }

@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -30,30 +39,8 @@
 #include "z_zone.h"
 #include "i_system.h"
 
-// Tunables
-
-// Alignment of zone memory (benefit may be negated by HEADER_SIZE, CHUNK_SIZE)
-#define CACHE_ALIGN     32
-
 // Minimum chunk size at which blocks are allocated
 #define CHUNK_SIZE      32
-
-// Minimum size a block must be to become part of a split
-#define MIN_BLOCK_SPLIT 1024
-
-// How much RAM to leave aside for other libraries
-#define LEAVE_ASIDE     (128 * 1024)
-
-// Amount to subtract when retrying failed attempts to allocate initial pool
-#define RETRY_AMOUNT    (256 * 1024)
-
-// signature for block header
-#define ZONEID          0x931d4a11
-
-// Number of mallocs & frees kept in history buffer (must be a power of 2)
-#define ZONE_HISTORY    4
-
-// End Tunables
 
 typedef struct memblock
 {
@@ -61,14 +48,12 @@ typedef struct memblock
     struct memblock     *prev;
     size_t              size;
     void                **user;
-    int32_t             tag;
+    unsigned char       tag;
 } memblock_t;
 
-//
 // size of block header
 // cph - base on sizeof(memblock_t), which can be larger than CHUNK_SIZE on
 // 64bit architectures
-//
 static const size_t     HEADER_SIZE = (sizeof(memblock_t) + CHUNK_SIZE - 1) & ~(CHUNK_SIZE - 1);
 
 static memblock_t       *blockbytag[PU_MAX];
@@ -94,10 +79,10 @@ void *Z_Malloc(size_t size, int32_t tag, void **user)
 
     size = (size + CHUNK_SIZE - 1) & ~(CHUNK_SIZE - 1); // round to chunk size
 
-    while (!(block = (memblock_t *)malloc(size + HEADER_SIZE)))
+    while (!(block = malloc(size + HEADER_SIZE)))
     {
         if (!blockbytag[PU_CACHE])
-            I_Error("Z_Malloc: Failure trying to allocate %lu bytes", (uint32_t)size);
+            I_Error("Z_Malloc: Failure trying to allocate %lu bytes", (unsigned long)size);
         Z_FreeTags(PU_CACHE, PU_CACHE);
     }
 
@@ -163,7 +148,8 @@ void Z_FreeTags(int32_t lowtag, int32_t hightag)
         end_block = block->prev;
         while (1)
         {
-            memblock_t *next = block->next;
+            memblock_t  *next = block->next;
+
             Z_Free((char *)block + HEADER_SIZE);
             if (block == end_block)
                 break;
@@ -207,29 +193,12 @@ void Z_ChangeTag(void *ptr, int32_t tag)
     block->tag = tag;
 }
 
-void *Z_Realloc(void *ptr, size_t n, int32_t tag, void **user)
+void Z_ChangeUser(void *ptr, void **user)
 {
-    void        *p = Z_Malloc(n, tag, user);
+    memblock_t  *block;
 
-    if (ptr)
-    {
-        memblock_t      *block = (memblock_t *)((char *)ptr - HEADER_SIZE);
+    block = (memblock_t *)((byte *)ptr - sizeof(memblock_t));
 
-        if (p)
-            memcpy(p, ptr, n <= block->size ? n : block->size);
-        Z_Free(ptr);
-        if (user)                                       // in case Z_Free nullified same user
-            *user = p;
-    }
-    return p;
-}
-
-void *Z_Calloc(size_t n1, size_t n2, int32_t tag, void **user)
-{
-    return ((n1 *= n2) ? memset(Z_Malloc(n1, tag, user), 0, n1) : NULL);
-}
-
-char *Z_Strdup(const char *s, int32_t tag, void **user)
-{
-    return strcpy((char *)Z_Malloc(strlen(s) + 1, tag, user), s);
+    block->user = user;
+    *user = ptr;
 }

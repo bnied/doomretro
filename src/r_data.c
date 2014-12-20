@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -74,6 +83,7 @@ byte            **texturecomposite;
 // for global animation
 int             *flattranslation;
 int             *texturetranslation;
+byte            **flatfullbright;
 
 // needed for pre rendering
 fixed_t         *spritewidth;
@@ -146,31 +156,59 @@ static byte greenonly2[256] =
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
+static byte whiteonly[256] =
+{
+    0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
 static struct
 {
     char        texture[9];
+    char        flat[9];
     byte        *colormask;
 } fullbright[] = {
-    { "COMP2",    notgrayorbrown }, { "COMPSTA1", notgray        }, { "COMPSTA2", notgray        },
-    { "COMPUTE1", notgrayorbrown }, { "COMPUTE2", notgrayorbrown }, { "COMPUTE3", notgrayorbrown },
-    { "EXITSIGN", notgray        }, { "EXITSTON", notgray        }, { "PLANET1 ", notgray        },
-    { "SILVER2",  notgray        }, { "SILVER3",  notgrayorbrown }, { "SLADSKUL", redonly        },
-    { "SW1BRCOM", redonly        }, { "SW1BRIK",  redonly        }, { "SW1BRN1",  redonly        },
-    { "SW1COMM",  redonly        }, { "SW1DIRT",  redonly        }, { "SW1MET2",  redonly        },
-    { "SW1STARG", redonly        }, { "SW1STON1", redonly        }, { "SW1STON2", redonly        },
-    { "SW1STONE", redonly        }, { "SW1STRTN", redonly        }, { "SW2BLUE ", redonly        },
-    { "SW2BRCOM", greenonly2     }, { "SW2BRIK",  greenonly1     }, { "SW2BRN1",  greenonly1     },
-    { "SW2BRN2",  notgray        }, { "SW2BRNGN", notgray        }, { "SW2COMM",  greenonly1     },
-    { "SW2COMP",  redonly        }, { "SW2DIRT",  greenonly1     }, { "SW2EXIT",  notgray        },
-    { "SW2GRAY",  notgray        }, { "SW2GRAY1", notgray        }, { "SW2GSTON", redonly        },
-    { "SW2MARB ", greenonly1     }, { "SW2MET2",  greenonly1     }, { "SW2METAL", greenonly1     },
-    { "SW2MOD1",  notgrayorbrown }, { "SW2PANEL", redonly        }, { "SW2ROCK",  redonly        },
-    { "SW2SLAD",  redonly        }, { "SW2STARG", greenonly1     }, { "SW2STON1", greenonly1     },
-    { "SW2STON2", greenonly1     }, { "SW2STON6", redonly        }, { "SW2STONE", greenonly1     },
-    { "SW2STRTN", greenonly1     }, { "SW2TEK",   greenonly1     }, { "SW2VINE",  greenonly1     },
-    { "SW2WDMET", redonly        }, { "SW2WOOD",  redonly        }, { "SW2ZIM",   redonly        },
-    { "WOOD4",    redonly        }, { "WOODGARG", redonly        }, { "WOODSKUL", redonly        },
-    { "ZELDOOR",  redonly        }, { "",         0              }
+
+    // textures
+    { "COMP2",    "XXXXXXXX", notgrayorbrown }, { "COMPSTA1", "",         notgray        },
+    { "COMPSTA2", "",         notgray        }, { "COMPUTE1", "",         notgrayorbrown },
+    { "COMPUTE2", "",         notgrayorbrown }, { "COMPUTE3", "",         notgrayorbrown },
+    { "EXITSIGN", "",         notgray        }, { "EXITSTON", "",         notgray        },
+    { "PLANET1",  "",         notgray        }, { "SILVER2",  "",         notgray        },
+    { "SILVER3",  "",         notgrayorbrown }, { "SLADSKUL", "",         redonly        },
+    { "SW1BRCOM", "",         redonly        }, { "SW1BRIK",  "",         redonly        },
+    { "SW1BRN1",  "",         redonly        }, { "SW1COMM",  "",         redonly        },
+    { "SW1DIRT",  "",         redonly        }, { "SW1MET2",  "",         redonly        },
+    { "SW1STARG", "",         redonly        }, { "SW1STON1", "",         redonly        },
+    { "SW1STON2", "",         redonly        }, { "SW1STONE", "",         redonly        },
+    { "SW1STRTN", "",         redonly        }, { "SW2BLUE",  "",         redonly        },
+    { "SW2BRCOM", "",         greenonly2     }, { "SW2BRIK",  "",         greenonly1     },
+    { "SW2BRN1",  "",         greenonly1     }, { "SW2BRN2",  "",         notgray        },
+    { "SW2BRNGN", "",         notgray        }, { "SW2COMM",  "",         greenonly1     },
+    { "SW2COMP",  "",         redonly        }, { "SW2DIRT",  "",         greenonly1     },
+    { "SW2EXIT",  "",         notgray        }, { "SW2GRAY",  "",         notgray        },
+    { "SW2GRAY1", "",         notgray        }, { "SW2GSTON", "",         redonly        },
+    { "SW2MARB",  "",         greenonly1     }, { "SW2MET2",  "",         greenonly1     },
+    { "SW2METAL", "",         greenonly1     }, { "SW2MOD1",  "",         notgrayorbrown },
+    { "SW2PANEL", "",         redonly        }, { "SW2ROCK",  "",         redonly        },
+    { "SW2SLAD",  "",         redonly        }, { "SW2STARG", "",         greenonly1     },
+    { "SW2STON1", "",         greenonly1     }, { "SW2STON2", "",         greenonly1     },
+    { "SW2STON6", "",         redonly        }, { "SW2STONE", "",         greenonly1     },
+    { "SW2STRTN", "",         greenonly1     }, { "SW2TEK",   "",         greenonly1     },
+    { "SW2VINE",  "",         greenonly1     }, { "SW2WDMET", "",         redonly        },
+    { "SW2WOOD",  "",         redonly        }, { "SW2ZIM",   "",         redonly        },
+    { "WOOD4",    "",         redonly        }, { "WOODGARG", "",         redonly        },
+    { "WOODSKUL", "",         redonly        }, { "ZELDOOR",  "",         redonly        },
+
+    // flats
+    { "",         "CEIL1_2",  whiteonly      }, { "",         "CEIL1_3",  whiteonly      },
+    { "",         "",         0              }
 };
 
 extern boolean  brightmaps;
@@ -385,7 +423,7 @@ static void R_GenerateLookup(int texnum)
 
                     // count posts
                     for (; col->topdelta != 0xff; count[x].posts++)
-                        if ((unsigned)((byte *)col - base) <= limit)
+                        if ((unsigned int)((byte *)col - base) <= limit)
                             col = (column_t *)((byte *)col + col->length + 4);
                 }
         }
@@ -638,7 +676,7 @@ static void R_InitTextures(void)
             patch->originy = SHORT(mpatch->originy);
             patch->patch = patchlookup[SHORT(mpatch->patch)];
             if (patch->patch == -1)
-                I_Error("R_InitTextures: missing patch in texture %s", texture->name);
+                patch->patch = 0;       // [crispy] make non-fatal
         }
         texturecolumnlump[i] = Z_Malloc(texture->width * sizeof(**texturecolumnlump),  PU_STATIC, 0);
         texturecolumnofs[i] = Z_Malloc(texture->width * sizeof(**texturecolumnofs), PU_STATIC, 0);
@@ -682,15 +720,18 @@ static void R_InitTextures(void)
     // [BH] Initialize partially fullbright textures.
     if (brightmaps)
     {
-        memset(texturefullbright, 0, sizeof(byte *) * numtextures);
+        memset(texturefullbright, 0, numtextures * sizeof(*texturefullbright));
         i = 0;
         while (fullbright[i].colormask)
         {
-            int num = R_CheckTextureNumForName(fullbright[i].texture);
+            if (fullbright[i].texture)
+            {
+                int num = R_CheckTextureNumForName(fullbright[i].texture);
 
-            if (num != -1)
-                texturefullbright[num] = fullbright[i].colormask;
-            i++;
+                if (num != -1)
+                    texturefullbright[num] = fullbright[i].colormask;
+                i++;
+            }
         }
     }
 }
@@ -706,11 +747,31 @@ void R_InitFlats(void)
     lastflat = W_GetNumForName("F_END") - 1;
     numflats = lastflat - firstflat + 1;
 
+    flatfullbright = Z_Malloc(numflats * sizeof(*flatfullbright), PU_STATIC, 0);
+
     // Create translation table for global animation.
     flattranslation = Z_Malloc((numflats + 1) * sizeof(*flattranslation), PU_STATIC, 0);
 
     for (i = 0; i < numflats; i++)
         flattranslation[i] = i;
+
+    // [BH] Initialize partially fullbright flats.
+    if (brightmaps)
+    {
+        memset(flatfullbright, 0, numflats * sizeof(*flatfullbright));
+        i = 0;
+        while (fullbright[i].colormask)
+        {
+            if (fullbright[i].flat)
+            {
+                int num = R_CheckFlatNumForName(fullbright[i].flat);
+
+                if (num != -1)
+                    flatfullbright[num] = fullbright[i].colormask;
+                i++;
+            }
+        }
+    }
 }
 
 //
@@ -940,7 +1001,7 @@ int R_TextureNumForName(char *name)
     int i = R_CheckTextureNumForName(name);
 
     if (i == -1)
-         I_Error("R_TextureNumForName: %.8s not found", name);
+        return 0;       // [crispy] make non-fatal
     return i;
 }
 

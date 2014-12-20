@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -1105,7 +1114,7 @@ void A_Tracer(mobj_t *actor)
     boolean     smoke = false;
 
     // spawn a puff of smoke behind the non-homing rocket
-    if (smoketrails & REVENANT2)
+    if (smoketrails & REVENANT1)
     {
         P_SpawnSmokeTrail(actor->x, actor->y, actor->z, actor->angle);
         smoke = true;
@@ -1115,7 +1124,7 @@ void A_Tracer(mobj_t *actor)
         return;
 
     // spawn a puff of smoke behind the homing rocket
-    if ((smoketrails & REVENANT1) && !smoke)
+    if ((smoketrails & REVENANT2) && !smoke)
         P_SpawnSmokeTrail(actor->x, actor->y, actor->z, actor->angle);
 
     // adjust direction
@@ -1354,6 +1363,8 @@ void A_Fire(mobj_t *actor)
     actor->y = dest->y + FixedMul(24 * FRACUNIT, finesine[an]);
     actor->z = dest->z;
     P_SetThingPosition(actor);
+    actor->floorz = dest->floorz;
+    actor->ceilingz = dest->ceilingz;
 }
 
 //
@@ -1383,19 +1394,21 @@ void A_VileTarget(mobj_t *actor)
 void A_VileAttack(mobj_t *actor)
 {
     mobj_t      *fire;
+    mobj_t      *target = actor->target;
     int         an;
 
-    if (!actor->target)
+    if (!target)
         return;
 
     A_FaceTarget(actor);
 
-    if (!P_CheckSight(actor, actor->target))
+    if (!P_CheckSight(actor, target))
         return;
 
     S_StartSound(actor, sfx_barexp);
-    P_DamageMobj(actor->target, actor, actor, 20);
-    actor->target->momz = 1000 * FRACUNIT / actor->target->info->mass;
+    P_DamageMobj(target, actor, actor, 20);
+    if (!target->player || !(target->flags & MF_NOCLIP))
+        target->momz = 1000 * FRACUNIT / target->info->mass;
 
     an = actor->angle >> ANGLETOFINESHIFT;
 
@@ -1405,8 +1418,8 @@ void A_VileAttack(mobj_t *actor)
         return;
 
     // move the fire between the vile and the player
-    fire->x = actor->target->x - FixedMul(24 * FRACUNIT, finecosine[an]);
-    fire->y = actor->target->y - FixedMul(24 * FRACUNIT, finesine[an]);
+    fire->x = target->x - FixedMul(24 * FRACUNIT, finecosine[an]);
+    fire->y = target->y - FixedMul(24 * FRACUNIT, finesine[an]);
     P_RadiusAttack(fire, actor, 70);
 }
 
@@ -1941,7 +1954,7 @@ void A_SpawnFly(mobj_t* mo)
         // Will the next move put the cube closer to
         // the target point than it is now?
         dist = P_ApproxDistance(targ->x - (mo->x + mo->momx), targ->y - (mo->y + mo->momy));
-        if ((unsigned)dist < (unsigned)mo->reactiontime)
+        if ((unsigned int)dist < (unsigned int)mo->reactiontime)
         {
             mo->reactiontime = dist;    // Yes. Still flying
             return;

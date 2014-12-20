@@ -1,28 +1,37 @@
 /*
 ========================================================================
 
-  DOOM RETRO
-  The classic, refined DOOM source port. For Windows PC.
-  Copyright (C) 2013-2014 by Brad Harding. All rights reserved.
+                               DOOM RETRO
+         The classic, refined DOOM source port. For Windows PC.
+
+========================================================================
+
+  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright (C) 2013-2015 Brad Harding.
 
   DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-
   For a complete list of credits, see the accompanying AUTHORS file.
 
   This file is part of DOOM RETRO.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  DOOM RETRO is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
 
   DOOM RETRO is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+
+  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
+  company, in the US and/or other countries and is used without
+  permission. All other trademarks are the property of their respective
+  holders. DOOM RETRO is in no way affiliated with nor endorsed by
+  id Software LLC.
 
 ========================================================================
 */
@@ -241,6 +250,10 @@ linefix_t linefix[] =
 
     { doom2,            1,  10,     750,    0, "",         "",            "",            DEFAULT,   DEFAULT, DEFAULT,                 NoSpecial,                                                     DEFAULT },
     { doom2,            1,  10,     880,    0, "",         "",            "",            DEFAULT,   DEFAULT, ML_DONTDRAW,             DEFAULT,                                                       DEFAULT },
+    { doom2,            1,  10,     899,    1, "",         "-",           "",            DEFAULT,   DEFAULT, DEFAULT,                 DEFAULT,                                                       DEFAULT },
+    { doom2,            1,  10,     900,    1, "",         "-",           "",            DEFAULT,   DEFAULT, DEFAULT,                 DEFAULT,                                                       DEFAULT },
+    { doom2,            1,  10,     901,    1, "",         "-",           "",            DEFAULT,   DEFAULT, DEFAULT,                 DEFAULT,                                                       DEFAULT },
+    { doom2,            1,  10,     902,    1, "",         "-",           "",            DEFAULT,   DEFAULT, DEFAULT,                 DEFAULT,                                                       DEFAULT },
 
     { doom2,            1,  12,     632,    1, "",         "",            "",            DEFAULT,   DEFAULT, DEFAULT,                 NoSpecial,                                                     DEFAULT },
     { doom2,            1,  12,     648,    1, "",         "",            "PIPES",       DEFAULT,   DEFAULT, DEFAULT,                 DEFAULT,                                                       DEFAULT },
@@ -910,6 +923,7 @@ thingfix_t thingfix[] =
     { doom,             4,   1,     2, Player3Start,               416,     224,     414,     224, DEFAULT,  DEFAULT                          },
     { doom,             4,   1,     3, Player4Start,                32,     224,      34,     224, DEFAULT,  DEFAULT                          },
 
+    { doom,             4,   3,    69, Imp,                       -608,   -1696,    -640,   -1696, DEFAULT,  DEFAULT                          },
     { doom,             4,   3,   232, Rocket,                    1296,    1008,  REMOVE,  REMOVE, DEFAULT,  DEFAULT                          },
 
     { doom,             4,   4,   106, Spectre,                    320,    -160,     328,    -128, DEFAULT,  DEFAULT                          },
