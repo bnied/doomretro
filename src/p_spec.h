@@ -36,14 +36,16 @@
 ========================================================================
 */
 
-#ifndef __P_SPEC__
+#if !defined(__P_SPEC__)
 #define __P_SPEC__
 
 //
 // End-level timer (-TIMER option)
 //
-extern  boolean levelTimer;
-extern  int     levelTimeCount;
+extern boolean  levelTimer;
+extern int      levelTimeCount;
+
+extern boolean  *isliquid;
 
 // Define values for map objects
 #define MO_TELEPORTMAN          14
@@ -163,7 +165,7 @@ void T_FireFlicker(fireflicker_t *flick);
 // P_SWITCH
 //
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #pragma pack(push, 1)
 #endif
 
@@ -174,7 +176,7 @@ typedef struct
     short       episode;
 } switchlist_t;
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #pragma pack(pop)
 #endif
 
@@ -266,14 +268,14 @@ void P_ActivateInStasis(int tag);
 //
 typedef enum
 {
-    normal,
-    close30ThenOpen,
-    close,
-    open,
-    raiseIn5Mins,
-    blazeRaise,
-    blazeOpen,
-    blazeClose
+    doorNormal,
+    doorClose30ThenOpen,
+    doorClose,
+    doorOpen,
+    doorRaiseIn5Mins,
+    doorBlazeRaise,
+    doorBlazeOpen,
+    doorBlazeClose
 } vldoor_e;
 
 typedef struct
@@ -430,6 +432,8 @@ boolean EV_BuildStairs(line_t *line, stair_e type);
 boolean EV_DoFloor(line_t *line, floor_e floortype);
 
 void T_MoveFloor(floormove_t *floor);
+
+void P_InitAnimatedLiquids(void);
 
 //
 // P_TELEPT

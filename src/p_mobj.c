@@ -58,14 +58,30 @@ mobj_t                  *bloodSplatQueue[BLOODSPLATS_MAX];
 int                     bloodSplatQueueSlot;
 void                    (*P_BloodSplatSpawner)(fixed_t, fixed_t, int, int);
 
-int                     corpses = CORPSES_DEFAULT;
+boolean                 corpses_mirror = CORPSES_MIRROR_DEFAULT;
+boolean                 corpses_moreblood = CORPSES_MOREBLOOD_DEFAULT;
+boolean                 corpses_slide = CORPSES_SLIDE_DEFAULT;
+boolean                 corpses_smearblood = CORPSES_SMEARBLOOD_DEFAULT;
 boolean                 floatbob = FLOATBOB_DEFAULT;
-boolean                 footclip = FOOTCLIP_DEFAULT;
 boolean                 shadows = SHADOWS_DEFAULT;
-int                     smoketrails = SMOKETRAILS_DEFAULT;
+boolean                 smoketrails = SMOKETRAILS_DEFAULT;
 
+static fixed_t floatbobdiffs[64] =
+{
+     25695,  25695,  25447,  24955,  24222,  23256,  22066,  20663,
+     19062,  17277,  15325,  13226,  10999,   8667,   6251,   3775,
+      1262,  -1262,  -3775,  -6251,  -8667, -10999, -13226, -15325,
+    -17277, -19062, -20663, -22066, -23256, -24222, -24955, -25447,
+    -25695, -25695, -25447, -24955, -24222, -23256, -22066, -20663,
+    -19062, -17277, -15325, -13226, -11000,  -8667,  -6251,  -3775,
+     -1262,   1262,   3775,   6251,   8667,  10999,  13226,  15325,
+     17277,  19062,  20663,  22066,  23256,  24222,  24955,  25447
+};
+
+extern boolean          animatedliquid;
+extern fixed_t          animatedliquiddiffs[128];
 extern msecnode_t       *sector_list;   // phares 3/16/98
-extern boolean          *isliquid;
+extern boolean          mirrorweapons;
 
 //
 //
@@ -168,14 +184,13 @@ void P_XYMovement(mobj_t *mo)
     player_t    *player;
     fixed_t     xmove, ymove;
     mobjtype_t  type;
-    fixed_t     fac;
-    fixed_t     ptryx;
-    fixed_t     ptryy;
-    int         numsteps = 1;
+    int         flags = mo->flags;
+    int         flags2 = mo->flags2;
+
 
     if (!(mo->momx | mo->momy))
     {
-        if (mo->flags & MF_SKULLFLY)
+        if (flags & MF_SKULLFLY)
         {
             // the skull slammed into something
             mo->flags &= ~MF_SKULLFLY;
@@ -188,54 +203,47 @@ void P_XYMovement(mobj_t *mo)
     player = mo->player;
     type = mo->type;
 
-    if (mo->flags2 & MF2_SMOKETRAIL)
+    if (flags2 & MF2_SMOKETRAIL)
         if (puffcount++ > 1)
             P_SpawnSmokeTrail(mo->x, mo->y, mo->z, mo->angle);
 
-    // preserve the direction instead of clamping x and y independently.
-    xmove = BETWEEN(-MAXMOVE, mo->momx, MAXMOVE);
-    ymove = BETWEEN(-MAXMOVE, mo->momy, MAXMOVE);
+    mo->momx = BETWEEN(-MAXMOVE, mo->momx, MAXMOVE);
+    mo->momy = BETWEEN(-MAXMOVE, mo->momy, MAXMOVE);
 
-    fac = MIN(FixedDiv(xmove, mo->momx), FixedDiv(ymove, mo->momy));
-
-    xmove = mo->momx = FixedMul(mo->momx, fac);
-    ymove = mo->momy = FixedMul(mo->momy, fac);
-
-    // [WDJ] 3/2011 Moved out of loop and converted to stepping.
-    // Fixes mancubus fireballs which were too fast for collision tests,
-    // makes steps equal in size, and makes loop test faster and predictable.
-    // Boom bug had only the positive tests.
-    if (xmove > MAXMOVE / 2 || ymove > MAXMOVE / 2
-        || xmove < -MAXMOVE / 2 || ymove < -MAXMOVE / 2)
-    {
-        xmove >>= 1;
-        ymove >>= 1;
-        numsteps = 2;
-    }
-
-    if (mo->info->speed > mo->radius * 2)       // faster than radius * 2
-    {
-        // Mancubus missiles and the like.
-        xmove >>= 1;
-        ymove >>= 1;
-        numsteps *= 2;
-    }
-
-    ptryx = mo->x;
-    ptryy = mo->y;
+    xmove = mo->momx;
+    ymove = mo->momy;
 
     do
     {
-        ptryx += xmove;
-        ptryy += ymove;
+        fixed_t ptryx, ptryy;
 
+        // killough 8/9/98: fix bug in original Doom source:
+        // Large negative displacements were never considered.
+        // This explains the tendency for Mancubus fireballs
+        // to pass through walls.
+        if (xmove > MAXMOVE / 2 || ymove > MAXMOVE / 2
+            || xmove < -MAXMOVE / 2 || ymove < -MAXMOVE / 2)
+        {
+            ptryx = mo->x + xmove / 2;
+            ptryy = mo->y + ymove / 2;
+            xmove >>= 1;
+            ymove >>= 1;
+        }
+        else
+        {
+            ptryx = mo->x + xmove;
+            ptryy = mo->y + ymove;
+            xmove = ymove = 0;
+        }
+
+        // killough 3/15/98: Allow objects to drop off
         if (!P_TryMove(mo, ptryx, ptryy, true))
         {
             // blocked move
             if (player)
                 // try to slide along it
                 P_SlideMove(mo);
-            else if (mo->flags & MF_MISSILE)
+            else if (flags & MF_MISSILE)
             {
                 // explode a missile
                 if (ceilingline
@@ -247,9 +255,9 @@ void P_XYMovement(mobj_t *mo)
                     // against the sky.
                     // Does not handle sky floors.
                     P_RemoveMobj(mo);
-                    if (mo->type == MT_BFG)
+                    if (type == MT_BFG)
                         S_StartSound(mo, mo->info->deathsound);
-                    else if (mo->type == MT_ROCKET && mo->shadow)
+                    else if (type == MT_ROCKET && mo->shadow)
                         P_RemoveMobj(mo->shadow);
                     return;
                 }
@@ -258,16 +266,16 @@ void P_XYMovement(mobj_t *mo)
             else
                 mo->momx = mo->momy = 0;
         }
-    } while (--numsteps);
+    } while (xmove | ymove);
 
-    if (mo->flags & (MF_MISSILE | MF_SKULLFLY))
+    if (flags & (MF_MISSILE | MF_SKULLFLY))
         return;         // no friction for missiles or lost souls ever
 
-    if (mo->z > mo->floorz && !(mo->flags2 & MF2_ONMOBJ))
+    if (mo->z > mo->floorz && !(flags2 & MF2_ONMOBJ))
         return;         // no friction when airborne
 
-    if ((mo->flags & MF_CORPSE) && !(mo->flags & MF_NOBLOOD) && (corpses & SLIDE)
-        && (corpses & SMEARBLOOD) && (mo->momx || mo->momy) && mo->bloodsplats && bloodsplats)
+    if ((flags & MF_CORPSE) && !(flags & MF_NOBLOOD) && corpses_slide && corpses_smearblood
+        && (mo->momx || mo->momy) && mo->bloodsplats && bloodsplats)
     {
         int     i;
         int     max = ((MAXMOVE - (ABS(mo->momx) + ABS(mo->momy)) / 2) >> FRACBITS) / 12;
@@ -276,15 +284,20 @@ void P_XYMovement(mobj_t *mo)
 
         for (i = 0; i < max; i++)
         {
+            int x, y;
+
             if (!--mo->bloodsplats)
                 break;
 
-            P_BloodSplatSpawner(mo->x + (M_RandomInt(-radius, radius) << FRACBITS),
-                mo->y + (M_RandomInt(-radius, radius) << FRACBITS), blood, mo->floorz);
+            x = mo->x + (M_RandomInt(-radius, radius) << FRACBITS);
+            y = mo->y + (M_RandomInt(-radius, radius) << FRACBITS);
+
+            if (mo->floorz == R_PointInSubsector(x, y)->sector->floorheight)
+                P_BloodSplatSpawner(x, y, blood, mo->floorz);
         }
     }
 
-    if (((mo->flags & MF_CORPSE) || (mo->flags2 & MF2_FALLING))
+    if (((flags & MF_CORPSE) || (flags2 & MF2_FALLING))
         && (mo->momx > FRACUNIT / 4 || mo->momx < -FRACUNIT / 4
             || mo->momy > FRACUNIT / 4 || mo->momy < -FRACUNIT / 4)
         && mo->floorz != mo->subsector->sector->floorheight)
@@ -302,8 +315,7 @@ void P_XYMovement(mobj_t *mo)
     }
     else
     {
-        if (((mo->flags & MF_CORPSE) || (mo->flags & MF_DROPPED))
-            && isliquid[mo->subsector->sector->floorpic])
+        if ((flags2 & MF2_FEETARECLIPPED) && !player)
         {
             mo->momx = FixedMul(mo->momx, WATERFRICTION);
             mo->momy = FixedMul(mo->momy, WATERFRICTION);
@@ -322,6 +334,7 @@ void P_XYMovement(mobj_t *mo)
 void P_ZMovement(mobj_t *mo)
 {
     player_t    *player = mo->player;
+    int         flags = mo->flags;
 
     // check for smooth step up
     if (player && mo->z < mo->floorz)
@@ -333,10 +346,10 @@ void P_ZMovement(mobj_t *mo)
     // adjust height
     mo->z += mo->momz;
 
-    if ((mo->flags & MF_FLOAT) && mo->target)
+    if ((flags & MF_FLOAT) && mo->target)
     {
         // float down towards target if too close
-        if (!(mo->flags & MF_SKULLFLY) && !(mo->flags & MF_INFLOAT))
+        if (!(flags & MF_SKULLFLY) && !(flags & MF_INFLOAT))
         {
             fixed_t     delta = (mo->target->z + (mo->height >> 1) - mo->z) * 3;
 
@@ -354,12 +367,13 @@ void P_ZMovement(mobj_t *mo)
         {
             P_RemoveMobj(mo);
             if (bloodsplats)
-                P_BloodSplatSpawner(mo->x, mo->y, mo->blood, mo->floorz);
+                P_BloodSplatSpawner(mo->x + (M_RandomInt(-5, 5) << FRACBITS),
+                    mo->y + (M_RandomInt(-5, 5) << FRACBITS), mo->blood, mo->floorz);
             return;
         }
 
         // hit the floor
-        if (mo->flags & MF_SKULLFLY)
+        if (flags & MF_SKULLFLY)
             mo->momz = -mo->momz;       // the skull slammed into something
 
         if (mo->momz < 0)
@@ -379,13 +393,13 @@ void P_ZMovement(mobj_t *mo)
         }
         mo->z = mo->floorz;
 
-        if ((mo->flags & MF_MISSILE) && !(mo->flags & MF_NOCLIP))
+        if ((flags & MF_MISSILE) && !(flags & MF_NOCLIP))
         {
             P_ExplodeMissile(mo);
             return;
         }
     }
-    else if (!(mo->flags & MF_NOGRAVITY))
+    else if (!(flags & MF_NOGRAVITY))
     {
         if (!mo->momz)
             mo->momz = -GRAVITY;
@@ -394,7 +408,7 @@ void P_ZMovement(mobj_t *mo)
 
     if (mo->z + mo->height > mo->ceilingz)
     {
-        if (mo->flags & MF_SKULLFLY)
+        if (flags & MF_SKULLFLY)
             mo->momz = -mo->momz;       // the skull slammed into something
 
         // hit the ceiling
@@ -403,7 +417,7 @@ void P_ZMovement(mobj_t *mo)
 
         mo->z = mo->ceilingz - mo->height;
 
-        if ((mo->flags & MF_MISSILE) && !(mo->flags & MF_NOCLIP))
+        if ((flags & MF_MISSILE) && !(flags & MF_NOCLIP))
         {
             P_ExplodeMissile(mo);
             return;
@@ -477,25 +491,17 @@ static void PlayerLandedOnThing(mobj_t *mo)
         P_NoiseAlert(mo, mo);
 }
 
-fixed_t floatbobdiffs[64] =
-{
-     25695,  25695,  25447,  24955,  24222,  23256,  22066,  20663,
-     19062,  17277,  15325,  13226,  10999,   8667,   6251,   3775,
-      1262,  -1262,  -3775,  -6251,  -8667, -10999, -13226, -15325,
-    -17277, -19062, -20663, -22066, -23256, -24222, -24955, -25447,
-    -25695, -25695, -25447, -24955, -24222, -23256, -22066, -20663,
-    -19062, -17277, -15325, -13226, -11000,  -8667,  -6251,  -3775,
-     -1262,   1262,   3775,   6251,   8667,  10999,  13226,  15325,
-     17276,  19062,  20663,  22066,  23256,  24222,  24955,  25448
-};
-
 //
 // P_MobjThinker
 //
 void P_MobjThinker(mobj_t *mobj)
 {
+    int         flags = mobj->flags;
+    int         flags2 = mobj->flags2;
+    player_t    *player = mobj->player;
+
     // momentum movement
-    if (mobj->momx || mobj->momy || (mobj->flags & MF_SKULLFLY))
+    if (mobj->momx || mobj->momy || (flags & MF_SKULLFLY))
     {
         P_XYMovement(mobj);
 
@@ -503,11 +509,14 @@ void P_MobjThinker(mobj_t *mobj)
             return;             // mobj was removed
     }
 
-    if ((mobj->flags2 & MF2_FLOATBOB) && floatbob)
+    if ((flags2 & MF2_FEETARECLIPPED) && !(flags2 & MF2_NOFLOATBOB)
+        && mobj->z <= mobj->subsector->sector->floorheight && !mobj->momz && animatedliquid)
+        mobj->z += animatedliquiddiffs[leveltime & 127];
+    else if ((flags2 & MF2_FLOATBOB) && floatbob)
         mobj->z += floatbobdiffs[(mobj->floatbob + leveltime) & 63];
     else if (mobj->z != mobj->floorz || mobj->momz)
     {
-        if (mobj->flags2 & MF2_PASSMOBJ)
+        if (flags2 & MF2_PASSMOBJ)
         {
             mobj_t *onmo;
 
@@ -518,14 +527,14 @@ void P_MobjThinker(mobj_t *mobj)
             }
             else
             {
-                if (mobj->player)
+                if (player)
                 {
                     if (mobj->momz < -GRAVITY * 8)
                         PlayerLandedOnThing(mobj);
                     if (onmo->z + onmo->height - mobj->z <= 24 * FRACUNIT)
                     {
-                        mobj->player->viewheight -= onmo->z + onmo->height - mobj->z;
-                        mobj->player->deltaviewheight = (VIEWHEIGHT - mobj->player->viewheight) >> 3;
+                        player->viewheight -= onmo->z + onmo->height - mobj->z;
+                        player->deltaviewheight = (VIEWHEIGHT - player->viewheight) >> 3;
                         mobj->z = onmo->z + onmo->height;
                         mobj->flags2 |= MF2_ONMOBJ;
                     }
@@ -539,13 +548,13 @@ void P_MobjThinker(mobj_t *mobj)
         if (mobj->thinker.function.acv == (actionf_v)(-1))
             return;             // mobj was removed
     }
-    else if (!mobj->momx && !mobj->momy && !mobj->player)
+    else if (!mobj->momx && !mobj->momy && !player)
     {
         // killough 9/12/98: objects fall off ledges if they are hanging off
         // slightly push off of ledge if hanging more than halfway off
         // [RH] Be more restrictive to avoid pushing monsters/players down steps
-        if (!(mobj->flags & MF_NOGRAVITY) && !(mobj->flags2 & MF2_FLOATBOB)
-            && mobj->z > mobj->dropoffz && (mobj->health <= 0 || ((mobj->flags & MF_COUNTKILL)
+        if (!(flags & MF_NOGRAVITY) && !(flags2 & MF2_FLOATBOB)
+            && mobj->z > mobj->dropoffz && (mobj->health <= 0 || ((flags & MF_COUNTKILL)
             && mobj->z - mobj->dropoffz > 24 * FRACUNIT)))
             P_ApplyTorque(mobj);
         else
@@ -567,7 +576,7 @@ void P_MobjThinker(mobj_t *mobj)
     else
     {
         // check for nightmare respawn
-        if ((mobj->flags & MF_SHOOTABLE) && respawnmonsters)
+        if ((flags & MF_SHOOTABLE) && respawnmonsters)
         {
             mobj->movecount++;
 
@@ -583,7 +592,7 @@ void P_MobjThinker(mobj_t *mobj)
 void P_NullMobjThinker(mobj_t *mobj)
 {
 }
-
+#include "i_system.h"
 //
 // P_SpawnMobj
 //
@@ -630,6 +639,12 @@ mobj_t *P_SpawnMobj(fixed_t x, fixed_t y, fixed_t z, mobjtype_t type)
     mobj->sprite = st->sprite;
     mobj->frame = st->frame;
 
+    if (!mobj->info->canmodify)
+    {
+        mobj->projectilepassheight = mobj->height;
+        mobj->flags2 = 0;
+    }
+
     mobj->colfunc = info->colfunc;
     mobj->blood = info->blood;
 
@@ -640,7 +655,7 @@ mobj_t *P_SpawnMobj(fixed_t x, fixed_t y, fixed_t z, mobjtype_t type)
     mobj->floorz = mobj->subsector->sector->floorheight;
     mobj->ceilingz = mobj->subsector->sector->ceilingheight;
 
-    if ((mobj->flags2 & MF2_FLOATBOB) && floatbob)
+    if (floatbob)
         mobj->floatbob = P_Random();
 
     mobj->z = (z == ONFLOORZ ? mobj->floorz : 
@@ -652,14 +667,13 @@ mobj_t *P_SpawnMobj(fixed_t x, fixed_t y, fixed_t z, mobjtype_t type)
     if (mobj->flags2 & MF2_SHADOW)
         P_SpawnShadow(mobj);
 
-    if (footclip)
-        if (isliquid[mobj->subsector->sector->floorpic])
-        {
-            if (!(mobj->flags2 & MF2_NOFOOTCLIP))
-                mobj->flags2 |= MF2_FEETARECLIPPED;
-            if ((mobj->flags2 & MF2_SHADOW) && mobj->shadow)
-                mobj->shadow->flags2 |= MF2_FEETARECLIPPED;
-        }
+    if (isliquid[mobj->subsector->sector->floorpic])
+    {
+        if (!(mobj->flags2 & MF2_NOFOOTCLIP))
+            mobj->flags2 |= MF2_FEETARECLIPPED;
+        if ((mobj->flags2 & MF2_SHADOW) && mobj->shadow)
+            mobj->shadow->flags2 |= MF2_FEETARECLIPPED;
+    }
 
     return mobj;
 }
@@ -695,7 +709,7 @@ void P_RemoveMobj(mobj_t *mobj)
         P_DelSeclist(sector_list);
         sector_list = NULL;
     }
-    
+
     mobj->flags |= (MF_NOSECTOR | MF_NOBLOCKMAP);
 
     mobj->target = mobj->tracer = mobj->lastenemy = NULL;
@@ -710,7 +724,7 @@ void P_RemoveMobj(mobj_t *mobj)
 // Finds a mobj type with a matching doomednum
 // killough 8/24/98: rewrote to use hashing
 //
-static int P_FindDoomedNum(unsigned int type)
+int P_FindDoomedNum(unsigned int type)
 {
     static struct
     {
@@ -861,14 +875,24 @@ void P_SpawnPlayer(int n, const mapthing_t *mthing)
 
 void P_SpawnMoreBlood(mobj_t *mobj)
 {
-    int     radius = ((spritewidth[sprites[mobj->sprite].spriteframes[0].lump[0]] >> FRACBITS) >> 1) + 8;
-    int     i;
-    int     max = M_RandomInt(100, 150);
-    int     blood = mobjinfo[mobj->blood].blood;
+    int radius = ((spritewidth[sprites[mobj->sprite].spriteframes[0].lump[0]] >> FRACBITS) >> 1) + 12;
+    int i;
+    int max = M_RandomInt(50, 100) + radius;
+    int shiftx = M_RandomInt(-radius / 3, radius / 3) << FRACBITS;
+    int shifty = M_RandomInt(-radius / 3, radius / 3) << FRACBITS;
+    int blood = mobjinfo[mobj->blood].blood;
 
     for (i = 0; i < max; i++)
-        P_BloodSplatSpawner(mobj->x + (M_RandomInt(-radius, radius) << FRACBITS),
-            mobj->y + (M_RandomInt(-radius, radius) << FRACBITS), blood, mobj->floorz);
+    {
+        int     angle = M_RandomInt(0, FINEANGLES - 1);
+        int     x = mobj->x + shiftx + FixedMul(M_RandomInt(0, radius) << FRACBITS, finecosine[angle]);
+        int     y = mobj->y + shifty + FixedMul(M_RandomInt(0, radius) << FRACBITS, finesine[angle]);
+
+        if (!--mobj->bloodsplats)
+            break;
+
+        P_BloodSplatSpawner(x, y, blood, mobj->floorz);
+    }
 }
 
 //
@@ -953,7 +977,7 @@ void P_SpawnMapThing(mapthing_t *mthing)
     if (mobj->flags & MF_COUNTITEM)
         totalitems++;
 
-    mobj->angle = (mthing->angle % 45 ? mthing->angle * (ANG45 / 45) : 
+    mobj->angle = (mthing->angle % 45 ? mthing->angle * (ANG45 / 45) :
                                         ANG45 * (mthing->angle / 45));
     if ((mobj->flags2 & MF2_SHADOW) && mobj->shadow)
         mobj->shadow->angle = mobj->angle;
@@ -961,7 +985,7 @@ void P_SpawnMapThing(mapthing_t *mthing)
     if (mthing->options & MTF_AMBUSH)
         mobj->flags |= MF_AMBUSH;
 
-    if (mobj->type == MF_CORPSE && (corpses & MIRROR))
+    if ((mobj->flags & MF_CORPSE) && corpses_mirror)
     {
         static int      prev = 0;
         int             r = M_RandomInt(1, 10);
@@ -976,12 +1000,16 @@ void P_SpawnMapThing(mapthing_t *mthing)
         else
             prev++;
     }
+    else if (mirrorweapons && (mobj->flags & MF_PICKUP)
+        && !(mobj->flags2 & MF2_FLOATBOB) && (rand() & 1))
+        mobj->flags2 |= MF2_MIRRORED;
 
     if (!(mobj->flags & MF_SHOOTABLE) && !(mobj->flags & MF_NOBLOOD) && mobj->blood && !chex
-        && (corpses & MOREBLOOD) && bloodsplats && !dehacked)
+        && bloodsplats && !dehacked)
     {
         mobj->bloodsplats = CORPSEBLOODSPLATS;
-        P_SpawnMoreBlood(mobj);
+        if (corpses_moreblood)
+            P_SpawnMoreBlood(mobj);
     }
 }
 
@@ -1014,7 +1042,7 @@ void P_SpawnPuff(fixed_t x, fixed_t y, fixed_t z, angle_t angle, boolean sound)
         {
             S_StartSound(th, sfx_punch);
 
-            if ((gamepadvibrate & WEAPONS) && vibrate)
+            if (gamepadvibrate && vibrate)
             {
                 int motorspeed = weaponinfo[wp_fist].motorspeed;
 
@@ -1052,7 +1080,7 @@ void P_SpawnBlood(fixed_t x, fixed_t y, fixed_t z, angle_t angle, int damage, mo
 
     angle += ANG180;
 
-    for (i = MAX(P_Random() & 10, damage >> 2); i; i--)
+    for (i = MAX(P_Random() % 10, damage >> 2); i; i--)
     {
         mobj_t      *th = Z_Malloc(sizeof(*th), PU_LEVEL, NULL);
         state_t     *st;
@@ -1069,7 +1097,7 @@ void P_SpawnBlood(fixed_t x, fixed_t y, fixed_t z, angle_t angle, int damage, mo
         st = &states[info->spawnstate];
 
         th->state = st;
-        th->tics = MAX(1, st->tics - (P_Random() & 6));
+        th->tics = MAX(1, st->tics - (P_Random() & 3));
         th->sprite = st->sprite;
         th->frame = st->frame;
 
@@ -1100,23 +1128,15 @@ void P_SpawnBlood(fixed_t x, fixed_t y, fixed_t z, angle_t angle, int damage, mo
     }
 }
 
-extern boolean *isliquid;
-
 //
 // P_SpawnBloodSplat
 //
 void P_SpawnBloodSplat(fixed_t x, fixed_t y, int blood, int maxheight)
 {
-    subsector_t *ss;
-    fixed_t     height;
+    sector_t    *sec = R_PointInSubsector(x, y)->sector;
+    fixed_t     height = sec->floorheight;
 
-    x += ((rand() % 16 - 5) << FRACBITS);
-    y += ((rand() % 16 - 5) << FRACBITS);
-
-    ss = R_PointInSubsector(x, y);
-    height = ss->sector->floorheight;
-
-    if (!isliquid[ss->sector->floorpic] && height <= maxheight)
+    if (!isliquid[sec->floorpic] && height <= maxheight)
     {
         mobj_t  *newsplat = (mobj_t *)Z_Malloc(sizeof(*newsplat), PU_LEVEL, NULL);
 
@@ -1127,7 +1147,8 @@ void P_SpawnBloodSplat(fixed_t x, fixed_t y, int blood, int maxheight)
         newsplat->sprite = SPR_BLD2;
         newsplat->frame = rand() & 7;
 
-        newsplat->flags2 = (MF2_DRAWFIRST | MF2_DONOTMAP | (rand() & 1) * MF2_MIRRORED);
+        newsplat->flags2 = (MF2_DRAWFIRST | MF2_DONOTMAP | MF2_NOFOOTCLIP |
+            (rand() & 1) * MF2_MIRRORED);
         if (blood == FUZZYBLOOD)
         {
             newsplat->flags = MF_FUZZ;
@@ -1149,16 +1170,10 @@ void P_SpawnBloodSplat(fixed_t x, fixed_t y, int blood, int maxheight)
 
 void P_SpawnBloodSplat2(fixed_t x, fixed_t y, int blood, int maxheight)
 {
-    subsector_t *ss;
-    fixed_t     height;
+    sector_t    *sec = R_PointInSubsector(x, y)->sector;
+    fixed_t     height = sec->floorheight;
 
-    x += ((rand() % 16 - 5) << FRACBITS);
-    y += ((rand() % 16 - 5) << FRACBITS);
-
-    ss = R_PointInSubsector(x, y);
-    height = ss->sector->floorheight;
-
-    if (!isliquid[ss->sector->floorpic] && height <= maxheight)
+    if (!isliquid[sec->floorpic] && height <= maxheight)
     {
         mobj_t  *newsplat = (mobj_t *)Z_Malloc(sizeof(*newsplat), PU_LEVEL, NULL);
 
@@ -1169,7 +1184,8 @@ void P_SpawnBloodSplat2(fixed_t x, fixed_t y, int blood, int maxheight)
         newsplat->sprite = SPR_BLD2;
         newsplat->frame = rand() & 7;
 
-        newsplat->flags2 = (MF2_DRAWFIRST | MF2_DONOTMAP | (rand() & 1) * MF2_MIRRORED);
+        newsplat->flags2 = (MF2_DRAWFIRST | MF2_DONOTMAP | MF2_NOFOOTCLIP |
+            (rand() & 1) * MF2_MIRRORED);
         if (blood == FUZZYBLOOD)
         {
             newsplat->flags = MF_FUZZ;
@@ -1354,7 +1370,7 @@ void P_SpawnPlayerMissile(mobj_t *source, mobjtype_t type)
     th->momy = FixedMul(th->info->speed, finesine[an >> ANGLETOFINESHIFT]);
     th->momz = FixedMul(th->info->speed, slope);
 
-    if (type == MT_ROCKET && (smoketrails & PLAYER) && !dehacked)
+    if (type == MT_ROCKET && smoketrails && !dehacked)
     {
         th->flags2 |= MF2_SMOKETRAIL;
         puffcount = 0;

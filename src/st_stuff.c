@@ -37,6 +37,7 @@
 */
 
 #include "am_map.h"
+#include "c_console.h"
 #include "d_deh.h"
 #include "doomstat.h"
 #include "dstrings.h"
@@ -547,10 +548,10 @@ void ST_AutomapEvent(int type)
     }
 }
 
-extern char cheatkey;
-extern int selectedepisode;
-extern menu_t EpiDef;
-extern int cardsfound;
+extern char     cheatkey;
+extern int      selectedepisode;
+extern menu_t   EpiDef;
+extern int      cardsfound;
 
 // Respond to keyboard input events,
 //  intercept cheats.
@@ -563,12 +564,12 @@ boolean ST_Responder(event_t *ev)
     mobj_t      *thing;
 
     // if a user keypress...
-    if (ev->type == ev_keydown)
+    if (ev->type == ev_keydown || consolecheat[0])
     {
         if (!menuactive && !paused)     // [BH] no cheats when in menu or paused
         {
             // [BH]
-            if (cht_CheckCheat(&cheat_mus, ev->data2) && !nomusic && musicVolume)
+            if (!consolecheat[0] && cht_CheckCheat(&cheat_mus, ev->data2) && !nomusic && musicVolume)
                 idmus = true;
 
             // 'dqd' cheat for toggleable god mode
@@ -617,7 +618,7 @@ boolean ST_Responder(event_t *ev)
                     oldhealth = plyr->health;
                     P_GiveBody(plyr, 100);
 
-                    plyr->message = s_STSTR_DQDON;
+                    HU_PlayerMessage(s_STSTR_DQDON);
 
                     // [BH] always display message
                     message_dontfuckwithme = true;
@@ -627,7 +628,7 @@ boolean ST_Responder(event_t *ev)
                 }
                 else
                 {
-                    plyr->message = s_STSTR_DQDOFF;
+                    HU_PlayerMessage(s_STSTR_DQDOFF);
 
                     // [BH] always display message
                     message_dontfuckwithme = true;
@@ -760,7 +761,7 @@ boolean ST_Responder(event_t *ev)
                     // [BH] flash screen
                     P_AddBonus(plyr, BONUSADD);
 
-                    plyr->message = s_STSTR_FAADDED;
+                    HU_PlayerMessage(s_STSTR_FAADDED);
 
                     // [BH] always display message
                     message_dontfuckwithme = true;
@@ -890,7 +891,7 @@ boolean ST_Responder(event_t *ev)
                     // [BH] flash screen
                     P_AddBonus(plyr, BONUSADD);
 
-                    plyr->message = s_STSTR_KFAADDED;
+                    HU_PlayerMessage(s_STSTR_KFAADDED);
 
                     // [BH] always display message
                     message_dontfuckwithme = true;
@@ -935,7 +936,7 @@ boolean ST_Responder(event_t *ev)
                             S_ChangeMusic(musnum, 1, true);
 
                             M_snprintf(msg, sizeof(msg), s_STSTR_MUS, S_music[musnum].name);
-                            plyr->message = msg;
+                            HU_PlayerMessage(msg);
 
                             // [BH] always display message
                             message_dontfuckwithme = true;
@@ -957,7 +958,7 @@ boolean ST_Responder(event_t *ev)
             {
                 plyr->cheats ^= CF_NOCLIP;
 
-                plyr->message = (plyr->cheats & CF_NOCLIP ? s_STSTR_NCON : s_STSTR_NCOFF);
+                HU_PlayerMessage((plyr->cheats & CF_NOCLIP) ? s_STSTR_NCON : s_STSTR_NCOFF);
 
                 // [BH] always display message
                 message_dontfuckwithme = true;
@@ -1007,7 +1008,7 @@ boolean ST_Responder(event_t *ev)
                               }
                         }
 
-                        plyr->message = s_STSTR_BEHOLDON;
+                        HU_PlayerMessage(s_STSTR_BEHOLDON);
                     }
                     else
                     {
@@ -1035,7 +1036,7 @@ boolean ST_Responder(event_t *ev)
                             plyr->powers[i] = STARTFLASHING * (i != pw_allmap);
                         }
 
-                        plyr->message = s_STSTR_BEHOLDOFF;
+                        HU_PlayerMessage(s_STSTR_BEHOLDOFF);
                     }
 
                     // [BH] reset all cheat sequences
@@ -1110,7 +1111,7 @@ boolean ST_Responder(event_t *ev)
                     P_GivePower(plyr, pw_invulnerability);
                     plyr->powers[pw_invulnerability] = -1;
 
-                    plyr->message = s_STSTR_CHOPPERS;
+                    HU_PlayerMessage(s_STSTR_CHOPPERS);
 
                     // [BH] always display message
                     message_dontfuckwithme = true;
@@ -1166,7 +1167,7 @@ boolean ST_Responder(event_t *ev)
         // 'clev' change-level cheat
         if (!menuactive && !paused)
         {
-            if (cht_CheckCheat(&cheat_clev, ev->data2))
+            if (!consolecheat[0] && cht_CheckCheat(&cheat_clev, ev->data2))
                 idclev = true;
             if (cht_CheckCheat(&cheat_clev_xy, ev->data2))
             {
@@ -1211,7 +1212,7 @@ boolean ST_Responder(event_t *ev)
                         M_snprintf(message, sizeof(message), s_STSTR_CLEVSAME, lump);
                     else
                         M_snprintf(message, sizeof(message), s_STSTR_CLEV, lump);
-                    plyr->message = message;
+                    HU_PlayerMessage(message);
 
                     // [BH] always display message
                     message_dontfuckwithme = true;
@@ -1790,7 +1791,7 @@ void ST_createWidgets(void)
                            ST_ARMSX + (i % 3) * ST_ARMSXSPACE,
                            ST_ARMSY + i / 3 * ST_ARMSYSPACE,
                            arms[i],
-                           (i == 1 ? (int *)&plyr->shotguns : (int *)&plyr->weaponowned[i + 1]),
+                           (i == 1 ? &plyr->shotguns : &plyr->weaponowned[i + 1]),
                            &st_armson);
     }
 

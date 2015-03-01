@@ -36,6 +36,7 @@
 ========================================================================
 */
 
+#include "c_console.h"
 #include "d_deh.h"
 #include "doomstat.h"
 #include "dstrings.h"
@@ -82,7 +83,6 @@ extern int              cardsfound;
 extern patch_t          *tallnum[10];
 extern patch_t          *tallpercent;
 extern boolean          emptytallpercent;
-extern int              fps;
 
 static boolean          headsupactive = false;
 
@@ -316,7 +316,7 @@ static void HU_DrawHUD(void)
             health_x -= 14;
 
         invert = ((health <= HUD_HEALTH_MIN && healthanim) || health > HUD_HEALTH_MIN
-            || menuactive || paused);
+            || menuactive || paused || consoleactive);
         if (patch)
             if ((plr->cheats & CF_GODMODE) || invulnerability > 128 || (invulnerability & 8))
                 godhudfunc(HUD_HEALTH_X - 14, HUD_HEALTH_Y - (SHORT(patch->height) - 17), patch,
@@ -328,7 +328,7 @@ static void HU_DrawHUD(void)
         if (!emptytallpercent)
             hudnumfunc(health_x + 50, HUD_HEALTH_Y, tallpercent, invert);
 
-        if (health <= HUD_HEALTH_MIN && !menuactive && !paused)
+        if (health <= HUD_HEALTH_MIN && !menuactive && !paused && !consoleactive)
         {
             if (!--healthanimtics)
             {
@@ -366,12 +366,12 @@ static void HU_DrawHUD(void)
             }
 
             invert = ((ammo <= HUD_AMMO_MIN && ammoanim) || ammo > HUD_AMMO_MIN
-                || menuactive || paused);
+                || menuactive || paused || consoleactive);
             if (ammopic[ammotype].patch)
                 hudfunc(ammopic_x, HUD_AMMO_Y + ammopic[ammotype].y, ammopic[ammotype].patch, invert);
             DrawHUDNumber(ammonum_x, HUD_AMMO_Y, ammo, invert, hudnumfunc);
 
-            if (ammo <= HUD_AMMO_MIN && !menuactive && !paused)
+            if (ammo <= HUD_AMMO_MIN && !menuactive && !paused && !consoleactive)
             {
                 if (!--ammoanimtics)
                 {
@@ -417,7 +417,7 @@ static void HU_DrawHUD(void)
 
                     if (patch)
                     {
-                        if (!menuactive && !paused)
+                        if (!menuactive && !paused && !consoleactive)
                         {
                             plr->neededcardtics--;
                             if (!--keyanimcounter)
@@ -498,12 +498,11 @@ extern int      direction;
 
 void HU_Ticker(void)
 {
-    static char fps_str[8] = "";
+    boolean     idmypos = players[consoleplayer].cheats & CF_MYPOS;
 
     // tick down message counter if message is up
     if (((!menuactive && !paused) || inhelpscreens || message_dontpause) &&
-        !idbehold && !(players[consoleplayer].cheats & CF_MYPOS) && !devparm && message_counter &&
-        !--message_counter)
+        !idbehold && !idmypos && message_counter && !--message_counter)
     {
         message_on = false;
         message_nottobefuckedwith = false;
@@ -525,7 +524,7 @@ void HU_Ticker(void)
         HUlib_addMessageToSText(&w_message, 0, s_STSTR_BEHOLD);
         message_on = true;
     }
-    else if (players[consoleplayer].cheats & CF_MYPOS)
+    else if (idmypos)
     {
         // [BH] display and constantly update message for IDMYPOS cheat
         char    buffer[80];
@@ -537,12 +536,14 @@ void HU_Ticker(void)
         else if (message_counter > 132)
             message_counter--;
 
-        if (automapactive && !followplayer)
+        if (automapactive && !followmode)
         {
+            sector_t    *sector = R_PointInSubsector(m_x + (m_w >> 1), m_y + (m_h >> 1))->sector;
+
             angle = direction;
             x = (m_x + (m_w >> 1)) / FRACUNIT;
             y = (m_y + (m_h >> 1)) / FRACUNIT;
-            z = R_PointInSubsector(m_x + (m_w >> 1), m_y + (m_h >> 1))->sector->floorheight / FRACUNIT;
+            z = sector->floorheight / FRACUNIT;
         }
         else
         {
@@ -558,45 +559,43 @@ void HU_Ticker(void)
         HUlib_addMessageToSText(&w_message, 0, buffer);
         message_on = true;
     }
-    else if (devparm)
+
+    // display message if necessary
+    if ((plr->message && !message_nottobefuckedwith)
+        || (plr->message && message_dontfuckwithme))
     {
-        M_snprintf(fps_str, sizeof(fps_str), "%i FPS", fps);
-        HUlib_addMessageToSText(&w_message, 0, fps_str);
-        message_on = true;
-    }
-    else
-    {
-        // display message if necessary
-        if ((plr->message && !message_nottobefuckedwith)
-            || (plr->message && message_dontfuckwithme))
+        if (!idbehold && !idmypos && (messages || message_dontfuckwithme))
         {
-            printf("%s\n", plr->message);
-            if (messages || message_dontfuckwithme)
+            char    *s = Z_Malloc(133, PU_STATIC, NULL);
+            int     len;
+
+            strcpy(s, plr->message);
+
+            len = strlen(s);
+            while (M_StringWidth(s) > ORIGINALWIDTH - 6)
             {
-                char    *s = Z_Malloc(133, PU_STATIC, NULL);
-                int     len;
-
-                strcpy(s, plr->message);
-
-                len = strlen(s);
-                while (M_StringWidth(s) > ORIGINALWIDTH - 6)
-                {
-                    s[len - 1] = '.';
-                    s[len] = '.';
-                    s[len + 1] = '.';
-                    s[len + 2] = '\0';
-                    --len;
-                }
-
-                HUlib_addMessageToSText(&w_message, 0, s);
-                message_on = true;
-                message_counter = HU_MSGTIMEOUT;
-                message_nottobefuckedwith = message_dontfuckwithme;
-                message_dontfuckwithme = 0;
+                s[len - 1] = '.';
+                s[len] = '.';
+                s[len + 1] = '.';
+                s[len + 2] = '\0';
+                --len;
             }
-            plr->message = 0;
+
+            HUlib_addMessageToSText(&w_message, 0, s);
+            message_on = true;
+            message_counter = HU_MSGTIMEOUT;
+            message_nottobefuckedwith = message_dontfuckwithme;
+            message_dontfuckwithme = 0;
         }
+        plr->message = 0;
     }
+}
+
+void HU_PlayerMessage(char *message)
+{
+    if (plr)
+        plr->message = message;
+    C_PlayerMessage(message);
 }
 
 void HU_clearMessages(void)

@@ -113,7 +113,7 @@ static byte notgrayorbrown[256] =
     0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -176,7 +176,7 @@ static struct
 } fullbright[] = {
 
     // textures
-    { "COMP2",    "XXXXXXXX", notgrayorbrown }, { "COMPSTA1", "",         notgray        },
+    { "COMP2",    "",         notgrayorbrown }, { "COMPSTA1", "",         notgray        },
     { "COMPSTA2", "",         notgray        }, { "COMPUTE1", "",         notgrayorbrown },
     { "COMPUTE2", "",         notgrayorbrown }, { "COMPUTE3", "",         notgrayorbrown },
     { "EXITSIGN", "",         notgray        }, { "EXITSTON", "",         notgray        },
@@ -718,9 +718,9 @@ static void R_InitTextures(void)
     GenerateTextureHashTable();
 
     // [BH] Initialize partially fullbright textures.
+    memset(texturefullbright, 0, numtextures * sizeof(*texturefullbright));
     if (brightmaps)
     {
-        memset(texturefullbright, 0, numtextures * sizeof(*texturefullbright));
         i = 0;
         while (fullbright[i].colormask)
         {
@@ -756,22 +756,22 @@ void R_InitFlats(void)
         flattranslation[i] = i;
 
     // [BH] Initialize partially fullbright flats.
-    if (brightmaps)
-    {
-        memset(flatfullbright, 0, numflats * sizeof(*flatfullbright));
-        i = 0;
-        while (fullbright[i].colormask)
-        {
-            if (fullbright[i].flat)
-            {
-                int num = R_CheckFlatNumForName(fullbright[i].flat);
+    memset(flatfullbright, 0, numflats * sizeof(*flatfullbright));
+    //if (brightmaps)
+    //{
+    //    i = 0;
+    //    while (fullbright[i].colormask)
+    //    {
+    //        if (fullbright[i].flat)
+    //        {
+    //            int      num = R_CheckFlatNumForName(fullbright[i].flat);
 
-                if (num != -1)
-                    flatfullbright[num] = fullbright[i].colormask;
-                i++;
-            }
-        }
-    }
+    //            if (num != -1)
+    //                flatfullbright[num] = fullbright[i].colormask;
+    //            i++;
+    //        }
+    //    }
+    //}
 }
 
 //
@@ -783,6 +783,9 @@ void R_InitFlats(void)
 void R_InitSpriteLumps(void)
 {
     int i;
+
+    for (i = 0; i < NUMMOBJTYPES; i++)
+        mobjinfo[i].canmodify = true;
 
     firstspritelump = W_GetNumForName("S_START") + 1;
     lastspritelump = W_GetNumForName("S_END") - 1;
@@ -803,7 +806,7 @@ void R_InitSpriteLumps(void)
         spritetopoffset[i] = SHORT(patch->topoffset) << FRACBITS;
 
         // [BH] override sprite offsets in WAD with those in sproffsets[] in info.c
-        if (!FREEDOOM && !hacx && !dehacked)
+        if (!FREEDOOM && !hacx)
         {
             int j = 0;
 
@@ -818,6 +821,8 @@ void R_InitSpriteLumps(void)
                         break;
                     }
                 }
+                else
+                    mobjinfo[sproffsets[j].type].canmodify = false;
                 j++;
             }
         }
@@ -827,7 +832,7 @@ void R_InitSpriteLumps(void)
     {
         states[S_BAR1].tics = 0;
         mobjinfo[MT_BARREL].spawnstate = S_BAR2;
-        mobjinfo[MT_BARREL].frames = 2;
+        mobjinfo[MT_BARREL].frames = 0;
     }
     else if (chex)
     {
@@ -847,23 +852,17 @@ void R_InitSpriteLumps(void)
         mobjinfo[MT_INS].flags2 &= ~(MF2_TRANSLUCENT_33 | MF2_FLOATBOB | MF2_NOFOOTCLIP);
         mobjinfo[MT_MISC14].flags2 &= ~(MF2_FLOATBOB | MF2_NOFOOTCLIP);
     }
-    else if (dehacked)
+
+    if (!BTSX)
     {
-        for (i = 0; i < NUMMOBJTYPES; i++)
+        if (mergedcacodemon)
+            mobjinfo[MT_HEAD].blood = MT_BLOOD;
+
+        if (mergednoble)
         {
-            if ((mobjinfo[i].flags & MF_SHOOTABLE))
-                mobjinfo[i].projectilepassheight = mobjinfo[i].height;
-            if (mobjinfo[i].flags2 & MF2_BLOOD)
-                mobjinfo[i].flags2 = MF2_BLOOD;
-            else
-            {
-                mobjinfo[i].blood = MT_BLOOD;
-                mobjinfo[i].flags2 = 0;
-            }
+            mobjinfo[MT_BRUISER].blood = MT_BLOOD;
+            mobjinfo[MT_KNIGHT].blood = MT_BLOOD;
         }
-        states[S_BAR1].tics = 0;
-        mobjinfo[MT_BARREL].spawnstate = S_BAR2;
-        mobjinfo[MT_BARREL].frames = 2;
     }
 }
 
@@ -943,7 +942,7 @@ int R_FlatNumForName(char *name)
     i = W_RangeCheckNumForName(firstflat, lastflat, name);
 
     if (i == -1)
-        I_Error("R_FlatNumForName: %.8s not found", name);
+        return 0;
     return (i - firstflat);
 }
 

@@ -36,11 +36,12 @@
 ========================================================================
 */
 
-#ifdef WIN32
+#if defined(WIN32)
 #include <ShlObj.h>
 #include <Xinput.h>
 #endif
 
+#include "c_console.h"
 #include "doomstat.h"
 #include "i_gamepad.h"
 #include "i_video.h"
@@ -48,6 +49,7 @@
 #include "m_config.h"
 #include "m_menu.h"
 #include "m_misc.h"
+#include "p_local.h"
 #include "version.h"
 
 float           gamepadleftdeadzone_percent = GAMEPADLEFTDEADZONE_DEFAULT;
@@ -59,14 +61,19 @@ int             sfxvolume_percent = SFXVOLUME_DEFAULT;
 // DEFAULTS
 //
 extern boolean  alwaysrun;
+extern boolean  animatedliquid;
 extern int      bloodsplats;
 extern int      brightmaps;
 extern boolean  centerweapon;
-extern int      corpses;
+extern char     *conback;
+extern boolean  corpses_mirror;
+extern boolean  corpses_moreblood;
+extern boolean  corpses_slide;
+extern boolean  corpses_smearblood;
 extern boolean  dclick_use;
 extern boolean  floatbob;
 extern boolean  footclip;
-extern int      fullscreen;
+extern boolean  fullscreen;
 extern int      gamepadautomap;
 extern int      gamepadautomapclearmark;
 extern int      gamepadautomapfollowmode;
@@ -86,7 +93,7 @@ extern int      gamepadprevweapon;
 extern int      gamepadrun;
 extern int      gamepadsensitivity;
 extern int      gamepaduse;
-extern int      gamepadvibrate;
+extern boolean  gamepadvibrate;
 extern int      gamepadweapon1;
 extern int      gamepadweapon2;
 extern int      gamepadweapon3;
@@ -98,7 +105,7 @@ extern float    gammalevel;
 extern int      graphicdetail;
 extern boolean  grid;
 extern boolean  homindicator;
-extern int      hud;
+extern boolean  hud;
 extern char     *iwadfolder;
 extern int      key_automap;
 extern int      key_automap_clearmark;
@@ -132,7 +139,7 @@ extern int      key_weapon4;
 extern int      key_weapon5;
 extern int      key_weapon6;
 extern int      key_weapon7;
-extern int      mapfixes;
+extern boolean  mapfixes;
 extern boolean  messages;
 extern boolean  mirrorweapons;
 extern int      mousesensitivity;
@@ -150,7 +157,10 @@ extern int      pixelwidth;
 extern int      playerbob;
 extern boolean  rotatemode;
 extern int      runcount;
-extern float    saturation;
+#if defined(SDL20)
+extern char     *scaledriver;
+extern char     *scalequality;
+#endif
 extern int      screenheight;
 extern int      screenwidth;
 extern int      selectedepisode;
@@ -158,61 +168,20 @@ extern int      selectedexpansion;
 extern int      selectedsavegame;
 extern int      selectedskilllevel;
 extern boolean  shadows;
-extern int      smoketrails;
+extern boolean  smoketrails;
 extern int      snd_maxslicetime_ms;
-extern char     *version;
 extern char     *timidity_cfg_path;
 extern boolean  translucency;
 extern char     *videodriver;
+#if defined(SDL20)
+extern boolean  vsync;
+#endif
 extern boolean  widescreen;
 extern int      windowheight;
 extern char     *windowposition;
 extern int      windowwidth;
 
 extern boolean  returntowidescreen;
-
-typedef enum
-{
-    DEFAULT_INT,
-    DEFAULT_INT_HEX,
-    DEFAULT_INT_PERCENT,
-    DEFAULT_STRING,
-    DEFAULT_FLOAT,
-    DEFAULT_FLOAT_PERCENT,
-    DEFAULT_KEY
-} default_type_t;
-
-typedef struct
-{
-    // Name of the variable
-    char                *name;
-
-    // Pointer to the location in memory of the variable
-    void                *location;
-
-    // Type of the variable
-    default_type_t      type;
-
-    // If this is a key value, the original integer scancode we read from
-    // the config file before translating it to the internal key value.
-    // If zero, we didn't read this value from a config file.
-    int                 untranslated;
-
-    // The value we translated the scancode into when we read the
-    // config file on startup.  If the variable value is different from
-    // this, it has been changed and needs to be converted; otherwise,
-    // use the 'untranslated' value.
-    int                 original_translated;
-
-    int                 set;
-} default_t;
-
-typedef struct
-{
-    default_t           *defaults;
-    int                 numdefaults;
-    char                *filename;
-} default_collection_t;
 
 typedef struct
 {
@@ -242,10 +211,15 @@ typedef struct
 static default_t doom_defaults_list[] =
 {
     CONFIG_VARIABLE_INT          (alwaysrun,                  alwaysrun,                     1),
+    CONFIG_VARIABLE_INT          (animatedliquid,             animatedliquid,                1),
     CONFIG_VARIABLE_INT          (bloodsplats,                bloodsplats,                   7),
     CONFIG_VARIABLE_INT          (brightmaps,                 brightmaps,                    1),
     CONFIG_VARIABLE_INT          (centerweapon,               centerweapon,                  1),
-    CONFIG_VARIABLE_INT          (corpses,                    corpses,                      11),
+    CONFIG_VARIABLE_STRING       (conback,                    conback,                       0),
+    CONFIG_VARIABLE_INT          (corpses_mirror,             corpses_mirror,                1),
+    CONFIG_VARIABLE_INT          (corpses_moreblood,          corpses_moreblood,             1),
+    CONFIG_VARIABLE_INT          (corpses_slide,              corpses_slide,                 1),
+    CONFIG_VARIABLE_INT          (corpses_smearblood,         corpses_smearblood,            1),
     CONFIG_VARIABLE_INT          (dclick_use,                 dclick_use,                    1),
     CONFIG_VARIABLE_INT          (episode,                    selectedepisode,               8),
     CONFIG_VARIABLE_INT          (expansion,                  selectedexpansion,             9),
@@ -317,7 +291,7 @@ static default_t doom_defaults_list[] =
     CONFIG_VARIABLE_KEY          (key_weapon5,                key_weapon5,                   3),
     CONFIG_VARIABLE_KEY          (key_weapon6,                key_weapon6,                   3),
     CONFIG_VARIABLE_KEY          (key_weapon7,                key_weapon7,                   3),
-    CONFIG_VARIABLE_INT          (mapfixes,                   mapfixes,                     14),
+    CONFIG_VARIABLE_INT          (mapfixes,                   mapfixes,                      1),
     CONFIG_VARIABLE_INT          (messages,                   messages,                      1),
     CONFIG_VARIABLE_INT          (mirrorweapons,              mirrorweapons,                 1),
     CONFIG_VARIABLE_FLOAT        (mouse_acceleration,         mouse_acceleration,            0),
@@ -336,21 +310,24 @@ static default_t doom_defaults_list[] =
     CONFIG_VARIABLE_INT_PERCENT  (playerbob,                  playerbob,                     0),
     CONFIG_VARIABLE_INT          (rotatemode,                 rotatemode,                    1),
     CONFIG_VARIABLE_INT          (runcount,                   runcount,                      0),
-    CONFIG_VARIABLE_FLOAT        (saturation,                 saturation,                    0),
     CONFIG_VARIABLE_INT          (savegame,                   selectedsavegame,              0),
+#if defined(SDL20)
+    CONFIG_VARIABLE_STRING       (scaledriver,                scaledriver,                   0),
+    CONFIG_VARIABLE_STRING       (scalequality,               scalequality,                  0),
+#endif
     CONFIG_VARIABLE_INT          (screensize,                 screensize,                    0),
     CONFIG_VARIABLE_INT          (screenwidth,                screenwidth,                   5),
     CONFIG_VARIABLE_INT          (screenheight,               screenheight,                  5),
     CONFIG_VARIABLE_INT_PERCENT  (sfxvolume,                  sfxvolume_percent,             0),
     CONFIG_VARIABLE_INT          (shadows,                    shadows,                       1),
     CONFIG_VARIABLE_INT          (skilllevel,                 selectedskilllevel,           10),
-    CONFIG_VARIABLE_INT          (smoketrails,                smoketrails,                  13),
+    CONFIG_VARIABLE_INT          (smoketrails,                smoketrails,                   1),
     CONFIG_VARIABLE_INT          (snd_maxslicetime_ms,        snd_maxslicetime_ms,           0),
     CONFIG_VARIABLE_STRING       (timidity_cfg_path,          timidity_cfg_path,             0),
     CONFIG_VARIABLE_INT          (translucency,               translucency,                  1),
-    CONFIG_VARIABLE_STRING       (version,                    version,                       0),
-#ifdef WIN32
     CONFIG_VARIABLE_STRING       (videodriver,                videodriver,                   0),
+#if defined(SDL20)
+    CONFIG_VARIABLE_INT          (vsync,                      vsync,                         1),
 #endif
     CONFIG_VARIABLE_INT          (widescreen,                 widescreen,                    1),
     CONFIG_VARIABLE_STRING       (windowposition,             windowposition,                0),
@@ -358,7 +335,7 @@ static default_t doom_defaults_list[] =
     CONFIG_VARIABLE_INT          (windowheight,               windowheight,                  0)
 };
 
-static default_collection_t doom_defaults =
+default_collection_t doom_defaults =
 {
     doom_defaults_list,
     arrlen(doom_defaults_list),
@@ -455,15 +432,29 @@ static alias_t alias[] =
     { "end",                                   79,  3 },
     { "down",                                  80,  3 },
     { "pagedown",                              81,  3 },
-    { "del",                                   83,  3 },
     { "insert",                                82,  3 },
+    { "del",                                   83,  3 },
     { "-",                                     -1,  4 },
     { "none",                                  -1,  4 },
     { "left",                                   0,  4 },
+    { "mouse1",                                 0,  4 },
     { "middle",                                 1,  4 },
+    { "mouse2",                                 1,  4 },
     { "right",                                  2,  4 },
+    { "mouse3",                                 2,  4 },
+#if !defined(SDL20)
     { "wheelup",                                3,  4 },
     { "wheeldown",                              4,  4 },
+#endif
+    { "mouse4",                                 3,  4 },
+    { "mouse5",                                 4,  4 },
+    { "mouse6",                                 5,  4 },
+    { "mouse7",                                 6,  4 },
+    { "mouse8",                                 7,  4 },
+#if defined(SDL20)
+    { "wheelup",                                8,  4 },
+    { "wheeldown",                              9,  4 },
+#endif
     { "desktop",                                0,  5 },
     { "low",                                    0,  6 },
     { "high",                                   1,  6 },
@@ -487,214 +478,11 @@ static alias_t alias[] =
     { "\"Hurt me plenty.\"",                    2, 10 },
     { "\"Ultra-Violence.\"",                    3, 10 },
     { "\"Nightmare!\"",                         4, 10 },
-    { "-",                                      0, 11 },
-    { "mirror",                                 1, 11 },
-    { "slide",                                  2, 11 },
-    { "mirror|slide",                           3, 11 },
-    { "slide|mirror",                           3, 11 },
-    { "smearblood",                             4, 11 },
-    { "mirror|smearblood",                      5, 11 },
-    { "smearblood|mirror",                      5, 11 },
-    { "slide|smearblood",                       6, 11 },
-    { "smearblood|slide",                       6, 11 },
-    { "mirror|slide|smearblood",                7, 11 },
-    { "slide|mirror|smearblood",                7, 11 },
-    { "slide|smearblood|mirror",                7, 11 },
-    { "mirror|smearblood|slide",                7, 11 },
-    { "smearblood|mirror|slide",                7, 11 },
-    { "smearblood|slide|mirror",                7, 11 },
-    { "moreblood",                              8, 11 },
-    { "mirror|moreblood",                       9, 11 },
-    { "moreblood|mirror",                       9, 11 },
-    { "slide|moreblood",                       10, 11 },
-    { "moreblood|slide",                       10, 11 },
-    { "mirror|slide|moreblood",                11, 11 },
-    { "slide|mirror|moreblood",                11, 11 },
-    { "slide|moreblood|mirror",                11, 11 },
-    { "mirror|moreblood|slide",                11, 11 },
-    { "moreblood|mirror|slide",                11, 11 },
-    { "moreblood|slide|mirror",                11, 11 },
-    { "smearblood|moreblood",                  12, 11 },
-    { "moreblood|smearblood",                  12, 11 },
-    { "mirror|smearblood|moreblood",           13, 11 },
-    { "smearblood|mirror|moreblood",           13, 11 },
-    { "smearblood|moreblood|mirror",           13, 11 },
-    { "mirror|moreblood|smearblood",           13, 11 },
-    { "moreblood|mirror|smearblood",           13, 11 },
-    { "moreblood|smearblood|mirror",           13, 11 },
-    { "slide|smearblood|moreblood",            14, 11 },
-    { "smearblood|slide|moreblood",            14, 11 },
-    { "smearblood|moreblood|slide",            14, 11 },
-    { "slide|moreblood|smearblood",            14, 11 },
-    { "moreblood|slide|smearblood",            14, 11 },
-    { "moreblood|smearblood|slide",            14, 11 },
-    { "mirror|slide|smearblood|moreblood",     15, 11 },
-    { "mirror|slide|moreblood|smearblood",     15, 11 },
-    { "mirror|smearblood|slide|moreblood",     15, 11 },
-    { "mirror|smearblood|moreblood|slide",     15, 11 },
-    { "mirror|moreblood|slide|smearblood",     15, 11 },
-    { "mirror|moreblood|smearblood|slide",     15, 11 },
-    { "slide|mirror|smearblood|moreblood",     15, 11 },
-    { "slide|mirror|moreblood|smearblood",     15, 11 },
-    { "slide|smearblood|mirror|moreblood",     15, 11 },
-    { "slide|smearblood|moreblood|mirror",     15, 11 },
-    { "slide|moreblood|mirror|smearblood",     15, 11 },
-    { "slide|moreblood|smearblood|mirror",     15, 11 },
-    { "smearblood|mirror|slide|moreblood",     15, 11 },
-    { "smearblood|mirror|moreblood|slide",     15, 11 },
-    { "smearblood|slide|mirror|moreblood",     15, 11 },
-    { "smearblood|slide|moreblood|mirror",     15, 11 },
-    { "smearblood|moreblood|mirror|slide",     15, 11 },
-    { "smearblood|moreblood|slide|mirror",     15, 11 },
-    { "moreblood|mirror|slide|smearblood",     15, 11 },
-    { "moreblood|mirror|smearblood|slide",     15, 11 },
-    { "moreblood|slide|mirror|smearblood",     15, 11 },
-    { "moreblood|slide|smearblood|mirror",     15, 11 },
-    { "moreblood|smearblood|mirror|slide",     15, 11 },
-    { "moreblood|smearblood|slide|mirror",     15, 11 },
     { "off",                                    1, 12 },
-    { "-",                                      0, 13 },
-    { "none",                                   0, 13 },
-    { "player",                                 1, 13 },
-    { "revenant1",                              2, 13 },
-    { "player|revenant1",                       3, 13 },
-    { "revenant1|player",                       3, 13 },
-    { "revenant2",                              4, 13 },
-    { "player|revenant2",                       5, 13 },
-    { "revenant2|player",                       5, 13 },
-    { "revenant1|revenant2",                    6, 13 },
-    { "revenant2|revenant1",                    6, 13 },
-    { "player|revenant1|revenant2",             7, 13 },
-    { "revenant1|player|revenant2",             7, 13 },
-    { "revenant1|revenant2|player",             7, 13 },
-    { "player|revenant2|revenant1",             7, 13 },
-    { "revenant2|player|revenant1",             7, 13 },
-    { "revenant2|revenant1|player",             7, 13 },
-    { "cyberdemon",                             8, 13 },
-    { "player|cyberdemon",                      9, 13 },
-    { "cyberdemon|player",                      9, 13 },
-    { "revenant1|cyberdemon",                  10, 13 },
-    { "cyberdemon|revenant1",                  10, 13 },
-    { "player|revenant1|cyberdemon",           11, 13 },
-    { "revenant1|player|cyberdemon",           11, 13 },
-    { "revenant1|cyberdemon|player",           11, 13 },
-    { "player|cyberdemon|revenant1",           11, 13 },
-    { "cyberdemon|player|revenant1",           11, 13 },
-    { "cyberdemon|revenant1|player",           11, 13 },
-    { "revenant2|cyberdemon",                  12, 13 },
-    { "cyberdemon|revenant2",                  12, 13 },
-    { "player|revenant2|cyberdemon",           13, 13 },
-    { "revenant2|player|cyberdemon",           13, 13 },
-    { "revenant2|cyberdemon|player",           13, 13 },
-    { "player|cyberdemon|revenant2",           13, 13 },
-    { "cyberdemon|player|revenant2",           13, 13 },
-    { "cyberdemon|revenant2|player",           13, 13 },
-    { "revenant1|revenant2|cyberdemon",        14, 13 },
-    { "revenant2|revenant1|cyberdemon",        14, 13 },
-    { "revenant2|cyberdemon|revenant1",        14, 13 },
-    { "revenant1|cyberdemon|revenant2",        14, 13 },
-    { "cyberdemon|revenant1|revenant2",        14, 13 },
-    { "cyberdemon|revenant2|revenant1",        14, 13 },
-    { "player|revenant1|revenant2|cyberdemon", 15, 13 },
-    { "player|revenant1|cyberdemon|revenant2", 15, 13 },
-    { "player|revenant2|revenant1|cyberdemon", 15, 13 },
-    { "player|revenant2|cyberdemon|revenant1", 15, 13 },
-    { "player|cyberdemon|revenant1|revenant2", 15, 13 },
-    { "player|cyberdemon|revenant2|revenant1", 15, 13 },
-    { "revenant1|player|revenant2|cyberdemon", 15, 13 },
-    { "revenant1|player|cyberdemon|revenant2", 15, 13 },
-    { "revenant1|revenant2|player|cyberdemon", 15, 13 },
-    { "revenant1|revenant2|cyberdemon|player", 15, 13 },
-    { "revenant1|cyberdemon|player|revenant2", 15, 13 },
-    { "revenant1|cyberdemon|revenant2|player", 15, 13 },
-    { "revenant2|player|revenant1|cyberdemon", 15, 13 },
-    { "revenant2|player|cyberdemon|revenant1", 15, 13 },
-    { "revenant2|revenant1|player|cyberdemon", 15, 13 },
-    { "revenant2|revenant1|cyberdemon|player", 15, 13 },
-    { "revenant2|cyberdemon|player|revenant1", 15, 13 },
-    { "revenant2|cyberdemon|revenant1|player", 15, 13 },
-    { "cyberdemon|player|revenant1|revenant2", 15, 13 },
-    { "cyberdemon|player|revenant2|revenant1", 15, 13 },
-    { "cyberdemon|revenant1|player|revenant2", 15, 13 },
-    { "cyberdemon|revenant1|revenant2|player", 15, 13 },
-    { "cyberdemon|revenant2|player|revenant1", 15, 13 },
-    { "cyberdemon|revenant2|revenant1|player", 15, 13 },
-    { "-",                                      0, 14 },
-    { "none",                                   0, 14 },
-    { "linedefs",                               1, 14 },
-    { "sectors",                                2, 14 },
-    { "linedefs|sectors",                       3, 14 },
-    { "sectors|linedefs",                       3, 14 },
-    { "things",                                 4, 14 },
-    { "linedefs|things",                        5, 14 },
-    { "things|linedefs",                        5, 14 },
-    { "sectors|things",                         6, 14 },
-    { "things|sectors",                         6, 14 },
-    { "linedefs|sectors|things",                7, 14 },
-    { "sectors|linedefs|things",                7, 14 },
-    { "sectors|things|linedefs",                7, 14 },
-    { "linedefs|things|sectors",                7, 14 },
-    { "things|linedefs|sectors",                7, 14 },
-    { "things|sectors|linedefs",                7, 14 },
-    { "vertexes",                               8, 14 },
-    { "linedefs|vertexes",                      9, 14 },
-    { "vertexes|linedefs",                      9, 14 },
-    { "sectors|vertexes",                      10, 14 },
-    { "vertexes|sectors",                      10, 14 },
-    { "linedefs|sectors|vertexes",             11, 14 },
-    { "sectors|linedefs|vertexes",             11, 14 },
-    { "sectors|vertexes|linedefs",             11, 14 },
-    { "linedefs|vertexes|sectors",             11, 14 },
-    { "vertexes|linedefs|sectors",             11, 14 },
-    { "vertexes|sectors|linedefs",             11, 14 },
-    { "things|vertexes",                       12, 14 },
-    { "vertexes|things",                       12, 14 },
-    { "linedefs|things|vertexes",              13, 14 },
-    { "things|linedefs|vertexes",              13, 14 },
-    { "things|vertexes|linedefs",              13, 14 },
-    { "linedefs|vertexes|things",              13, 14 },
-    { "vertexes|linedefs|things",              13, 14 },
-    { "vertexes|things|linedefs",              13, 14 },
-    { "sectors|things|vertexes",               14, 14 },
-    { "things|sectors|vertexes",               14, 14 },
-    { "things|vertexes|sectors",               14, 14 },
-    { "sectors|vertexes|things",               14, 14 },
-    { "vertexes|sectors|things",               14, 14 },
-    { "vertexes|things|sectors",               14, 14 },
-    { "linedefs|sectors|things|vertexes",      15, 14 },
-    { "linedefs|sectors|vertexes|things",      15, 14 },
-    { "linedefs|things|sectors|vertexes",      15, 14 },
-    { "linedefs|things|vertexes|sectors",      15, 14 },
-    { "linedefs|vertexes|sectors|things",      15, 14 },
-    { "linedefs|vertexes|things|sectors",      15, 14 },
-    { "sectors|linedefs|things|vertexes",      15, 14 },
-    { "sectors|linedefs|vertexes|things",      15, 14 },
-    { "sectors|things|linedefs|vertexes",      15, 14 },
-    { "sectors|things|vertexes|linedefs",      15, 14 },
-    { "sectors|vertexes|linedefs|things",      15, 14 },
-    { "sectors|vertexes|things|linedefs",      15, 14 },
-    { "things|linedefs|sectors|vertexes",      15, 14 },
-    { "things|linedefs|vertexes|sectors",      15, 14 },
-    { "things|sectors|linedefs|vertexes",      15, 14 },
-    { "things|sectors|vertexes|linedefs",      15, 14 },
-    { "things|vertexes|linedefs|sectors",      15, 14 },
-    { "things|vertexes|sectors|linedefs",      15, 14 },
-    { "vertexes|linedefs|sectors|things",      15, 14 },
-    { "vertexes|linedefs|things|sectors",      15, 14 },
-    { "vertexes|sectors|linedefs|things",      15, 14 },
-    { "vertexes|sectors|things|linedefs",      15, 14 },
-    { "vertexes|things|linedefs|sectors",      15, 14 },
-    { "vertexes|things|sectors|linedefs",      15, 14 },
-    { "-",                                      0, 15 },
-    { "none",                                   0, 15 },
-    { "damage",                                 1, 15 },
-    { "weapons",                                2, 15 },
-    { "damage|weapons",                         3, 15 },
-    { "weapons|damage",                         3, 15 },
     { "",                                       0,  0 }
 };
 
-static char *striptrailingzero(float value)
+char *striptrailingzero(float value)
 {
     size_t      len;
     static char result[100];
@@ -942,7 +730,7 @@ static float ParseFloatParameter(char *strparm, int set)
     return (float)atof(strparm);
 }
 
-static void LoadDefaultCollection(default_collection_t *collection)
+static boolean LoadDefaultCollection(default_collection_t *collection)
 {
     default_t   *defaults = collection->defaults;
     int         i;
@@ -955,7 +743,7 @@ static void LoadDefaultCollection(default_collection_t *collection)
 
     if (!f)
         // File not opened, but don't complain
-        return;
+        return false;
 
     while (!feof(f))
     {
@@ -1028,6 +816,7 @@ static void LoadDefaultCollection(default_collection_t *collection)
     }
 
     fclose(f);
+    return true;
 }
 
 //
@@ -1047,6 +836,9 @@ static void M_CheckDefaults(void)
     if (alwaysrun != false && alwaysrun != true)
         alwaysrun = ALWAYSRUN_DEFAULT;
 
+    if (animatedliquid != false && animatedliquid != true)
+        animatedliquid = ANIMATEDLIQUID_DEFAULT;
+
     bloodsplats = BETWEEN(BLOODSPLATS_MIN, bloodsplats, BLOODSPLATS_MAX);
 
     if (brightmaps != false && brightmaps != true)
@@ -1055,7 +847,17 @@ static void M_CheckDefaults(void)
     if (centerweapon != false && centerweapon != true)
         centerweapon = CENTERWEAPON_DEFAULT;
 
-    corpses = BETWEEN(CORPSES_MIN, corpses, CORPSES_MAX);
+    if (corpses_mirror != false && corpses_mirror != true)
+        corpses_mirror = CORPSES_MIRROR_DEFAULT;
+
+    if (corpses_moreblood != false && corpses_moreblood != true)
+        corpses_moreblood = CORPSES_MOREBLOOD_DEFAULT;
+
+    if (corpses_slide != false && corpses_slide != true)
+        corpses_slide = CORPSES_SLIDE_DEFAULT;
+
+    if (corpses_smearblood != false && corpses_smearblood != true)
+        corpses_smearblood = CORPSES_SMEARBLOOD_DEFAULT;
 
     if (dclick_use != false && dclick_use != true)
         dclick_use = DCLICKUSE_DEFAULT;
@@ -1140,7 +942,8 @@ static void M_CheckDefaults(void)
     if (gamepaduse < 0 || gamepaduse > GAMEPAD_Y || (gamepaduse & (gamepaduse - 1)))
         gamepaduse = GAMEPADUSE_DEFAULT;
 
-    gamepadvibrate = BETWEEN(GAMEPADVIBRATE_MIN, gamepadvibrate, GAMEPADVIBRATE_MAX);
+    if (gamepadvibrate != false && gamepadvibrate != true)
+        gamepadvibrate = GAMEPADVIBRATE_DEFAULT;
 
     if (gamepadweapon1 < 0 || gamepadweapon1 > GAMEPAD_Y || (gamepadweapon1 & (gamepadweapon1 - 1)))
         gamepadweapon1 = GAMEPADWEAPON_DEFAULT;
@@ -1283,7 +1086,8 @@ static void M_CheckDefaults(void)
     if (key_weapon7 == INVALIDKEY)
         key_weapon7 = KEYWEAPON7_DEFAULT;
 
-    mapfixes = BETWEEN(MAPFIXES_MIN, mapfixes, MAPFIXES_MAX);
+    if (mapfixes != false && mapfixes != true)
+        mapfixes = MAPFIXES_DEFAULT;
 
     if (messages != false && messages != true)
         messages = MESSAGES_DEFAULT;
@@ -1297,11 +1101,19 @@ static void M_CheckDefaults(void)
     if (mousebforward < -1 || mousebforward > MAX_MOUSE_BUTTONS || mousebforward == mousebfire)
         mousebforward = MOUSEFORWARD_DEFAULT;
 
+#if defined(SDL20)
+    if (mousebprevweapon < -1 || mousebprevweapon > MAX_MOUSE_BUTTONS + 2
+#else
     if (mousebprevweapon < -1 || mousebprevweapon > MAX_MOUSE_BUTTONS
+#endif
         || mousebprevweapon == mousebfire || mousebprevweapon == mousebforward)
         mousebprevweapon = MOUSEPREVWEAPON_DEFAULT;
 
+#if defined(SDL20)
+    if (mousebnextweapon < -1 || mousebnextweapon > MAX_MOUSE_BUTTONS + 2
+#else
     if (mousebnextweapon < -1 || mousebnextweapon > MAX_MOUSE_BUTTONS
+#endif
         || mousebnextweapon == mousebfire || mousebnextweapon == mousebforward
         || mousebnextweapon == mousebprevweapon)
         mousebnextweapon = MOUSENEXTWEAPON_DEFAULT;
@@ -1338,8 +1150,6 @@ static void M_CheckDefaults(void)
 
     runcount = BETWEEN(0, runcount, RUNCOUNT_MAX);
 
-    saturation = BETWEENF(SATURATION_MIN, saturation, SATURATION_MAX);
-
     screensize = BETWEEN(SCREENSIZE_MIN, screensize, SCREENSIZE_MAX);
 
     if (screenwidth && screenheight
@@ -1362,18 +1172,15 @@ static void M_CheckDefaults(void)
     if (shadows != false && shadows != true)
         shadows = SHADOWS_DEFAULT;
 
-    smoketrails = BETWEEN(SMOKETRAILS_MIN, smoketrails, SMOKETRAILS_MAX);
+    if (smoketrails != false && smoketrails != true)
+        smoketrails = SMOKETRAILS_DEFAULT;
 
     if (translucency != false && translucency != true)
         translucency = TRANSLUCENCY_DEFAULT;
 
-#ifdef WIN32
-#ifdef SDL20
-    if (strcasecmp(videodriver, "windows"))
-#else
-    if (strcasecmp(videodriver, "directx") && strcasecmp(videodriver, "windib"))
-#endif
-        videodriver = VIDEODRIVER_DEFAULT;
+#if defined(SDL20)
+    if (vsync != false && vsync != true)
+        vsync = VSYNC_DEFAULT;
 #endif
 
     if (widescreen != false && widescreen != true)
@@ -1404,10 +1211,26 @@ void M_LoadDefaults(void)
     i = M_CheckParmWithArgs("-config", 1);
 
     if (i)
+    {
+        C_Output("Found -CONFIG parameter on command-line.");
+
         doom_defaults.filename = myargv[i + 1];
+
+        if (LoadDefaultCollection(&doom_defaults))
+            C_Output("Loaded CVARs from %s.", uppercase(myargv[i + 1]));
+        else
+            C_Output("%s not found. Using defaults for all CVARs.",
+                uppercase(myargv[i + 1]), uppercase(myargv[i + 1]));
+    }
     else
+    {
         doom_defaults.filename = PACKAGE_CONFIG;
 
-    LoadDefaultCollection(&doom_defaults);
+        if (LoadDefaultCollection(&doom_defaults))
+            C_Output("Loaded CVARs from %s.", uppercase(PACKAGE_CONFIG));
+        else
+            C_Output("%s not found. Using defaults for all CVARs and creating %s.",
+                uppercase(PACKAGE_CONFIG), uppercase(PACKAGE_CONFIG));
+    }
     M_CheckDefaults();
 }

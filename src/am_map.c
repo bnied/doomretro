@@ -40,12 +40,13 @@
 
 #include <math.h>
 
-#ifdef WIN32
+#if defined(WIN32)
 #include <Windows.h>
 #include <Xinput.h>
 #endif
 
 #include "am_map.h"
+#include "c_console.h"
 #include "d_deh.h"
 #include "doomstat.h"
 #include "dstrings.h"
@@ -151,16 +152,11 @@ byte    *gridcolor;
 #define M_ZOOMOUT               ((int)((float)FRACUNIT / (1.00f + F_PANINC / 200.0f)))
 
 // translates between frame-buffer and map distances
-#define FTOM(x)                 (fixed_t)(((int64_t)((x) << 16) * scale_ftom) >> FRACBITS)
+#define FTOM(x)                 (fixed_t)(((int64_t)((x) << FRACBITS) * scale_ftom) >> FRACBITS)
 #define MTOF(x)                 (fixed_t)((((int64_t)(x) * scale_mtof) >> FRACBITS) >> FRACBITS)
 // translates between frame-buffer and map coordinates
 #define CXMTOF(x)               MTOF(x - m_x)
 #define CYMTOF(y)               (mapheight - MTOF(y - m_y))
-
-typedef struct
-{
-    fixed_t     x, y;
-} mpoint_t;
 
 typedef struct
 {
@@ -269,7 +265,7 @@ mpoint_t        *markpoints = NULL;             // where the points are
 int             markpointnum = 0;               // next point to be assigned
 int             markpointnum_max = 0;
 
-boolean         followplayer = true;            // specifies whether to follow the player around
+boolean         followmode = true;              // specifies whether to follow the player around
 boolean         rotatemode = ROTATEMODE_DEFAULT;
 
 static boolean  stopped = true;
@@ -280,10 +276,7 @@ static boolean  movement = false;
 int             keydown;
 int             direction;
 
-int             GATE1;
-int             GATE2;
-int             GATE3;
-int             GATE4;
+int             teleporters[24];
 
 __inline static int sign(int a)
 {
@@ -316,7 +309,7 @@ static void AM_restoreScaleAndLoc(void)
 {
     m_w = old_m_w;
     m_h = old_m_h;
-    if (followplayer)
+    if (followmode)
     {
         m_x = FTOM(MTOF(plr->mo->x)) - (m_w >> 1);
         m_y = FTOM(MTOF(plr->mo->y)) - (m_h >> 1);
@@ -405,6 +398,7 @@ void AM_Init(void)
 {
     byte        *priority;
     int         x;
+    int         i;
 
     priority = (byte *)Z_Malloc(256, PU_STATIC, NULL);
     mask = (byte *)Z_Malloc(256, PU_STATIC, NULL);
@@ -451,10 +445,42 @@ void AM_Init(void)
     tswallcolor = priorities + (TSWALLCOLOR << 8);
     gridcolor = priorities + (GRIDCOLOR << 8);
 
-    GATE1 = R_CheckFlatNumForName("GATE1");
-    GATE2 = R_CheckFlatNumForName("GATE2");
-    GATE3 = R_CheckFlatNumForName("GATE3");
-    GATE4 = R_CheckFlatNumForName("GATE4");
+    for (i = 0; i < arrlen(teleporters); ++i)
+        teleporters[i] = -1;
+
+    if (BTSX)
+    {
+        teleporters[0] = R_CheckFlatNumForName("SLIME09");
+        teleporters[1] = R_CheckFlatNumForName("SLIME12");
+        teleporters[2] = R_CheckFlatNumForName("TELEPRT1");
+        teleporters[3] = R_CheckFlatNumForName("TELEPRT2");
+        teleporters[4] = R_CheckFlatNumForName("TELEPRT3");
+        teleporters[5] = R_CheckFlatNumForName("TELEPRT4");
+        teleporters[6] = R_CheckFlatNumForName("TELEPRT5");
+        teleporters[7] = R_CheckFlatNumForName("TELEPRT6");
+        teleporters[8] = R_CheckFlatNumForName("SLIME05");
+        teleporters[9] = R_CheckFlatNumForName("SHNPRT02");
+        teleporters[10] = R_CheckFlatNumForName("SHNPRT03");
+        teleporters[11] = R_CheckFlatNumForName("SHNPRT04");
+        teleporters[12] = R_CheckFlatNumForName("SHNPRT05");
+        teleporters[13] = R_CheckFlatNumForName("SHNPRT06");
+        teleporters[14] = R_CheckFlatNumForName("SHNPRT07");
+        teleporters[15] = R_CheckFlatNumForName("SHNPRT08");
+        teleporters[16] = R_CheckFlatNumForName("SHNPRT09");
+        teleporters[17] = R_CheckFlatNumForName("SHNPRT10");
+        teleporters[18] = R_CheckFlatNumForName("SHNPRT11");
+        teleporters[19] = R_CheckFlatNumForName("SHNPRT12");
+        teleporters[20] = R_CheckFlatNumForName("SHNPRT13");
+        teleporters[21] = R_CheckFlatNumForName("SHNPRT14");
+        teleporters[22] = R_CheckFlatNumForName("SLIME08");
+    }
+    else
+    {
+        teleporters[0] = R_CheckFlatNumForName("GATE1");
+        teleporters[1] = R_CheckFlatNumForName("GATE2");
+        teleporters[2] = R_CheckFlatNumForName("GATE3");
+        teleporters[3] = R_CheckFlatNumForName("GATE4");
+    }
 }
 
 static void AM_initVariables(void)
@@ -488,7 +514,7 @@ static void AM_initVariables(void)
             }
     }
 
-    if (m_x == INT_MAX || followplayer)
+    if (m_x == INT_MAX || followmode)
     {
         m_x = FTOM(MTOF(plr->mo->x)) - (m_w >> 1);
         m_y = FTOM(MTOF(plr->mo->y)) - (m_h >> 1);
@@ -506,7 +532,7 @@ static void AM_initVariables(void)
 //
 static void AM_LevelInit(void)
 {
-    followplayer = true;
+    followmode = true;
     bigstate = false;
 
     AM_findMinMaxBoundaries();
@@ -523,7 +549,7 @@ static void AM_LevelInit(void)
 void AM_Stop(void)
 {
     automapactive = false;
-    if (!idbehold && !(players[consoleplayer].cheats & CF_MYPOS) && !devparm)
+    if (!idbehold && !(players[consoleplayer].cheats & CF_MYPOS) && !showfps)
         HU_clearMessages();
     ST_AutomapEvent(AM_MSGEXITED);
     stopped = true;
@@ -543,7 +569,7 @@ void AM_Start(void)
     maparea = mapwidth * mapheight;
     mapbottom = maparea - mapwidth;
 
-    if (!idbehold && !(players[consoleplayer].cheats & CF_MYPOS) && !devparm)
+    if (!idbehold && !(players[consoleplayer].cheats & CF_MYPOS) && !showfps)
         HU_clearMessages();
 
     if (lastlevel != gamemap || lastepisode != gameepisode)
@@ -575,7 +601,7 @@ static void AM_maxOutWindowScale(void)
     AM_activateNewScale();
 }
 
-#ifdef SDL20
+#if defined(SDL20)
 SDL_Keymod      modstate;
 #else
 SDLMod          modstate;
@@ -620,18 +646,18 @@ static void AM_toggleMaxZoom(void)
 
 static void AM_toggleFollowMode(void)
 {
-    followplayer = !followplayer;
-    if (followplayer)
+    followmode = !followmode;
+    if (followmode)
         m_paninc.x = m_paninc.y = 0;
     f_oldloc.x = INT_MAX;
-    plr->message = (followplayer ? s_AMSTR_FOLLOWON : s_AMSTR_FOLLOWOFF);
+    HU_PlayerMessage(followmode ? s_AMSTR_FOLLOWON : s_AMSTR_FOLLOWOFF);
     message_dontfuckwithme = true;
 }
 
 static void AM_toggleGrid(void)
 {
     grid = !grid;
-    plr->message = (grid ? s_AMSTR_GRIDON : s_AMSTR_GRIDOFF);
+    HU_PlayerMessage(grid ? s_AMSTR_GRIDON : s_AMSTR_GRIDOFF);
     message_dontfuckwithme = true;
 }
 
@@ -658,7 +684,7 @@ static void AM_addMark(void)
     markpoints[markpointnum].x = x;
     markpoints[markpointnum].y = y;
     M_snprintf(message, sizeof(message), s_AMSTR_MARKEDSPOT, ++markpointnum);
-    plr->message = message;
+    HU_PlayerMessage(message);
     message_dontfuckwithme = true;
 }
 
@@ -671,7 +697,7 @@ static void AM_clearMarks(void)
         if (++markpress == 5)
         {
             // clear all marks
-            plr->message = s_AMSTR_MARKSCLEARED;
+            HU_PlayerMessage(s_AMSTR_MARKSCLEARED);
             message_dontfuckwithme = true;
             markpointnum = 0;
         }
@@ -681,7 +707,7 @@ static void AM_clearMarks(void)
 
             // clear one mark
             M_snprintf(message, sizeof(message), s_AMSTR_MARKCLEARED, markpointnum--);
-            plr->message = message;
+            HU_PlayerMessage(message);
             message_dontfuckwithme = true;
         }
     }
@@ -690,7 +716,7 @@ static void AM_clearMarks(void)
 static void AM_toggleRotateMode(void)
 {
     rotatemode = !rotatemode;
-    plr->message = (rotatemode ? s_AMSTR_ROTATEON : s_AMSTR_ROTATEOFF);
+    HU_PlayerMessage(rotatemode ? s_AMSTR_ROTATEON : s_AMSTR_ROTATEOFF);
     message_dontfuckwithme = true;
 }
 
@@ -739,7 +765,7 @@ boolean AM_Responder(event_t *ev)
                 if (key == AM_PANRIGHTKEY || key == AM_PANRIGHTKEY2 || key == AM_PANRIGHTKEY3)
                 {
                     keydown = key;
-                    if (followplayer)
+                    if (followmode)
                     {
                         m_paninc.x = 0;
                         rc = false;
@@ -755,7 +781,7 @@ boolean AM_Responder(event_t *ev)
                 else if (key == AM_PANLEFTKEY || key == AM_PANLEFTKEY2 || key == AM_PANLEFTKEY3)
                 {
                     keydown = key;
-                    if (followplayer)
+                    if (followmode)
                     {
                         m_paninc.x = 0;
                         rc = false;
@@ -771,7 +797,7 @@ boolean AM_Responder(event_t *ev)
                 else if (key == AM_PANUPKEY || key == AM_PANUPKEY2)
                 {
                     keydown = key;
-                    if (followplayer)
+                    if (followmode)
                     {
                         m_paninc.y = 0;
                         rc = false;
@@ -787,7 +813,7 @@ boolean AM_Responder(event_t *ev)
                 else if (key == AM_PANDOWNKEY || key == AM_PANDOWNKEY2)
                 {
                     keydown = key;
-                    if (followplayer)
+                    if (followmode)
                     {
                         m_paninc.y = 0;
                         rc = false;
@@ -924,7 +950,7 @@ boolean AM_Responder(event_t *ev)
                         D_PostEvent(&event);
                     }
                 }
-                else if (!followplayer)
+                else if (!followmode)
                 {
                     if (key == AM_PANLEFTKEY || key == AM_PANLEFTKEY2 || key == AM_PANLEFTKEY3)
                     {
@@ -960,6 +986,29 @@ boolean AM_Responder(event_t *ev)
                     }
                 }
             }
+#if defined(SDL20)
+            else if (ev->type == ev_mousewheel)
+            {
+                // zoom in
+                if (ev->data1 > 0)
+                {
+                    movement = true;
+                    speedtoggle = AM_getSpeedToggle();
+                    mtof_zoommul = M_ZOOMIN + 2000;
+                    ftom_zoommul = M_ZOOMOUT - 2000;
+                    bigstate = false;
+                }
+
+                // zoom out
+                else if (ev->data1 < 0)
+                {
+                    movement = true;
+                    speedtoggle = AM_getSpeedToggle();
+                    mtof_zoommul = M_ZOOMOUT - 2000;
+                    ftom_zoommul = M_ZOOMIN + 2000;
+                }
+            }
+#else
             else if (ev->type == ev_mouse)
             {
                 // zoom in
@@ -981,6 +1030,7 @@ boolean AM_Responder(event_t *ev)
                     ftom_zoommul = M_ZOOMIN + 2000;
                 }
             }
+#endif
             else if (ev->type == ev_gamepad)
             {
                 if ((gamepadbuttons & gamepadautomap) && !backbuttondown)
@@ -1030,7 +1080,7 @@ boolean AM_Responder(event_t *ev)
                 else if (gamepadbuttons & gamepadautomaprotatemode)
                     AM_toggleRotateMode();
 
-                if (!followplayer)
+                if (!followmode)
                 {
                     // pan right
                     if (gamepadthumbLX > 0)
@@ -1066,16 +1116,14 @@ boolean AM_Responder(event_t *ev)
                 }
             }
 
-            if ((plr->cheats & CF_MYPOS) && !followplayer && (m_paninc.x || m_paninc.y))
+            if ((plr->cheats & CF_MYPOS) && !followmode && (m_paninc.x || m_paninc.y))
             {
                 double  x = m_paninc.x;
                 double  y = m_paninc.y;
 
-                if ((m_x == min_x - (m_w >> 1) && x < 0)
-                    || (m_x == max_x - (m_w >> 1) && x > 0))
+                if ((m_x == min_x - (m_w >> 1) && x < 0) || (m_x == max_x - (m_w >> 1) && x > 0))
                     x = 0;
-                if ((m_y == min_y - (m_h >> 1) && y < 0)
-                    || (m_y == max_y - (m_h >> 1) && y > 0))
+                if ((m_y == min_y - (m_h >> 1) && y < 0) || (m_y == max_y - (m_h >> 1) && y > 0))
                     y = 0;
                 direction = (int)(atan2(y, x) * 180.0 / M_PI);
                 if (direction < 0)
@@ -1153,7 +1201,7 @@ void AM_Ticker(void)
     if (!automapactive)
         return;
 
-    if (followplayer)
+    if (followmode)
         AM_doFollowPlayer();
 
     // Change the zoom if necessary
@@ -1161,7 +1209,7 @@ void AM_Ticker(void)
         AM_changeWindowScale();
 
     // Change x,y location
-    if ((m_paninc.x || m_paninc.y) && !menuactive && !paused)
+    if ((m_paninc.x || m_paninc.y) && !menuactive && !paused && !consoleactive)
         AM_changeWindowLoc();
 
     if (movement)
@@ -1446,7 +1494,13 @@ static void AM_drawGrid(void)
 
 boolean isteleport(int floorpic)
 {
-    return (floorpic == GATE1 || floorpic == GATE2 || floorpic == GATE3 || floorpic == GATE4);
+    int i;
+
+    for (i = 0; i < arrlen(teleporters); ++i)
+        if (floorpic == teleporters[i])
+            return true;
+
+    return false;
 }
 
 //
@@ -1855,6 +1909,6 @@ void AM_Drawer(void)
         AM_drawMarks();
     AM_drawPlayers();
     AM_darkenEdges();
-    if (!followplayer)
+    if (!followmode)
         AM_drawCrosshair();
 }

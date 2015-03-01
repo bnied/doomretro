@@ -36,6 +36,7 @@
 ========================================================================
 */
 
+#include "am_map.h"
 #include "d_deh.h"
 #include "doomstat.h"
 #include "dstrings.h"
@@ -47,14 +48,10 @@
 #include "z_zone.h"
 
 #define SAVEGAME_EOF    0x1d
-#define VERSIONSIZE     16
 
 FILE            *save_stream;
 int             savegamelength;
 boolean         savegame_error;
-
-extern boolean  *isliquid;
-extern boolean  footclip;
 
 void P_SpawnShadow(mobj_t *actor);
 
@@ -411,6 +408,9 @@ static void saveg_read_mobj_t(mobj_t *str)
     // short gear
     str->gear = saveg_read16();
 
+    // int bloodsplats
+    str->bloodsplats = saveg_read32();
+
     // int blood
     str->blood = saveg_read32();
 }
@@ -539,6 +539,9 @@ static void saveg_write_mobj_t(mobj_t *str)
 
     // short gear
     saveg_write16(str->gear);
+
+    // int bloodsplats
+    saveg_write32(str->bloodsplats);
 
     // int blood
     saveg_write32(str->blood);
@@ -1409,7 +1412,7 @@ void P_WriteSaveGameHeader(char *description)
         saveg_write8(0);
 
     memset(name, 0, sizeof(name));
-    strcpy(name, PACKAGE_SAVEGAMEVERSIONSTRING);
+    strcpy(name, PACKAGE_NAMEANDVERSIONSTRING);
 
     for (i = 0; i < VERSIONSIZE; ++i)
         saveg_write8(name[i]);
@@ -1444,7 +1447,7 @@ boolean P_ReadSaveGameHeader(char *description)
         read_vcheck[i] = saveg_read8();
 
     memset(vcheck, 0, sizeof(vcheck));
-    strcpy(vcheck, PACKAGE_SAVEGAMEVERSIONSTRING);
+    strcpy(vcheck, PACKAGE_NAMEANDVERSIONSTRING);
     if (strcmp(read_vcheck, vcheck) != 0)
         return false;   // bad version
 
@@ -1546,6 +1549,7 @@ void P_ArchiveWorld(void)
         saveg_write16(sec->lightlevel);
         saveg_write16(sec->special);
         saveg_write16(sec->tag);
+        saveg_write16(sec->animate);
     }
 
     // do lines
@@ -1591,6 +1595,7 @@ void P_UnArchiveWorld(void)
         sec->lightlevel = saveg_read16();
         sec->special = saveg_read16();
         sec->tag = saveg_read16();
+        sec->animate = saveg_read16();
         sec->specialdata = 0;
         sec->soundtarget = 0;
     }
@@ -1716,7 +1721,7 @@ void P_UnArchiveThinkers(void)
                         if (mobj->flags2 & MF2_MIRRORED)
                             mobj->shadow->flags2 |= MF2_MIRRORED;
 
-                        if (footclip && (mobj->flags2 & MF2_FEETARECLIPPED))
+                        if (mobj->flags2 & MF2_FEETARECLIPPED)
                             mobj->shadow->flags2 |= MF2_FEETARECLIPPED;
                     }
                 }
@@ -1769,7 +1774,7 @@ void P_RestoreTargets(void)
     for (th = thinkercap.next; th != &thinkercap; th = th->next)
         if (th->function.acp1 == (actionf_p1)P_MobjThinker)
         {
-            mobj_t      *mo = (mobj_t*)th;
+            mobj_t      *mo = (mobj_t *)th;
 
             mo->target = (mobj_t *)P_IndexToThinker((uintptr_t)mo->target);
             mo->tracer = (mobj_t *)P_IndexToThinker((uintptr_t)mo->tracer);
@@ -2018,6 +2023,55 @@ void P_UnArchiveSpecials(void)
 
             default:
                 I_Error("P_UnarchiveSpecials: unknown tclass %i in savegame", tclass);
+        }
+    }
+}
+
+//
+// P_ArchiveMap
+//
+void P_ArchiveMap(void)
+{
+    saveg_write32(automapactive);
+    saveg_write32(markpointnum);
+
+    if (markpointnum)
+    {
+        int     i;
+
+        for (i = 0; i < markpointnum; ++i)
+        {
+            saveg_write32(markpoints[i].x);
+            saveg_write32(markpoints[i].y);
+        }
+    }
+}
+
+//
+// P_UnArchiveMap
+//
+void P_UnArchiveMap(void)
+{
+    automapactive = saveg_read32();
+    markpointnum = saveg_read32();
+
+    if (automapactive)
+        AM_Start();
+
+    if (markpointnum)
+    {
+        int     i;
+
+        while (markpointnum >= markpointnum_max)
+        {
+            markpointnum_max = (markpointnum_max ? markpointnum_max << 1 : 16);
+            markpoints = (mpoint_t *)realloc(markpoints, markpointnum_max * sizeof(*markpoints));
+        }
+
+        for (i = 0; i < markpointnum; ++i)
+        {
+            markpoints[i].x = saveg_read32();
+            markpoints[i].y = saveg_read32();
         }
     }
 }

@@ -40,6 +40,7 @@
 #include "doomstat.h"
 #include "info.h"
 #include "i_system.h"
+#include "m_misc.h"
 #include "version.h"
 #include "w_wad.h"
 #include "z_zone.h"
@@ -282,9 +283,7 @@ static void AddSpriteLump(lumpinfo_t *lump)
 // Generate the list.  Run at the start, before merging
 static void GenerateSpriteList(void)
 {
-    int                 i;
-    static boolean      medikit = false;
-    static boolean      stimpack = false;
+    int i;
 
     InitSpriteList();
 
@@ -298,33 +297,53 @@ static void GenerateSpriteList(void)
     {
         lumpinfo_t      *lump = &pwad_sprites.lumps[i];
 
-        if (!strcasecmp(lump->name, "MEDIA0"))
+        if (M_StringStartsWith(lump->name, "HEAD"))
+            mergedcacodemon = true;
+        else if (M_StringStartsWith(lump->name, "BOSS") || M_StringStartsWith(lump->name, "BOS2"))
+            mergednoble = true;
+        else if (!BTSX && (M_StringStartsWith(lump->name, "BAR1")
+            || M_StringStartsWith(lump->name, "BEXP")))
         {
-            if (medikit || lump->wad_file->freedoom)
-                continue;
-            else
-                medikit = true;
-        }
-        else if (!strcasecmp(lump->name, "STIMA0"))
-        {
-            if (stimpack || lump->wad_file->freedoom)
-                continue;
-            else
-                stimpack = true;
+            states[S_BAR1].tics = 0;
+            mobjinfo[MT_BARREL].spawnstate = S_BAR2;
+            mobjinfo[MT_BARREL].frames = 0;
         }
 
-        AddSpriteLump(lump);
-        if (i < iwad_sprites.numlumps && lump->size != iwad_sprites.lumps[i].size)
+        if (i < iwad_sprites.numlumps)
         {
             int j = 0;
 
             while (sproffsets[j].name[0])
             {
-                if (!strcasecmp(sproffsets[j].name, lump->name))
+                if (!strcasecmp(sproffsets[j].name, lump->name) && sproffsets[j].canmodify)
+                {
+                    int         k = 0;
+                    char        name1[9];
+
                     sproffsets[j].canmodify = false;
+
+                    M_StringCopy(name1, sproffsets[j].name, 9);
+                    name1[4] = '\0';
+
+                    while (sproffsets[k].name[0])
+                    {
+                        char    name2[9];
+
+                        M_StringCopy(name2, sproffsets[k].name, 9);
+                        name2[4] = '\0';
+
+                        if (!strcasecmp(name1, name2) ||
+                            (!strcasecmp(name1, "BAR1") && !strcasecmp(name2, "BEXP")))
+                            sproffsets[k].canmodify = false;
+
+                        k++;
+                    }
+                }
                 j++;
             }
         }
+
+        AddSpriteLump(lump);
     }
 }
 

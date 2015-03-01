@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __M_MENU__
+#if !defined(__M_MENU__)
 #define __M_MENU__
 
 #include "d_event.h"
@@ -87,6 +87,8 @@ void M_Init(void);
 // Called by intro code to force menu up upon a keypress,
 // does nothing if menu is already up.
 void M_StartControlPanel(void);
+void M_ShowHelp(void);
+void M_EndingGame(void);
 
 void M_DarkBackground(void);
 void M_DrawCenteredString(int y, char *str);
@@ -102,5 +104,12 @@ extern boolean  firstevent;
 extern byte     grays[256];
 extern int      musicvolume_percent;
 extern int      sfxvolume_percent;
+extern boolean  widescreen;
+extern boolean  hud;
+extern boolean  returntowidescreen;
+extern int      selectedepisode;
+extern int      selectedexpansion;
+extern int      selectedsavegame;
+extern int      selectedskilllevel;
 
 #endif

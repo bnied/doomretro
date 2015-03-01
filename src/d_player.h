@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __D_PLAYER__
+#if !defined(__D_PLAYER__)
 #define __D_PLAYER__
 
 // The player data structure depends on a number
@@ -132,7 +132,7 @@ typedef struct player_s
     // Is wp_nochange if not changing.
     weapontype_t        pendingweapon;
 
-    boolean             weaponowned[NUMWEAPONS];
+    int                 weaponowned[NUMWEAPONS];
     int                 ammo[NUMAMMO];
     int                 maxammo[NUMAMMO];
 
@@ -180,7 +180,7 @@ typedef struct player_s
     boolean             didsecret;
 
     weapontype_t        preferredshotgun;
-    boolean             shotguns;
+    int                 shotguns;
     weapontype_t        fistorchainsaw;
     int                 invulnbeforechoppers;
     int                 chainsawbeforechoppers;

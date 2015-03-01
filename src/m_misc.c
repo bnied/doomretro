@@ -39,11 +39,11 @@
 #include <errno.h>
 #include <stdarg.h>
 
-#ifdef WIN32
+#if defined(WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <io.h>
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #include <direct.h>
 #endif
 #else
@@ -61,7 +61,7 @@
 //
 void M_MakeDirectory(char *path)
 {
-#ifdef WIN32
+#if defined(WIN32)
     mkdir(path);
 #else
     mkdir(path, 0755);
@@ -110,9 +110,9 @@ long M_FileLength(FILE *handle)
 char *M_ExtractFolder(char *path)
 {
     char        *pos;
-    char        *folder = (char *)malloc(strlen(path));
+    char        *folder = (char *)malloc(MAX_PATH);
 
-    strcpy(folder, path);
+    M_StringCopy(folder, path, MAX_PATH);
 
     pos = strrchr(folder, '\\');
     if (pos)
@@ -179,8 +179,7 @@ char *M_TempFile(char *s)
 {
     char *tempdir;
 
-#ifdef WIN32
-
+#if defined(WIN32)
     // Check the TEMP environment variable to find the location.
     tempdir = getenv("TEMP");
 
@@ -400,4 +399,54 @@ char *uppercase(char *str)
     while (*(p++) = toupper(*p));
 
     return newstr;
+}
+
+char *commify(double value)
+{
+    static char result[64];
+    char        *pt;
+    int         n;
+
+    snprintf(result, sizeof(result), "%.0f", value);
+    for (pt = result; *pt && *pt != '.'; pt++);
+    n = result + sizeof(result) - pt;
+    do
+    {
+        pt -= 3;
+        if (pt > result)
+        {
+            memmove(pt + 1, pt, n);
+            *pt = ',';
+            n += 4;
+        }
+        else
+            break;
+    } while (1);
+    return result;
+}
+
+boolean wildcard(char *input, char *pattern)
+{
+    int i, z;
+
+    if (pattern[0] == '\0')
+        return true;
+
+    for (i = 0; pattern[i] != '\0'; i++)
+    {
+        if (pattern[i] == '\0')
+            return false;
+        else if (pattern[i] == '?')
+            continue;
+        else if (pattern[i] == '*')
+        {
+            for (z = i; input[z] != '\0'; z++)
+                if (wildcard(input + z, pattern + i + 1))
+                    return true;
+            return false;
+        }
+        else if (pattern[i] != input[i])
+            return false;
+    }
+    return true;
 }

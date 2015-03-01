@@ -120,7 +120,7 @@ mapthing_t      playerstarts[MAXPLAYERS];
 
 boolean         canmodify;
 
-int             mapfixes = MAPFIXES_DEFAULT;
+boolean         mapfixes = MAPFIXES_DEFAULT;
 
 static int      current_episode = -1;
 static int      current_map = -1;
@@ -178,7 +178,7 @@ void P_LoadVertexes(int lump)
         vertexes[i].y = SHORT(data[i].y) << FRACBITS;
 
         // Apply any map-specific fixes.
-        if (canmodify && (mapfixes & VERTEXES))
+        if (canmodify && mapfixes)
         {
             int j = 0;
 
@@ -309,7 +309,7 @@ void P_LoadSegs(int lump)
         }
 
         // Apply any map-specific fixes.
-        if (canmodify && (mapfixes & LINEDEFS))
+        if (canmodify && mapfixes)
         {
             int j = 0;
 
@@ -407,7 +407,7 @@ void P_LoadSectors(int lump)
         ss->tag = SHORT(ms->tag);
 
         // Apply any level-specific fixes.
-        if (canmodify && (mapfixes & SECTORS))
+        if (canmodify && mapfixes)
         {
             int j = 0;
 
@@ -451,6 +451,17 @@ void P_LoadNodes(int lump)
     numnodes = W_LumpLength(lump) / sizeof(mapnode_t);
     nodes = malloc_IfSameLevel(nodes, numnodes * sizeof(node_t));
     data = (byte *)W_CacheLumpNum(lump, PU_STATIC);
+
+    // [crispy] warn about unsupported nodes
+    if (!data || !numnodes)
+    {
+        if (numsubsectors > 1)
+            I_Error("P_LoadNodes: No nodes in map");
+    }
+    else if (!memcmp(data, "xNd4\0\0\0\0", 8))
+        I_Error("P_LoadNodes: DeePBSP nodes are not supported");
+    else if (!memcmp(data, "XNOD", 4) ||!memcmp(data, "ZNOD", 4))
+        I_Error("P_LoadNodes: ZDBSP nodes are not supported");
 
     for (i = 0; i < numnodes; i++)
     {
@@ -538,7 +549,7 @@ void P_LoadThings(int lump)
         mt.options = SHORT(mt.options);
 
         // Apply any level-specific fixes.
-        if (canmodify && (mapfixes & THINGS))
+        if (canmodify && mapfixes)
         {
             int j = 0;
 
@@ -801,7 +812,6 @@ void P_LoadBlockMap(int lump)
 
     // clear out mobj chains
     blocklinks = calloc_IfSameLevel(blocklinks, bmapwidth * bmapheight, sizeof(*blocklinks));
-    memset(blocklinks, 0, sizeof(*blocklinks) * bmapwidth * bmapheight);
 }
 
 //
@@ -957,41 +967,58 @@ static void P_GroupLines(void)
 // Firelines (TM) is a Rezistered Trademark of MBF Productions
 //
 
-static void P_RemoveSlimeTrails(void)               // killough 10/98
+static void P_RemoveSlimeTrails(void)                   // killough 10/98
 {
-    byte *hit = (byte *)calloc(1, numvertexes);     // Hitlist for vertices
-    int i;
+    byte        *hit = (byte *)calloc(1, numvertexes);  // Hitlist for vertices
+    int         i;
 
-    for (i = 0; i < numsegs; i++)                   // Go through each seg
+    for (i = 0; i < numsegs; i++)                       // Go through each seg
     {
-        const line_t *l = segs[i].linedef;          // The parent linedef
+        const line_t    *l = segs[i].linedef;              // The parent linedef
 
-        if (l->dx && l->dy)                         // We can ignore orthogonal lines
+        if (l->dx && l->dy)                             // We can ignore orthogonal lines
         {
-            vertex_t *v = segs[i].v1;
+            vertex_t    *v = segs[i].v1;
 
             do
-                if (!hit[v - vertexes])             // If we haven't processed vertex
+            {
+                if (!hit[v - vertexes])                 // If we haven't processed vertex
                 {
-                    hit[v - vertexes] = 1;          // Mark this vertex as processed
+                    hit[v - vertexes] = 1;              // Mark this vertex as processed
 
-                    if (v != l->v1 && v != l->v2)   // Exclude endpoints of linedefs
+                    if (v != l->v1 && v != l->v2)       // Exclude endpoints of linedefs
                     {
                         // Project the vertex back onto the parent linedef
                         int64_t dx2 = (l->dx >> FRACBITS) * (l->dx >> FRACBITS);
                         int64_t dy2 = (l->dy >> FRACBITS) * (l->dy >> FRACBITS);
                         int64_t dxy = (l->dx >> FRACBITS) * (l->dy >> FRACBITS);
                         int64_t s = dx2 + dy2;
-                        int x0 = v->x, y0 = v->y, x1 = l->v1->x, y1 = l->v1->y;
+                        int     x0 = v->x, y0 = v->y, x1 = l->v1->x, y1 = l->v1->y;
 
                         v->x = (int)((dx2 * x0 + dy2 * x1 + dxy * (y0 - y1)) / s);
                         v->y = (int)((dy2 * y0 + dx2 * y1 + dxy * (x0 - x1)) / s);
                     }
                 }  // Obsfucated C contest entry:   :)
-            while ((v != segs[i].v2) && (v = segs[i].v2));
+            }
+            while (v != segs[i].v2 && (v = segs[i].v2));
         }
     }
     free(hit);
+}
+
+// precalc values for use later in long wall error fix in R_StoreWallRange()
+static void P_CalcSegsLength(void)
+{
+    int i;
+
+    for (i = 0; i < numsegs; i++)
+    {
+        seg_t   *li = segs + i;
+        fixed_t dx = li->v2->x - li->v1->x;
+        fixed_t dy = li->v2->y - li->v1->y;
+
+        li->length = (fixed_t)sqrt((double)dx * dx + (double)dy * dy);
+    }
 }
 
 char            mapnum[6];
@@ -1186,7 +1213,11 @@ void P_SetupLevel(int episode, int map)
     P_MapName(gameepisode, gamemap);
 
     // note: most of this ordering is important
-    P_LoadBlockMap(lumpnum + ML_BLOCKMAP);
+    if (!samelevel)
+        P_LoadBlockMap(lumpnum + ML_BLOCKMAP);
+    else
+        memset(blocklinks, 0, bmapwidth * bmapheight * sizeof(*blocklinks));
+
     P_LoadVertexes(lumpnum + ML_VERTEXES);
     P_LoadSectors(lumpnum + ML_SECTORS);
     P_LoadSideDefs(lumpnum + ML_SIDEDEFS);
@@ -1202,6 +1233,8 @@ void P_SetupLevel(int episode, int map)
 
     P_RemoveSlimeTrails();
 
+    P_CalcSegsLength();
+
     deathmatch_p = deathmatchstarts;
 
     bloodSplatQueueSlot = 0;
@@ -1210,6 +1243,7 @@ void P_SetupLevel(int episode, int map)
     P_LoadThings(lumpnum + ML_THINGS);
 
     P_InitCards(&players[0]);
+    P_InitAnimatedLiquids();
 
     // if deathmatch, randomly spawn the active players
     if (deathmatch)

@@ -36,12 +36,13 @@
 ========================================================================
 */
 
-#ifdef WIN32
+#if defined(WIN32)
 #include <Windows.h>
 #include <Xinput.h>
 #endif
 
 #include "am_map.h"
+#include "c_console.h"
 #include "d_deh.h"
 #include "d_main.h"
 #include "doomstat.h"
@@ -345,7 +346,7 @@ static void G_PrevWeapon(void)
 // G_BuildTiccmd
 // Builds a ticcmd from all of the available inputs.
 //
-void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
+void G_BuildTiccmd(ticcmd_t *cmd)
 {
     int         i;
     boolean     strafe;
@@ -357,7 +358,7 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
     memset(cmd, 0, sizeof(ticcmd_t));
     cmd->consistency = consistency[consoleplayer][maketic % BACKUPTICS];
 
-    if (automapactive && !followplayer)
+    if (automapactive && !followmode)
         return;
 
     strafe = (gamekeydown[key_strafe] || mousebuttons[mousebstrafe]);
@@ -535,8 +536,8 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
     }
 }
 
-#ifdef SDL20
-extern SDL_Window *sdl_window;
+#if defined(SDL20)
+extern SDL_Window       *window;
 #endif
 
 //
@@ -621,23 +622,26 @@ void G_DoLoadLevel(void)
     sendpause = sendsave = paused = false;
     memset(mousearray, 0, sizeof(mousearray));
 
-#ifdef SDL20
-    SDL_SetWindowTitle(sdl_window, mapnumandtitle);
+#if defined(SDL20)
+    SDL_SetWindowTitle(window, mapnumandtitle);
 #else
     SDL_WM_SetCaption(mapnumandtitle, NULL);
 #endif
+
+    C_AddConsoleDivider();
+    C_Print(title, mapnumandtitle);
 
     if (automapactive)
         AM_Start();
 
     if (widescreen || returntowidescreen)
-        ToggleWideScreen(true);
+        ToggleWidescreen(true);
 }
 
 void G_ToggleAlwaysRun(void)
 {
     alwaysrun = !alwaysrun;
-    players[consoleplayer].message = (alwaysrun ? s_ALWAYSRUNON : s_ALWAYSRUNOFF);
+    HU_PlayerMessage(alwaysrun ? s_ALWAYSRUNON : s_ALWAYSRUNOFF);
     message_dontfuckwithme = true;
     if (menuactive)
     {
@@ -665,6 +669,7 @@ boolean G_Responder(event_t *ev)
             && ((ev->type == ev_keydown
                  && ev->data1 != KEY_PAUSE
                  && ev->data1 != KEY_RSHIFT
+                 && ev->data1 != KEY_RCTRL
                  && ev->data1 != KEY_RALT
                  && ev->data1 != KEY_CAPSLOCK
                  && ev->data1 != KEY_NUMLOCK
@@ -672,8 +677,11 @@ boolean G_Responder(event_t *ev)
                  && !((ev->data1 == KEY_ENTER || ev->data1 == KEY_TAB) && altdown))
                  || (ev->type == ev_mouse
                      && mousewait < I_GetTime()
-                     && ev->data1
-                     && !(ev->data1 & (MOUSE_WHEELUP | MOUSE_WHEELDOWN)))
+#if defined(SDL20)
+                     && ev->data1)
+#else
+                     && ev->data1 && !(ev->data1 & (MOUSE_WHEELUP | MOUSE_WHEELDOWN)))
+#endif
                  || (ev->type == ev_gamepad
                      && gamepadwait < I_GetTime()
                      && gamepadbuttons
@@ -762,8 +770,10 @@ boolean G_Responder(event_t *ev)
             mousebuttons[0] = mousebutton & MOUSE_LEFTBUTTON;
             mousebuttons[1] = mousebutton & MOUSE_RIGHTBUTTON;
             mousebuttons[2] = mousebutton & MOUSE_MIDDLEBUTTON;
+#if !defined(SDL20)
             mousebuttons[3] = mousebutton & MOUSE_WHEELUP;
             mousebuttons[4] = mousebutton & MOUSE_WHEELDOWN;
+#endif
             if (vibrate && mousebutton)
             {
                 vibrate = false;
@@ -777,12 +787,30 @@ boolean G_Responder(event_t *ev)
                 else if (mousebuttons[mousebprevweapon])
                     G_PrevWeapon();
             }
-            if (!automapactive || (automapactive && followplayer))
+            if (!automapactive || (automapactive && followmode))
             {
                 mousex = ev->data2 * mousesensitivity / 10;
                 mousey = ev->data3 * mousesensitivity / 10;
             }
             return true;            // eat events
+
+#if defined(SDL20)
+        case ev_mousewheel:
+            if (vibrate)
+            {
+                vibrate = false;
+                idlemotorspeed = 0;
+                XInputVibration(idlemotorspeed);
+            }
+            if (!automapactive && !menuactive && !paused)
+            {
+                if (mousebnextweapon == MOUSE_WHEELDOWN && ev->data1 > 0)
+                    G_NextWeapon();
+                else if (mousebprevweapon == MOUSE_WHEELUP && ev->data1 < 0)
+                    G_PrevWeapon();
+            }
+            return true;
+#endif
 
         case ev_gamepad:
             if (!automapactive && !menuactive && !paused)
@@ -909,7 +937,7 @@ void G_Ticker(void)
                 if (gametic)
                 {
                     if ((usergame || gamestate == GS_LEVEL)
-                        && !idbehold && !(players[consoleplayer].cheats & CF_MYPOS))
+                        && !idbehold && !(players[consoleplayer].cheats & CF_MYPOS) && !showfps)
                     {
                         HU_clearMessages();
                         D_Display();
@@ -919,16 +947,13 @@ void G_Ticker(void)
                         static char     message[512];
 
                         S_StartSound(NULL, sfx_swtchx);
-                        if (usergame || gamestate == GS_LEVEL)
+                        M_snprintf(message, sizeof(message), s_GSCREENSHOT, lbmname);
+                        HU_PlayerMessage(message);
+                        message_dontfuckwithme = true;
+                        if (menuactive)
                         {
-                            M_snprintf(message, sizeof(message), s_GSCREENSHOT, lbmname);
-                            players[consoleplayer].message = message;
-                            message_dontfuckwithme = true;
-                            if (menuactive)
-                            {
-                                message_dontpause = true;
-                                blurred = false;
-                            }
+                            message_dontpause = true;
+                            blurred = false;
                         }
                     }
                     gameaction = ga_nothing;
@@ -1294,7 +1319,7 @@ void G_DoCompleted(void)
 
     if (widescreen)
     {
-        ToggleWideScreen(false);
+        ToggleWidescreen(false);
         returntowidescreen = true;
         ST_doRefresh();
     }
@@ -1553,8 +1578,11 @@ void G_DoLoadGame(void)
     P_UnArchiveWorld();
     P_UnArchiveThinkers();
     P_UnArchiveSpecials();
+    P_UnArchiveMap();
 
     P_RestoreTargets();
+
+    P_InitAnimatedLiquids();
 
     P_MapEnd();
 
@@ -1567,7 +1595,7 @@ void G_DoLoadGame(void)
         R_ExecuteSetViewSize();
 
     if (widescreen)
-        ToggleWideScreen(true);
+        ToggleWidescreen(true);
 
     // draw the pattern into the back screen
     R_FillBackScreen();
@@ -1580,7 +1608,7 @@ void G_LoadedGameMessage(void)
     static char buffer[128];
 
     M_snprintf(buffer, sizeof(buffer), s_GGLOADED, savedescription);
-    players[consoleplayer].message = buffer;
+    HU_PlayerMessage(buffer);
     message_dontfuckwithme = true;
 
     loadedgame = false;
@@ -1624,6 +1652,7 @@ void G_DoSaveGame(void)
     P_ArchiveWorld();
     P_ArchiveThinkers();
     P_ArchiveSpecials();
+    P_ArchiveMap();
 
     P_WriteSaveGameEOF();
 
@@ -1637,7 +1666,7 @@ void G_DoSaveGame(void)
 
     // [BH] use the save description in the message displayed
     M_snprintf(buffer, sizeof(buffer), s_GGSAVED, savedescription);
-    players[consoleplayer].message = buffer;
+    HU_PlayerMessage(buffer);
     message_dontfuckwithme = true;
     S_StartSound(NULL, sfx_swtchx);
 
@@ -1701,7 +1730,7 @@ void G_DoNewGame(void)
     playeringame[1] = playeringame[2] = playeringame[3] = 0;
 
     if (widescreen)
-        ToggleWideScreen(true);
+        ToggleWidescreen(true);
 
     consoleplayer = 0;
     st_facecount = ST_STRAIGHTFACECOUNT;

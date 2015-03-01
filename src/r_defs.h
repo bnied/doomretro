@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __R_DEFS__
+#if !defined(__R_DEFS__)
 #define __R_DEFS__
 
 #include "p_mobj.h"
@@ -126,6 +126,8 @@ typedef struct
 
     int                 cachedheight;
     int                 scaleindex;
+
+    int                 animate;
 } sector_t;
 
 //
@@ -414,7 +416,7 @@ typedef enum
     YellowSkullKey                                     =   39,
     BlueSkullKey                                       =   40,
     EvilEye                                            =   41,
-    FloatingSkull                                      =   42,
+    FloatingSkullRock                                  =   42,
     TorchedTree                                        =   43,
     TallBlueFirestick                                  =   44,
     TallGreenFirestick                                 =   45,
@@ -550,6 +552,8 @@ typedef struct
 
     angle_t             angle;
 
+    fixed_t             length;
+
     side_t              *sidedef;
     line_t              *linedef;
 
@@ -578,7 +582,7 @@ typedef struct
     int                 children[2];
 } node_t;
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #pragma pack(push)
 #pragma pack(1)
 #endif
@@ -590,7 +594,7 @@ typedef struct
     byte               length;          // length data bytes follows
 } PACKEDATTR post_t;
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #pragma pack(pop)
 #endif
 
@@ -634,7 +638,7 @@ typedef struct drawseg_s
     int                 *maskedtexturecol;
 } drawseg_t;
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #pragma pack(push)
 #pragma pack(1)
 #endif
@@ -654,7 +658,7 @@ typedef struct
     // the [0] is &columnofs[width]
 } PACKEDATTR patch_t;
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #pragma pack(pop)
 #endif
 
@@ -700,6 +704,8 @@ typedef struct vissprite_s
     fixed_t             footclip;
 
     fixed_t             blood;
+
+    boolean             drawn;
 } vissprite_t;
 
 //
@@ -764,6 +770,8 @@ typedef struct visplane_s
     unsigned int        pad4;
 
     struct visplane_s   *next;  // Next visplane in hash chain -- killough
+
+    sector_t            *sector;
 } visplane_t;
 
 #endif

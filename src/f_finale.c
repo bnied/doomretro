@@ -38,6 +38,7 @@
 
 #include <ctype.h>
 
+#include "c_console.h"
 #include "d_deh.h"
 #include "doomstat.h"
 #include "dstrings.h"
@@ -215,7 +216,7 @@ static float TextSpeed(void)
 //
 void F_Ticker(void)
 {
-    if (menuactive || paused)
+    if (menuactive || paused || consoleactive)
         return;
 
     WI_checkForAccelerate();
@@ -266,7 +267,8 @@ static struct
     { 'T', ',',  -1 },
     { 'Y', '.',  -1 },
     { 'Y', ',',  -1 },
-    { 'D', '\'', -1 }
+    { 'D', '\'', -1 },
+    { 0,   0,     0 }
 };
 
 //
@@ -362,7 +364,10 @@ void F_TextWrite(void)
             while (kern[k].char1)
             {
                 if (prev == kern[k].char1 && c == kern[k].char2)
+                {
                     cx += kern[k].adjust;
+                    break;
+                }
                 k++;
             }
             w = strlen(smallcharset[c]) / 10 - 1;
@@ -601,7 +606,7 @@ boolean F_CastResponder(event_t *ev)
         return true;
     }
 
-    if (menuactive || paused)
+    if (menuactive || paused || consoleactive)
         return false;
 
     if (ev->type == ev_keydown && ev->data1 != key_use && ev->data1 != key_fire
@@ -646,8 +651,8 @@ boolean F_CastResponder(event_t *ev)
     
     // go into death frame
     castdeath = true;
-    if ((corpses & MIRROR) && type != MT_CHAINGUY && type != MT_CYBORG)
-        castdeathflip = (rand() & 1);
+    if (corpses_mirror && type != MT_CHAINGUY && type != MT_CYBORG)
+        castdeathflip = rand() & 1;
     caststate = &states[mobjinfo[type].deathstate];
     casttics = caststate->tics;
     castrot = 0;
@@ -753,7 +758,12 @@ void F_CastDrawer(void)
         if (shadows && ((type != MT_SKULL && type != MT_PAIN) || !castdeath))
         {
             if (translucency)
-                V_DrawFlippedShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
+            {
+                if (type == MT_SHADOWS)
+                    V_DrawFlippedSpectreShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
+                else
+                    V_DrawFlippedShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
+            }
             else
                 V_DrawFlippedSolidShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
         }
@@ -772,14 +782,19 @@ void F_CastDrawer(void)
         if (shadows && ((type != MT_SKULL && type != MT_PAIN) || !castdeath))
         {
             if (translucency)
-                V_DrawShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
+            {
+                if (type == MT_SHADOWS)
+                    V_DrawSpectreShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
+                else
+                    V_DrawShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
+            }
             else
                 V_DrawSolidShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
         }
 
         if (translucency && (type == MT_SKULL || (type == MT_PAIN && castdeath)))
             V_DrawTranslucentRedPatch(ORIGINALWIDTH / 2, y, patch);
-        else if (castorder[castnum].type == MT_SHADOWS)
+        else if (type == MT_SHADOWS)
             V_DrawFuzzPatch(ORIGINALWIDTH / 2, y, patch);
         else
             V_DrawPatch(ORIGINALWIDTH / 2, y, 0, patch);

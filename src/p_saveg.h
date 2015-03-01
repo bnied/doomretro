@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __P_SAVEG__
+#if !defined(__P_SAVEG__)
 #define __P_SAVEG__
 
 #include <stdio.h>
@@ -44,7 +44,7 @@
 // maximum size of a savegame description
 #define SAVESTRINGSIZE          256
 #define SAVESTRINGPIXELWIDTH    186
-#define VERSIONSIZE             16
+#define VERSIONSIZE             24
 
 // temporary filename to use while saving.
 char *P_TempSaveGameFile(void);
@@ -70,6 +70,8 @@ void P_ArchiveThinkers(void);
 void P_UnArchiveThinkers(void);
 void P_ArchiveSpecials(void);
 void P_UnArchiveSpecials(void);
+void P_ArchiveMap(void);
+void P_UnArchiveMap(void);
 
 uint32_t P_ThinkerToIndex(thinker_t *thinker);
 thinker_t *P_IndexToThinker(uint32_t index);

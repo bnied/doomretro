@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifdef WIN32
+#if defined(WIN32)
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
@@ -49,6 +49,7 @@ static XINPUTGETSTATE pXInputGetState;
 static XINPUTSETSTATE pXInputSetState;
 #endif
 
+#include "c_console.h"
 #include "d_main.h"
 #include "hu_stuff.h"
 #include "i_gamepad.h"
@@ -70,6 +71,10 @@ extern boolean          idclev;
 extern boolean          idmus;
 extern boolean          idbehold;
 extern boolean          menuactive;
+
+#if defined(WIN32)
+HMODULE                 pXInputDLL;
+#endif
 
 void (*gamepadfunc)(void);
 void (*gamepadthumbsfunc)(short, short, short, short);
@@ -101,17 +106,18 @@ void I_InitGamepad(void)
         }
         else
         {
-#ifdef WIN32
-            HMODULE     pXInputDLL;
+#if defined(WIN32)
+            char *XInputDLL = malloc(16 * sizeof(char));
 
-            if (!(pXInputDLL = LoadLibrary("XInput1_4.dll")))
-                if (!(pXInputDLL = LoadLibrary("XInput9_1_0.dll")))
-                    pXInputDLL = LoadLibrary("XInput1_3.dll");
+            if ((pXInputDLL = LoadLibrary("XInput1_4.dll")))
+                XInputDLL = "XINPUT1_4.DLL";
+            else if ((pXInputDLL = LoadLibrary("XInput9_1_0.dll")))
+                XInputDLL = "XINPUT9_1_0.DLL";
+            else if ((pXInputDLL = LoadLibrary("XInput1_3.dll")))
+                XInputDLL = "XINPUT1_3.DLL";
 
             if (pXInputDLL)
             {
-                M_SaveDefaults();
-
                 pXInputGetState = (XINPUTGETSTATE)GetProcAddress(pXInputDLL, "XInputGetState");
                 pXInputSetState = (XINPUTSETSTATE)GetProcAddress(pXInputDLL, "XInputSetState");
 
@@ -126,10 +132,15 @@ void I_InitGamepad(void)
                         gamepadfunc = I_PollXInputGamepad;
                         gamepadthumbsfunc = (gamepadlefthanded ? I_PollThumbs_XInput_LeftHanded :
                             I_PollThumbs_XInput_RightHanded);
+                        C_Output("XInput gamepad detected. Using %s.", XInputDLL);
                     }
                 }
+                else
+                    FreeLibrary(pXInputDLL);
             }
+            else
 #endif
+                C_Output("DirectInput gamepad \"%s\" detected.", SDL_JoystickName(gamepad));
 
             SDL_JoystickEventState(SDL_ENABLE);
         }
@@ -138,6 +149,11 @@ void I_InitGamepad(void)
 
 void I_ShutdownGamepad(void)
 {
+#if defined(WIN32)
+    if (pXInputDLL)
+        FreeLibrary(pXInputDLL);
+#endif
+
     if (gamepad)
     {
         SDL_JoystickClose(gamepad);
@@ -224,7 +240,7 @@ int restoremotorspeed = 0;
 
 void XInputVibration(int motorspeed)
 {
-#ifdef WIN32
+#if defined(WIN32)
     if (motorspeed > currentmotorspeed || motorspeed == idlemotorspeed)
     {
         XINPUT_VIBRATION    vibration;
@@ -252,7 +268,7 @@ void I_PollThumbs_XInput_LeftHanded(short LX, short LY, short RX, short RY)
 
 void I_PollXInputGamepad(void)
 {
-#ifdef WIN32
+#if defined(WIN32)
     if (gamepad)
     {
         XINPUT_STATE    state;

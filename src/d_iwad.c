@@ -71,8 +71,7 @@ static void AddIWADDir(char *dir)
     }
 }
 
-#ifdef WIN32
-
+#if defined(WIN32)
 // This is Windows-specific code that automatically finds the location
 // of installed IWAD files.  The registry is inspected to find special
 // keys installed by the Windows installers for various CD versions
@@ -293,12 +292,13 @@ static struct
     char                *name;
     GameMission_t       mission;
 } iwads[] = {
-    { "DOOM2.WAD",    doom2     },
-    { "PLUTONIA.WAD", pack_plut },
-    { "TNT.WAD",      pack_tnt  },
-    { "DOOM.WAD",     doom      },
-    { "DOOM1.WAD",    doom      },
-    { "HACX.WAD",     doom2     }
+    { "DOOM2.WAD",    doom2      },
+    { "DOOM2.WAD",    pack_nerve },
+    { "PLUTONIA.WAD", pack_plut  },
+    { "TNT.WAD",      pack_tnt   },
+    { "DOOM.WAD",     doom       },
+    { "DOOM1.WAD",    doom       },
+    { "HACX.WAD",     doom2      }
 };
 
 // Returns true if the specified path is a path to a file
@@ -400,7 +400,7 @@ static void BuildIWADDirList(void)
     // Add dirs from DOOMWADPATH
     AddDoomWadPath();
 
-#ifdef WIN32
+#if defined(WIN32)
     // Search the registry and find where IWADs have been installed.
     CheckUninstallStrings();
     CheckCollectorsEdition();

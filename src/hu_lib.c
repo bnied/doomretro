@@ -139,7 +139,8 @@ static struct
     { 'Y', '.',  -1 },
     { 'Y', ',',  -1 },
     { 'D', '\'', -1 },
-    { '3', '\"', -1 }
+    { '3', '\"', -1 },
+    { 0,   0,     0 }
 };
 
 void HUlib_drawTextLine(hu_textline_t *l)
@@ -171,7 +172,7 @@ void HUlib_drawTextLine(hu_textline_t *l)
                     j = 64;
                 else if (c == '\'')
                     j = 65;
-#ifdef WIN32
+#if defined(WIN32)
                 else if (c == '\u2019')
                     j = 65;
 #endif
@@ -195,7 +196,10 @@ void HUlib_drawTextLine(hu_textline_t *l)
                 while (kern[k].char1)
                 {
                     if (prev == kern[k].char1 && c == kern[k].char2)
+                    {
                         x += kern[k].adjust;
+                        break;
+                    }
                     k++;
                 }
 

@@ -36,8 +36,8 @@
 ========================================================================
 */
 
-#ifndef __HU_STUFF_H__
-#define __HU_STUFF_H__
+#if !defined(__HU_STUFF__)
+#define __HU_STUFF__
 
 #include "d_event.h"
 
@@ -50,11 +50,8 @@
 // Calculate # of glyphs in font.
 #define HU_FONTSIZE     (HU_FONTEND - HU_FONTSTART + 1)
 
-#define HU_BROADCAST    5
-
 #define HU_MSGX         (automapactive && fullscreen && !widescreen ? 0 : 3)
 #define HU_MSGY         2
-#define HU_MSGWIDTH     64      // in characters
 #define HU_MSGHEIGHT    1       // in lines
 
 #define HU_MSGTIMEOUT   (4 * TICRATE)
@@ -69,10 +66,11 @@ void HU_Ticker(void);
 void HU_Drawer(void);
 void HU_Erase(void);
 
+void HU_PlayerMessage(char *message);
+
 void HU_clearMessages(void);
 
-extern char mapnumandtitle[133];
-extern char automaptitle[133];
-extern int fullscreen;
+extern char     automaptitle[133];
+extern boolean  fullscreen;
 
 #endif

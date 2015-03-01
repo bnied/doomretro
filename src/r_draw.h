@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __R_DRAW__
+#if !defined(__R_DRAW__)
 #define __R_DRAW__
 
 #define R_ADDRESS(scrn, px, py) \
@@ -54,6 +54,7 @@ extern boolean          dc_topsparkle;
 extern boolean          dc_bottomsparkle;
 extern fixed_t          dc_blood;
 extern byte             *dc_colormask;
+extern int              dc_baseclip;
 
 // first pixel in a column
 extern byte             *dc_source;

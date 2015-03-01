@@ -38,10 +38,12 @@
 
 #include "d_deh.h"
 #include "dstrings.h"
+#include "hu_stuff.h"
 #include "p_local.h"
 #include "s_sound.h"
 #include "z_zone.h"
 
+extern boolean  animatedliquid;
 //
 // VERTICAL DOORS
 //
@@ -61,17 +63,17 @@ void T_VerticalDoor(vldoor_t *door)
             {
                 switch (door->type)
                 {
-                    case blazeRaise:
+                    case doorBlazeRaise:
                         door->direction = -1;   // time to go back down
                         S_StartSound(&door->sector->soundorg, sfx_bdcls);
                         break;
 
-                    case normal:
+                    case doorNormal:
                         door->direction = -1;   // time to go back down
                         S_StartSound(&door->sector->soundorg, sfx_dorcls);
                         break;
 
-                    case close30ThenOpen:
+                    case doorClose30ThenOpen:
                         door->direction = 1;
                         S_StartSound(&door->sector->soundorg, sfx_doropn);
                         break;
@@ -88,9 +90,9 @@ void T_VerticalDoor(vldoor_t *door)
             {
                 switch (door->type)
                 {
-                    case raiseIn5Mins:
+                    case doorRaiseIn5Mins:
                         door->direction = 1;
-                        door->type = normal;
+                        door->type = doorNormal;
                         S_StartSound(&door->sector->soundorg, sfx_doropn);
                         break;
 
@@ -108,19 +110,19 @@ void T_VerticalDoor(vldoor_t *door)
             {
                 switch (door->type)
                 {
-                    case blazeRaise:
-                    case blazeClose:
+                    case doorBlazeRaise:
+                    case doorBlazeClose:
                         door->sector->specialdata = NULL;
                         P_RemoveThinker(&door->thinker);        // unlink and free
                         break;
 
-                    case normal:
-                    case close:
+                    case doorNormal:
+                    case doorClose:
                         door->sector->specialdata = NULL;
                         P_RemoveThinker(&door->thinker);        // unlink and free
                         break;
 
-                    case close30ThenOpen:
+                    case doorClose30ThenOpen:
                         door->direction = 0;
                         door->topcountdown = TICRATE * 30;
                         break;
@@ -133,11 +135,11 @@ void T_VerticalDoor(vldoor_t *door)
             {
                 switch (door->type)
                 {
-                    case blazeClose:
-                    case close:         // DO NOT GO BACK UP!
+                    case doorBlazeClose:
+                    case doorClose:         // DO NOT GO BACK UP!
                         break;
 
-                    case blazeRaise:
+                    case doorBlazeRaise:
                         door->direction = 1;
                         S_StartSound(&door->sector->soundorg, sfx_bdopn);
                         break;
@@ -158,15 +160,15 @@ void T_VerticalDoor(vldoor_t *door)
             {
                 switch (door->type)
                 {
-                    case blazeRaise:
-                    case normal:
+                    case doorBlazeRaise:
+                    case doorNormal:
                         door->direction = 0;                    // wait at top
                         door->topcountdown = door->topwait;
                         break;
 
-                    case close30ThenOpen:
-                    case blazeOpen:
-                    case open:
+                    case doorClose30ThenOpen:
+                    case doorBlazeOpen:
+                    case doorOpen:
                         door->sector->specialdata = NULL;
                         P_RemoveThinker(&door->thinker);        // unlink and free
                         break;
@@ -203,7 +205,7 @@ int EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                         player->neededcard = it_bluecard;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_BLUEO;
+                    HU_PlayerMessage(s_PD_BLUEO);
                 }
                 else if (player->cards[it_blueskull] == CARDNOTFOUNDYET)
                 {
@@ -212,7 +214,7 @@ int EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                         player->neededcard = it_blueskull;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_BLUEO2;
+                    HU_PlayerMessage(s_PD_BLUEO2);
                 }
                 S_StartSound(player->mo, sfx_noway);
                 return 0;
@@ -230,7 +232,7 @@ int EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                         player->neededcard = it_redcard;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_REDO;
+                    HU_PlayerMessage(s_PD_REDO);
                 }
                 else if (player->cards[it_redskull] == CARDNOTFOUNDYET)
                 {
@@ -239,7 +241,7 @@ int EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                         player->neededcard = it_redskull;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_REDO2;
+                    HU_PlayerMessage(s_PD_REDO2);
                 }
                 S_StartSound(player->mo, sfx_noway);
                 return 0;
@@ -257,7 +259,7 @@ int EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                         player->neededcard = it_yellowcard;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_YELLOWO;
+                    HU_PlayerMessage(s_PD_YELLOWO);
                 }
                 else if (player->cards[it_yellowskull] == CARDNOTFOUNDYET)
                 {
@@ -266,7 +268,7 @@ int EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                         player->neededcard = it_yellowskull;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_YELLOWO2;
+                    HU_PlayerMessage(s_PD_YELLOWO2);
                 }
                 S_StartSound(player->mo, sfx_noway);
                 return 0;
@@ -308,7 +310,7 @@ int EV_DoDoor(line_t *line, vldoor_e type)
 
         switch (type)
         {
-            case blazeClose:
+            case doorBlazeClose:
                 door->topheight = P_FindLowestCeilingSurrounding(sec);
                 door->topheight -= 4 * FRACUNIT;
                 door->direction = -1;
@@ -316,21 +318,21 @@ int EV_DoDoor(line_t *line, vldoor_e type)
                 S_StartSound(&door->sector->soundorg, sfx_bdcls);
                 break;
 
-            case close:
+            case doorClose:
                 door->topheight = P_FindLowestCeilingSurrounding(sec);
                 door->topheight -= 4 * FRACUNIT;
                 door->direction = -1;
                 S_StartSound(&door->sector->soundorg, sfx_dorcls);
                 break;
 
-            case close30ThenOpen:
+            case doorClose30ThenOpen:
                 door->topheight = sec->ceilingheight;
                 door->direction = -1;
                 S_StartSound(&door->sector->soundorg, sfx_dorcls);
                 break;
 
-            case blazeRaise:
-            case blazeOpen:
+            case doorBlazeRaise:
+            case doorBlazeOpen:
                 door->direction = 1;
                 door->topheight = P_FindLowestCeilingSurrounding(sec);
                 door->topheight -= 4 * FRACUNIT;
@@ -339,8 +341,8 @@ int EV_DoDoor(line_t *line, vldoor_e type)
                     S_StartSound(&door->sector->soundorg, sfx_bdopn);
                 break;
 
-            case normal:
-            case open:
+            case doorNormal:
+            case doorOpen:
                 door->direction = 1;
                 door->topheight = P_FindLowestCeilingSurrounding(sec);
                 door->topheight -= 4 * FRACUNIT;
@@ -382,7 +384,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                         player->neededcard = it_bluecard;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_BLUEK;
+                    HU_PlayerMessage(s_PD_BLUEK);
                 }
                 else if (player->cards[it_blueskull] == CARDNOTFOUNDYET)
                 {
@@ -391,7 +393,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                         player->neededcard = it_blueskull;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_BLUEK2;
+                    HU_PlayerMessage(s_PD_BLUEK2);
                 }
                 S_StartSound(player->mo, sfx_noway);
                 return;
@@ -412,7 +414,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                         player->neededcard = it_yellowcard;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_YELLOWK;
+                    HU_PlayerMessage(s_PD_YELLOWK);
                 }
                 else if (player->cards[it_yellowskull] == CARDNOTFOUNDYET)
                 {
@@ -421,7 +423,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                         player->neededcard = it_yellowskull;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_YELLOWK2;
+                    HU_PlayerMessage(s_PD_YELLOWK2);
                 }
                 S_StartSound(player->mo, sfx_noway);
                 return;
@@ -442,7 +444,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                         player->neededcard = it_redcard;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_REDK;
+                    HU_PlayerMessage(s_PD_REDK);
                 }
                 else if (player->cards[it_redskull] == CARDNOTFOUNDYET)
                 {
@@ -451,7 +453,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                         player->neededcard = it_redskull;
                         player->neededcardtics = NEEDEDCARDTICS;
                     }
-                    player->message = s_PD_REDK2;
+                    HU_PlayerMessage(s_PD_REDK2);
                 }
                 S_StartSound(player->mo, sfx_noway);
                 return;
@@ -482,7 +484,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                 {
                     door->direction = 1;        // go back up
 
-                    if (door->type == blazeRaise)
+                    if (door->type == doorBlazeRaise)
                         S_StartSound(&door->sector->soundorg, sfx_bdopn);
                     else
                         S_StartSound(&door->sector->soundorg, sfx_doropn);
@@ -496,7 +498,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                     {
                         door->direction = -1;   // start going down immediately
 
-                        if (door->type == blazeRaise)
+                        if (door->type == doorBlazeRaise)
                             S_StartSound(&door->sector->soundorg, sfx_bdcls);
                         else
                             S_StartSound(&door->sector->soundorg, sfx_dorcls);
@@ -548,24 +550,24 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
         case DR_OpenDoorWait4SecondsCloseBlueKeyRequired:
         case DR_OpenDoorWait4SecondsCloseYellowKeyRequired:
         case DR_OpenDoorWait4SecondsCloseRedKeyRequired:
-            door->type = normal;
+            door->type = doorNormal;
             break;
 
         case D1_OpenDoorStayOpen:
         case D1_OpenDoorStayOpenBlueKeyRequired:
         case D1_OpenDoorStayOpenRedKeyRequired:
         case D1_OpenDoorStayOpenYellowKeyRequired:
-            door->type = open;
+            door->type = doorOpen;
             line->special = 0;
             break;
 
         case DR_OpenFastDoorWait4SecondsClose:
-            door->type = blazeRaise;
+            door->type = doorBlazeRaise;
             door->speed = VDOORSPEED * 4;
             break;
 
         case D1_OpenFastDoorStayOpen:
-            door->type = blazeOpen;
+            door->type = doorBlazeOpen;
             line->special = 0;
             door->speed = VDOORSPEED * 4;
             break;
@@ -594,7 +596,7 @@ void P_SpawnDoorCloseIn30(sector_t *sec)
     door->thinker.function.acp1 = (actionf_p1)T_VerticalDoor;
     door->sector = sec;
     door->direction = 0;
-    door->type = normal;
+    door->type = doorNormal;
     door->speed = VDOORSPEED;
     door->topcountdown = 30 * TICRATE;
 }
@@ -614,7 +616,7 @@ void P_SpawnDoorRaiseIn5Mins(sector_t *sec)
     door->thinker.function.acp1 = (actionf_p1)T_VerticalDoor;
     door->sector = sec;
     door->direction = 2;
-    door->type = raiseIn5Mins;
+    door->type = doorRaiseIn5Mins;
     door->speed = VDOORSPEED;
     door->topheight = P_FindLowestCeilingSurrounding(sec);
     door->topheight -= 4 * FRACUNIT;

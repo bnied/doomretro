@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __R_THINGS__
+#if !defined(__R_THINGS__)
 #define __R_THINGS__
 
 // Constant arrays used for psprite clipping
@@ -48,7 +48,7 @@ extern int      screenheightarray[SCREENWIDTH];
 extern int      *mfloorclip;
 extern int      *mceilingclip;
 extern fixed_t  spryscale;
-extern fixed_t  sprtopscreen;
+extern int64_t  sprtopscreen;
 
 extern fixed_t  pspritexscale;
 extern fixed_t  pspriteyscale;

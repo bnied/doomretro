@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __D_DEH__
+#if !defined(__D_DEH__)
 #define __D_DEH__
 
 #include "doomtype.h"
@@ -318,6 +318,10 @@ extern char     *s_STSTR_CHOPPERS;
 extern char     *s_STSTR_CLEV;
 extern char     *s_STSTR_CLEVSAME;
 extern char     *s_STSTR_MYPOS;
+extern char     *s_STSTR_NTON;
+extern char     *s_STSTR_NTOFF;
+extern char     *s_STSTR_GODON;
+extern char     *s_STSTR_GODOFF;
 
 extern char     *s_E1TEXT;
 extern char     *s_E2TEXT;

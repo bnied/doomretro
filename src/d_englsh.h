@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __D_ENGLSH__
+#if !defined(__D_ENGLSH__)
 #define __D_ENGLSH__
 
 //
@@ -715,6 +715,10 @@
 #define STSTR_BEHOLDOFF         ""
 #define STSTR_CLEVSAME          ""
 #define STSTR_MYPOS             ""
+#define STSTR_NTON              ""
+#define STSTR_NTOFF             ""
+#define STSTR_GODON             ""
+#define STSTR_GODOFF            ""
 #define N1TEXT                  ""
 #define CC_SPECTRE              ""
 #define M_NEWGAME               ""

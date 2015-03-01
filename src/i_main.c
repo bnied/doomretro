@@ -43,8 +43,7 @@
 #include "m_misc.h"
 #include "version.h"
 
-#ifdef WIN32
-
+#if defined(WIN32)
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
@@ -52,9 +51,7 @@
 #include "d_main.h"
 #include "m_argv.h"
 
-#ifdef WIN32
 #include "SDL_syswm.h"
-#endif
 
 void I_SetProcessPriority(HANDLE hProcess)
 {
@@ -102,7 +99,7 @@ HICON           icon;
 HWND            hwnd;
 
 boolean MouseShouldBeGrabbed(void);
-void ToggleFullScreen(void);
+void ToggleFullscreen(void);
 void I_InitGamepad(void);
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -119,7 +116,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
         if ((wParam & 0xfff0) == SC_MAXIMIZE)
         {
-            ToggleFullScreen();
+            ToggleFullscreen();
             return true;
         }
         else if ((wParam & 0xfff0) == SC_KEYMENU)
@@ -127,7 +124,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     else if (msg == WM_SYSKEYDOWN && wParam == VK_RETURN && !(lParam & 0x40000000))
     {
-        ToggleFullScreen();
+        ToggleFullscreen();
         return true;
     }
     else if (msg == WM_DEVICECHANGE)
@@ -187,32 +184,32 @@ void I_AccessibilityShortcutKeys(boolean bAllowKeys)
     }
 }
 
-#ifdef SDL20
-extern SDL_Window *sdl_window;
+#if defined(SDL20)
+extern SDL_Window       *window;
 #endif
 
-void init_win32(LPCTSTR lpIconName)
+void I_InitWindows32(void)
 {
     HINSTANCE           handle = GetModuleHandle(NULL);
     SDL_SysWMinfo       info;
 
     SDL_VERSION(&info.version);
 
-#ifdef SDL20
-    SDL_GetWindowWMInfo(sdl_window, &info);
+#if defined(SDL20)
+    SDL_GetWindowWMInfo(window, &info);
     hwnd = info.info.win.window;
 #else
     SDL_GetWMInfo(&info);
     hwnd = info.window;
 #endif
 
-    icon = LoadIcon(handle, lpIconName);
+    icon = LoadIcon(handle, "IDI_ICON1");
     SetClassLongPtr(hwnd, GCLP_HICON, (LONG)icon);
 
     oldProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG)WndProc);
 }
 
-void done_win32(void)
+void I_ShutdownWindows32(void)
 {
     DestroyIcon(icon);
     UnhookWindowsHookEx(g_hKeyboardHook);
@@ -224,7 +221,7 @@ void done_win32(void)
 
 int main(int argc, char **argv)
 {
-#ifdef WIN32
+#if defined(WIN32)
     HANDLE hProcess = GetCurrentProcess();
 
     hInstanceMutex = CreateMutex(NULL, true, PACKAGE_MUTEX);
@@ -250,7 +247,7 @@ int main(int argc, char **argv)
     myargc = argc;
     myargv = argv;
 
-#ifdef WIN32
+#if defined(WIN32)
     if (!M_CheckParm("-nopriority"))
         I_SetProcessPriority(hProcess);
 #endif

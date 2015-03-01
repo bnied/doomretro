@@ -38,6 +38,7 @@
 
 #include "doomstat.h"
 #include "i_system.h"
+#include "p_local.h"
 #include "r_local.h"
 #include "r_sky.h"
 #include "w_wad.h"
@@ -54,7 +55,8 @@ visplane_t              *ceilingplane;
 // killough -- hash function for visplanes
 // Empirically verified to be fairly uniform:
 #define visplane_hash(picnum, lightlevel, height) \
-    (((unsigned int)(picnum) * 3 + (unsigned int)(lightlevel) + (unsigned int)(height) * 7) & (MAXVISPLANES - 1))
+    (((unsigned int)(picnum) * 3 + (unsigned int)(lightlevel) + \
+    (unsigned int)(height) * 7) & (MAXVISPLANES - 1))
 
 size_t                 maxopenings;
 int                    *openings;                       // dropoff overflow
@@ -77,6 +79,9 @@ static fixed_t          planeheight;
 fixed_t                 yslope[SCREENHEIGHT];
 fixed_t                 distscale[SCREENWIDTH];
 
+extern boolean          animatedliquid;
+extern fixed_t          animatedliquiddiffs[128];
+
 //
 // R_MapPlane
 //
@@ -90,15 +95,21 @@ fixed_t                 distscale[SCREENWIDTH];
 //
 static void R_MapPlane(int y, int x1, int x2)
 {
+    // [crispy] visplanes with the same flats now match up far better than before
+    // adapted from prboom-plus/src/r_plane.c:191-239, translated to fixed-point math
     fixed_t     distance = FixedMul(planeheight, yslope[y]);
-    float       slope = (float)(planeheight / 65535.0f / ABS(centery - y));
-    float       realy = (float)distance / 65536.0f;
+    int         dx, dy;
 
-    ds_xstep = (fixed_t)(viewsin * slope);
-    ds_ystep = (fixed_t)(viewcos * slope);
+    if (y == centery)
+        return;
 
-    ds_xfrac = viewx + (int)(viewcos * realy) + (x1 - centerx) * ds_xstep;
-    ds_yfrac = -viewy - (int)(viewsin * realy) + (x1 - centerx) * ds_ystep;
+    dx = x1 - centerx;
+    dy = ABS(centery - y);
+    ds_xstep = FixedMul(viewsin, planeheight) / dy;
+    ds_ystep = FixedMul(viewcos, planeheight) / dy;
+
+    ds_xfrac = viewx + FixedMul(viewcos, distance) + dx * ds_xstep;
+    ds_yfrac = -viewy - FixedMul(viewsin, distance) + dx * ds_ystep;
 
     if (fixedcolormap)
         ds_colormap = fixedcolormap;
@@ -232,6 +243,7 @@ visplane_t *R_CheckPlane(visplane_t *pl, int start, int stop)
         new_pl->height = pl->height;
         new_pl->picnum = pl->picnum;
         new_pl->lightlevel = pl->lightlevel;
+        new_pl->sector = pl->sector;
         pl = new_pl;
         pl->minx = start;
         pl->maxx = stop;
@@ -312,6 +324,9 @@ void R_DrawPlanes(void)
                     ds_colormask = flatfullbright[lumpnum - firstflat];
 
                     planeheight = ABS(pl->height - viewz);
+
+                    if (isliquid[pl->picnum] && pl->sector && pl->sector->animate != INT_MAX)
+                        planeheight -= pl->sector->animate;
 
                     planezlight = zlight[BETWEEN(0, light, LIGHTLEVELS - 1)];
 

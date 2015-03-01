@@ -62,7 +62,7 @@ typedef enum
 
 void A_Fall(mobj_t *actor);
 
-extern int      smoketrails;
+extern boolean  smoketrails;
 
 //
 // ENEMY THINKING
@@ -651,6 +651,9 @@ static boolean P_LookForPlayers(mobj_t *actor, boolean allaround)
 
         player = &players[actor->lastlook];
 
+        if (player->cheats & CF_NOTARGET)
+            return false;
+
         if (player->health <= 0)
             continue;           // dead
 
@@ -716,7 +719,7 @@ void A_KeenDie(mobj_t *mo)
         }
 
     junk.tag = 666;
-    EV_DoDoor(&junk, open);
+    EV_DoDoor(&junk, doorOpen);
 }
 
 //
@@ -1058,8 +1061,8 @@ void A_CyberAttack(mobj_t *actor)
     A_FaceTarget(actor);
     mo = P_SpawnMissile(actor, actor->target, MT_ROCKET);
 
-    if (smoketrails & CYBERDEMON)
-        mo->flags2 &= MF2_SMOKETRAIL;
+    if (smoketrails)
+        mo->flags2 |= MF2_SMOKETRAIL;
 }
 
 void A_BruisAttack(mobj_t *actor)
@@ -1111,21 +1114,12 @@ void A_Tracer(mobj_t *actor)
     fixed_t     slope;
     mobj_t      *dest;
     int         speed;
-    boolean     smoke = false;
-
-    // spawn a puff of smoke behind the non-homing rocket
-    if (smoketrails & REVENANT1)
-    {
-        P_SpawnSmokeTrail(actor->x, actor->y, actor->z, actor->angle);
-        smoke = true;
-    }
 
     if ((gametic - levelstarttic) & 3)
         return;
 
     // spawn a puff of smoke behind the homing rocket
-    if ((smoketrails & REVENANT2) && !smoke)
-        P_SpawnSmokeTrail(actor->x, actor->y, actor->z, actor->angle);
+    P_SpawnSmokeTrail(actor->x, actor->y, actor->z, actor->angle);
 
     // adjust direction
     dest = actor->tracer;
@@ -1275,7 +1269,6 @@ void A_VileChase(mobj_t *actor)
                     // got one!
                     mobj_t      *temp = actor->target;
                     mobjinfo_t  *info;
-                    static char message[128];
 
                     actor->target = corpsehit;
                     A_FaceTarget(actor);
@@ -1298,11 +1291,6 @@ void A_VileChase(mobj_t *actor)
                     corpsehit->lastenemy = NULL;
 
                     players[0].killcount--;
-
-                    M_snprintf(message, 128, "%s resurrected %s.\n", actor->info->description,
-                        corpsehit->info->description);
-                    message[0] = toupper(message[0]);
-                    printf("%s", message);
 
                     return;
                 }
@@ -1778,7 +1766,7 @@ void A_BossDeath(mobj_t *mo)
                 {
                     case 6:
                         junk.tag = 666;
-                        EV_DoDoor(&junk, blazeOpen);
+                        EV_DoDoor(&junk, doorBlazeOpen);
                         return;
                         break;
 

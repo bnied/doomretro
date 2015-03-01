@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __R_BSP__
+#if !defined(__R_BSP__)
 #define __R_BSP__
 
 extern seg_t            *curline;
@@ -55,6 +55,6 @@ void R_ClearClipSegs(void);
 void R_ClearDrawSegs(void);
 
 void R_RenderBSPNode(int bspnum);
-int R_DoorClosed(void);
+boolean R_DoorClosed(void);
 
 #endif

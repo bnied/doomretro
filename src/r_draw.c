@@ -59,7 +59,8 @@ int     viewheight2;
 int     viewwindowx;
 int     viewwindowy;
 int     fuzztable[SCREENWIDTH * SCREENHEIGHT];
-int     fuzzclip;
+
+extern int      screensize;
 
 // Color tables for different players,
 //  translate a limited part to another
@@ -163,6 +164,7 @@ boolean         dc_topsparkle;
 boolean         dc_bottomsparkle;
 fixed_t         dc_blood;
 byte            *dc_colormask;
+int             dc_baseclip;
 
 // first pixel in a column (possibly virtual)
 byte            *dc_source;
@@ -218,7 +220,7 @@ void R_DrawSpectreShadowColumn(void)
 
     if (--count)
     {
-        if (rand() & 1)
+        if (!(rand() % 4))
             *dest = tinttab25[*dest];
         dest += SCREENWIDTH;
     }
@@ -227,7 +229,7 @@ void R_DrawSpectreShadowColumn(void)
         *dest = tinttab25[*dest];
         dest += SCREENWIDTH;
     }
-    if (rand() & 1)
+    if (!(rand() % 4))
         *dest = tinttab25[*dest];
 }
 
@@ -963,7 +965,7 @@ void R_DrawFuzzColumn(void)
     // bottom
     if (dc_yh == viewheight - 1)
         *dest = colormaps[5 * 256 + dest[(fuzztable[fuzzpos] = FUZZ(0, 1))]];
-    else if (fuzzclip == -1 && !(rand() % 4))
+    else if (dc_baseclip == -1 && !(rand() % 4))
         *dest = colormaps[14 * 256 + dest[(fuzztable[fuzzpos] = FUZZ(0, 1))]];
 }
 
@@ -1309,12 +1311,6 @@ void R_FillBackScreen(void)
                 j++;
                 if (y * SCREENWIDTH + x + j < SCREENWIDTH * (SCREENHEIGHT - 1))
                     *(dest + j) = dot;
-                j += SCREENWIDTH;
-                if (y * SCREENWIDTH + x + j < SCREENWIDTH * (SCREENHEIGHT - 1))
-                    *(dest + j) = dot;
-                j--;
-                if (y * SCREENWIDTH + x + j < SCREENWIDTH * (SCREENHEIGHT - 1))
-                    *(dest + j) = dot;
             }
             dest += 128;
         }
@@ -1334,12 +1330,14 @@ void R_FillBackScreen(void)
         V_DrawPatch (windowx + x, windowy + height, 1, patch);
 
     patch = W_CacheLumpName("brdr_l", PU_CACHE);
-    for (y = 0; y < height; y += 8)
+    for (y = 0; y < height - 8; y += 8)
         V_DrawPatch(windowx - 8, windowy + y, 1, patch);
+    V_DrawPatch(windowx - 8, windowy + y - 2 * (screensize >= 2), 1, patch);
 
     patch = W_CacheLumpName("brdr_r", PU_CACHE);
-    for (y = 0; y < height; y += 8)
+    for (y = 0; y < height - 8; y += 8)
         V_DrawPatch(windowx + width, windowy + y, 1, patch);
+    V_DrawPatch(windowx + width, windowy + y - 2 * (screensize >= 2), 1, patch);
 
     // Draw beveled edge.
     V_DrawPatch(windowx - 8, windowy - 8, 1, W_CacheLumpName("brdr_tl", PU_CACHE));

@@ -166,19 +166,6 @@ int SlopeDiv(unsigned int num, unsigned int den)
     return (ans <= SLOPERANGE ? ans : SLOPERANGE);
 }
 
-// [WDJ] Generate the tan slope, suitable for tantoangle[] index.
-// This is more accuate than the vanilla version.
-int64_t SlopeDiv_64(fixed_t num, fixed_t den)
-{
-    int64_t     ans;
-
-    if (den < 64)
-        return SLOPERANGE;
-
-    ans = (((int64_t)num) << 11) / den;
-    return (ans <= SLOPERANGE ? ans : SLOPERANGE);
-}
-
 //
 // R_PointToAngle
 // To get a global angle from cartesian coordinates,
@@ -190,26 +177,24 @@ int64_t SlopeDiv_64(fixed_t num, fixed_t den)
 // Point (x2,y2) to point (x1,y1) angle.
 angle_t R_PointToAngle2(fixed_t x2, fixed_t y2, fixed_t x1, fixed_t y1)
 {
-    // [WDJ] This is inaccurate. Angles can be in error by 0x10000000,
-    // and not monotonic (ordering errors).
-    // Has 5 bits correct when compared to atan2().
-    angle_t     ra = 0;
-
-    x1 -= x2;  // diff
+    x1 -= x2;
     y1 -= y2;
 
     if (!x1 && !y1)
         return 0;
 
+    if (x1 > INT_MAX / 4 || x1 < -INT_MAX / 4 || y1 > INT_MAX / 4 || y1 < -INT_MAX / 4)
+        return (int)(atan2(y1, x1) * ANG180 / M_PI);
+
     if (x1 >= 0)
     {
         if (y1 >= 0)
-            ra = (x1 > y1 ? tantoangle[SlopeDiv(y1, x1)] :
+            return (x1 > y1 ? tantoangle[SlopeDiv(y1, x1)] :
                 ANG90 - 1 - tantoangle[SlopeDiv(x1, y1)]);
         else
         {
             y1 = -y1;
-            ra = (x1 > y1 ? -(int)tantoangle[SlopeDiv(y1, x1)] :
+            return (x1 > y1 ? -(int)tantoangle[SlopeDiv(y1, x1)] :
                 ANG270 + tantoangle[SlopeDiv(x1, y1)]);
         }
     }
@@ -217,64 +202,54 @@ angle_t R_PointToAngle2(fixed_t x2, fixed_t y2, fixed_t x1, fixed_t y1)
     {
         x1 = -x1;
         if (y1 >= 0)
-            ra = (x1 > y1 ? ANG180 - 1 - tantoangle[SlopeDiv(y1, x1)] :
+            return (x1 > y1 ? ANG180 - 1 - tantoangle[SlopeDiv(y1, x1)] :
                 ANG90 + tantoangle[SlopeDiv(x1, y1)]);
         else
         {
             y1 = -y1;
-            ra = (x1 > y1 ? ANG180 + tantoangle[SlopeDiv(y1, x1)] :
+            return (x1 > y1 ? ANG180 + tantoangle[SlopeDiv(y1, x1)] :
                 ANG270 - 1 - tantoangle[SlopeDiv(x1, y1)]);
         }
     }
-    return ra;
 }
 
 // Point of view (viewx, viewy) to point (x1, y1) angle.
 angle_t R_PointToAngle(fixed_t x, fixed_t y)
 {
-    // Has 13 bits correct when compared to atan2(), which is much
-    // better than the 5 correct bits of the vanilla function.
-    // Uses the more accurate SlopeDiv_64.
-    angle_t     vpa = 0;
-
-    x -= viewx; // diff from viewpoint
+    x -= viewx;
     y -= viewy;
 
     if (!x && !y)
         return 0;
 
-    // [WDJ] Fix from PrBoom (e6y).
-    // For large x or y, resort to the slower but accurate lib function.
     if (x > INT_MAX / 4 || x < -INT_MAX / 4 || y > INT_MAX / 4 || y < -INT_MAX / 4)
-        // PrBoom used a 1 point cache, but that is too small.
         return (int)(atan2(y, x) * ANG180 / M_PI);
 
     if (x >= 0)
     {
         if (y >= 0)
-            vpa = (x > y ? tantoangle[SlopeDiv_64(y, x)] :
-                ANG90 - 1 - tantoangle[SlopeDiv_64(x, y)]);
+            return (x > y ? tantoangle[SlopeDiv(y, x)] :
+                ANG90 - 1 - tantoangle[SlopeDiv(x, y)]);
         else
         {
             y = -y;
-            vpa = (x > y ? -(int)tantoangle[SlopeDiv(y, x)] :
-                ANG270 + tantoangle[SlopeDiv_64(x, y)]);
+            return (x > y ? -(int)tantoangle[SlopeDiv(y, x)] :
+                ANG270 + tantoangle[SlopeDiv(x, y)]);
         }
     }
     else
     {
         x = -x;
         if (y >= 0)
-            vpa = (x > y ? ANG180 - 1 - tantoangle[SlopeDiv_64(y, x)] :
-                ANG90 + tantoangle[SlopeDiv_64(x, y)]);
+            return (x > y ? ANG180 - 1 - tantoangle[SlopeDiv(y, x)] :
+                ANG90 + tantoangle[SlopeDiv(x, y)]);
         else
         {
             y = -y;
-            vpa = (x > y ? ANG180 + tantoangle[SlopeDiv_64(y, x)] :
-                ANG270 - 1 - tantoangle[SlopeDiv_64(x, y)]);
+            return (x > y ? ANG180 + tantoangle[SlopeDiv(y, x)] :
+                ANG270 - 1 - tantoangle[SlopeDiv(x, y)]);
         }
     }
-    return vpa;
 }
 
 fixed_t R_PointToDist(fixed_t x, fixed_t y)
@@ -293,7 +268,8 @@ fixed_t R_PointToDist(fixed_t x, fixed_t y)
     if (!dy)
         return dx;
 
-    return FixedDiv(dx, finecosine[tantoangle[FixedDiv(dy, dx) >> DBITS] >> ANGLETOFINESHIFT]);
+    return (dx ? FixedDiv(dx, finesine[(tantoangle[FixedDiv(dy, dx) >> DBITS]
+        + ANG90) >> ANGLETOFINESHIFT]) : 0);
 }
 
 //
@@ -301,27 +277,24 @@ fixed_t R_PointToDist(fixed_t x, fixed_t y)
 //
 static void R_InitTables(void)
 {
-    int         i;
-    float       a;
-    float       fv;
-    int         t;
+    int                 i;
+    const double        pimul = M_PI * 2 / FINEANGLES;
 
     // viewangle tangent table
-    for (i = 0; i < FINEANGLES / 2; i++)
-    {
-        a = (i - FINEANGLES / 4 + 0.5f) * (float)M_PI * 2 / FINEANGLES;
-        fv = FRACUNIT * tanf(a);
-        t = (int)fv;
-        finetangent[i] = t;
-    }
+    finetangent[0] = (fixed_t)(FRACUNIT * tan((0.5 - FINEANGLES / 4) * pimul) + 0.5);
+    for (i = 1; i < FINEANGLES / 2; i++)
+        finetangent[i] = (fixed_t)(FRACUNIT * tan((i - FINEANGLES / 4) * pimul) + 0.5);
 
     // finesine table
-    for (i = 0; i < 5 * FINEANGLES / 4; i++)
-    {
-        a = (i + 0.5f) * (float)M_PI * 2 / FINEANGLES;
-        t = (int)(FRACUNIT * sinf(a));
-        finesine[i] = t;
-    }
+    for (i = 0; i < FINEANGLES / 4; i++)
+        finesine[i] = (fixed_t)(FRACUNIT * sin(i * pimul));
+    for (i = 0; i < FINEANGLES / 4; i++)
+        finesine[i + FINEANGLES / 4] = finesine[FINEANGLES / 4 - 1 - i];
+    for (i = 0; i < FINEANGLES / 2; i++)
+        finesine[i + FINEANGLES / 2] = -finesine[i];
+    finesine[FINEANGLES / 4] = FRACUNIT;
+    finesine[FINEANGLES * 3 / 4] = -FRACUNIT;
+    memcpy(&finesine[FINEANGLES], &finesine[0], sizeof(angle_t) * FINEANGLES / 4);
 }
 
 static void R_InitPointToAngle(void)
@@ -631,13 +604,7 @@ void R_Init(void)
 //
 subsector_t *R_PointInSubsector(fixed_t x, fixed_t y)
 {
-    int nodenum;
-
-    // single subsector is a special case
-    if (!numnodes)
-        return subsectors;
-
-    nodenum = numnodes - 1;
+    int nodenum = numnodes - 1;
 
     while (!(nodenum & NF_SUBSECTOR))
         nodenum = nodes[nodenum].children[R_PointOnSide(x, y, nodes + nodenum)];
@@ -650,13 +617,11 @@ subsector_t *R_PointInSubsector(fixed_t x, fixed_t y)
 //
 void R_SetupFrame(player_t *player)
 {
-    int i;
-
     viewplayer = player;
     viewx = player->mo->x;
     viewy = player->mo->y;
     viewangle = player->mo->angle;
-    extralight = player->extralight;
+    extralight = player->extralight << 1;
 
     viewz = player->viewz;
 
@@ -665,6 +630,8 @@ void R_SetupFrame(player_t *player)
 
     if (player->fixedcolormap)
     {
+        int     i;
+
         fixedcolormap = colormaps + player->fixedcolormap * 256 * sizeof(lighttable_t);
 
         walllights = scalelightfixed;

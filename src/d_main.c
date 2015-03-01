@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifdef WIN32
+#if defined(WIN32)
 #pragma comment(lib, "winmm.lib")
 
 #define WIN32_LEAN_AND_MEAN
@@ -44,13 +44,15 @@
 #include <windows.h>
 #include <Commdlg.h>
 #include <MMSystem.h>
+#include <ShellAPI.h>
 #endif
 
-#ifndef MAX_PATH
+#if !defined(MAX_PATH)
 #define MAX_PATH        4096
 #endif
 
 #include "am_map.h"
+#include "c_console.h"
 #include "d_deh.h"
 #include "d_iwad.h"
 #include "d_main.h"
@@ -92,39 +94,37 @@
 //
 void D_DoomLoop(void);
 
-char            *version;
-
 // Location where savegames are stored
-char            *savegamedir;
+char                    *savegamedir;
 
 // location of IWAD and WAD files
-char            *iwadfile = "";
+char                    *iwadfile = "";
 
-char            *iwadfolder = IWADFOLDER_DEFAULT;
+char                    *iwadfolder = IWADFOLDER_DEFAULT;
 
-boolean         devparm;        // started game with -devparm
-boolean         nomonsters;     // checkparm of -nomonsters
-boolean         respawnparm;    // checkparm of -respawn
-boolean         fastparm;       // checkparm of -fast
+boolean                 nomonsters;     // checkparm of -nomonsters
+boolean                 respawnparm;    // checkparm of -respawn
+boolean                 fastparm;       // checkparm of -fast
 
-int             runcount = 0;
+int                     runcount = 0;
 
-skill_t         startskill;
-int             startepisode;
-int             startmap;
-boolean         autostart;
-int             startloadgame;
+skill_t                 startskill;
+int                     startepisode;
+int                     startmap;
+boolean                 autostart;
+int                     startloadgame;
 
-boolean         advancetitle;
-boolean         wipe = true;
-boolean         forcewipe = false;
+boolean                 advancetitle;
+boolean                 wipe = true;
+boolean                 forcewipe = false;
 
-boolean         splashscreen;
+boolean                 splashscreen;
 
-extern int      selectedexpansion;
+extern int              selectedexpansion;
+extern boolean          alwaysrun;
 
-#ifdef SDL20
-extern SDL_Window *sdl_window;
+#if defined(SDL20)
+extern SDL_Window       *sdl_window;
 #endif
 
 void D_CheckNetGame(void);
@@ -137,9 +137,9 @@ void D_CheckNetGame(void);
 //
 #define MAXEVENTS       64
 
-static event_t  events[MAXEVENTS];
-static int      eventhead;
-static int      eventtail;
+static event_t          events[MAXEVENTS];
+static int              eventhead;
+static int              eventtail;
 
 //
 // D_PostEvent
@@ -163,6 +163,8 @@ void D_ProcessEvents(void)
 
         if (wipe && ev->type == ev_mouse)
             continue;
+        if (C_Responder(ev))
+            continue;           // console ate the event
         if (M_Responder(ev))
             continue;           // menu ate the event
         G_Responder(ev);
@@ -261,7 +263,7 @@ void D_Display(void)
             if (scaledviewwidth != SCREENWIDTH)
             {
                 if (menuactive || menuactivestate || !viewactivestate
-                    || paused || pausedstate || message_on)
+                    || paused || pausedstate || message_on || consoleactive)
                     borderdrawcount = 3;
                 if (borderdrawcount)
                 {
@@ -303,6 +305,9 @@ void D_Display(void)
         }
     }
 
+    if (!wipe)
+        C_Drawer();
+
     // menus go directly to the screen
     M_Drawer();                 // menu is drawn even on top of everything
 
@@ -331,6 +336,9 @@ void D_Display(void)
         wipestart = nowtime;
         done = wipe_ScreenWipe(tics);
         blurred = false;
+
+        C_Drawer();
+
         M_Drawer();             // menu is drawn even on top of wipes
         I_FinishUpdate();       // page flip or blit buffer
     }
@@ -383,7 +391,7 @@ static byte     *playpal;
 //
 void D_PageTicker(void)
 {
-    if (!menuactive)
+    if (!menuactive && !startingnewgame && !consoleheight)
     {
         if (--pagetic < 0)
             D_AdvanceTitle();
@@ -434,6 +442,7 @@ void D_DoAdvanceTitle(void)
     gameaction = ga_nothing;
     gamestate = GS_TITLESCREEN;
     blurred = false;
+    noinput = false;
 
     switch (titlesequence)
     {
@@ -447,6 +456,8 @@ void D_DoAdvanceTitle(void)
             {
                 flag = false;
                 I_InitKeyboard();
+                if (alwaysrun)
+                    C_PlayerMessage(s_ALWAYSRUNON);
             }
 
             if (pagelump == creditlump)
@@ -581,9 +592,61 @@ static boolean D_IsUnsupportedPWAD(char *filename)
     return (D_CheckFilename(filename, "VOICES.WAD"));
 }
 
-#ifdef WIN32
+#if defined(__MACOSX__)
+#import <Cocoa/Cocoa.h>
+#endif
+
 static void D_FirstUse(void)
 {
+#if defined(SDL20)
+    char *message = "Thank you for downloading " PACKAGE_NAME "!\n\nPlease note that, as with "
+        "all DOOM source ports, no actual map data is included\nwith " PACKAGE_NAME ".\n\nIn the "
+        "dialog box that follows, please navigate to where an official \xe2\x80\x9cIWAD file"
+        "\xe2\x80\x9d that\n" PACKAGE_NAME " requires (such as DOOM.WAD or DOOM2.WAD) has been "
+        "installed.\n\nAdditional \xe2\x80\x9cPWAD files\xe2\x80\x9d may then be selected by "
+        "clicking or "
+#if defined(__MACOSX__)
+        "CMD"
+#else
+        "CTRL"
+#endif
+        "-clicking on them.\nGo to the DOOM RETRO Wiki for more information.";
+
+    const SDL_MessageBoxButtonData buttons[] = 
+    {
+#if defined(WIN32)
+        {                                       0, 0, "&Wiki"   },
+#endif
+        { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 1, "&Cancel" },
+        { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 2, "&OK"     }
+    };
+
+    const SDL_MessageBoxData messageboxdata =
+    {
+        SDL_MESSAGEBOX_INFORMATION,
+        NULL,
+        PACKAGE_NAME,
+        message,
+        SDL_arraysize(buttons),
+        buttons,
+        NULL
+    };
+    int buttonid;
+
+    if (SDL_ShowMessageBox(&messageboxdata, &buttonid) >= 0)
+    {
+#if defined(WIN32)
+        if (buttons[buttonid].buttonid == 0)
+        {
+            ShellExecute(GetActiveWindow(), "open", PACKAGE_WIKI_URL, NULL, NULL, SW_SHOWNORMAL);
+            I_Quit(false);
+        }
+#endif
+        else if (buttons[buttonid].buttonid == 1)
+            I_Quit(false);
+    }
+
+#elif defined(WIN32)
     LPCWSTR msg = L"Thank you for downloading " PACKAGE_NAME_W L"!\n\n"
         L"Please note that, as with all DOOM source ports, no actual map data is "
         L"distributed with " PACKAGE_NAME_W L".\n\n"
@@ -591,19 +654,49 @@ static void D_FirstUse(void)
         L"\u201cIWAD file\u201d that " PACKAGE_NAME_W L" requires (such as DOOM.WAD or "
         L"DOOM2.WAD) has been installed.\n\n"
         L"Additional \u201cPWAD files\u201d may then be selected by clicking or "
-        L"CTRL-clicking on them.";
+        L"CTRL-clicking on them. Go to the DOOM RETRO Wiki for more information.";
 
     if (MessageBoxW(NULL, msg, PACKAGE_NAME_W, MB_ICONINFORMATION | MB_OKCANCEL) == IDCANCEL)
         I_Quit(false);
+
+#elif defined(__MACOSX__)
+    NSMutableString     *msg = [[NSMutableString alloc]init];
+
+    [msg appendString:@"Thank you for downloading "];
+    [msg appendString:@PACKAGE_NAME];
+    [msg appendString:@"!\n\n"];
+    [msg appendString:@"Please note that, as with all DOOM source ports, no actual map data is "];
+    [msg appendString:@"distributed with "];
+    [msg appendString:@PACKAGE_NAME];
+    [msg appendString:@"!\n\n"];
+    [msg appendString:@"In the dialog box that follows, please navigate to where an official "];
+    [msg appendString:@"\"IWAD file\" that "];
+    [msg appendString:@PACKAGE_NAME];
+    [msg appendString:@" requires (such as DOOM.WAD or "];
+    [msg appendString:@"DOOM2.WAD) has been installed.\n\n"];
+    [msg appendString:@"Additional \"PWAD files\" may then be selected by clicking or "];
+    [msg appendString:@"CMD-clicking on them. "];
+    [msg appendString:@"CMD-clicking on them. Go to the DOOM RETRO Wiki for more information."];
+
+    NSAlert     *alert = [[NSAlert alloc] init];
+
+    [alert setMessageText:msg];
+    [alert addButtonWithTitle:@"OK"];
+    [alert runModal];
+#endif
 }
 
+#if defined(WIN32) || defined(__MACOSX__)
 static int D_ChooseIWAD(void)
 {
-    OPENFILENAME        ofn;
-    char                szFile[4096];
     int                 iwadfound = -1;
     boolean             sharewareiwad = false;
+    boolean             fileopenedok = false;
 
+#if defined(WIN32)
+    OPENFILENAME        ofn;
+    char                szFile[4096];
+    
     ZeroMemory(&ofn, sizeof(ofn));
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = NULL;
@@ -618,15 +711,46 @@ static int D_ChooseIWAD(void)
     ofn.Flags = (OFN_HIDEREADONLY | OFN_NOCHANGEDIR | OFN_ALLOWMULTISELECT
                  | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER);
     ofn.lpstrTitle = "Where\u2019s All the Data?\0";
+    
+    fileopenedok = GetOpenFileName(&ofn);
 
-    if (GetOpenFileName(&ofn))
+#elif defined(__MACOSX__)
+    NSOpenPanel *panel = [NSOpenPanel openPanel];
+
+    [panel setCanChooseFiles:YES];
+    [panel setCanChooseDirectories:NO];
+    [panel setAllowsMultipleSelection:YES];
+    [panel setTitle:@"Where's All the Data?"];
+
+    NSInteger   clicked = [panel runModal];
+
+    fileopenedok = clicked == NSFileHandlingPanelOKButton;
+#endif
+
+    if (fileopenedok)
     {
+        boolean onlyoneselected;
+
         iwadfound = 0;
 
         // only one file was selected
-        if (!ofn.lpstrFile[lstrlen(ofn.lpstrFile) + 1])
+#if defined(WIN32)
+        onlyoneselected = !ofn.lpstrFile[lstrlen(ofn.lpstrFile) + 1];
+#elif defined __MACOSX__
+        NSArray *urls = [panel URLs];
+
+        onlyoneselected = [urls count] == 1;
+#endif
+        if (onlyoneselected)
         {
-            LPSTR       file = ofn.lpstrFile;
+            char        *file;
+#if defined(WIN32)
+            file = (char*)ofn.lpstrFile;
+#elif defined(__MACOSX__)
+            NSURL       *url = [urls objectAtIndex:0];
+
+            file = (char *)[url fileSystemRepresentation];
+#endif
 
             // check if it's a valid and supported IWAD
             if (D_IsDOOMIWAD(file)
@@ -644,8 +768,8 @@ static int D_ChooseIWAD(void)
                     {
                         static char     fullpath[MAX_PATH];
 
-                        M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", strdup(M_ExtractFolder(file)),
-                            "NERVE.WAD");
+                        M_snprintf(fullpath, sizeof(fullpath), "%s"DIR_SEPARATOR_S"%s",
+                            strdup(M_ExtractFolder(file)), "NERVE.WAD");
                         if (W_MergeFile(fullpath))
                         {
                             modifiedgame = true;
@@ -663,55 +787,52 @@ static int D_ChooseIWAD(void)
                 static char     fullpath[MAX_PATH];
 
                 if (iwadrequired == indetermined)
-                    if (D_CheckFilename(file, "BTSX_E2B.WAD"))
-                        iwadrequired = doom2;
-                    else
-                        return 0;
+                    iwadrequired = doom2;
 
                 // try the current folder first
-                M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", strdup(M_ExtractFolder(file)),
-                           (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
+                M_snprintf(fullpath, sizeof(fullpath), "%s"DIR_SEPARATOR_S"%s",
+                    strdup(M_ExtractFolder(file)), (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
                 IdentifyIWADByName(fullpath);
                 if (D_AddFile(fullpath))
                 {
                     iwadfound = 1;
                     iwadfolder = strdup(M_ExtractFolder(file));
+                    D_CheckSupportedPWAD(file);
                     if (W_MergeFile(file))
                     {
                         modifiedgame = true;
-                        D_CheckSupportedPWAD(file);
                         LoadDehFile(file);
                     }
                 }
                 else
                 {
                     // otherwise try the iwadfolder setting in doomretro.cfg
-                    M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", iwadfolder,
-                               (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
+                    M_snprintf(fullpath, sizeof(fullpath), "%s"DIR_SEPARATOR_S"%s", iwadfolder,
+                        (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
                     IdentifyIWADByName(fullpath);
                     if (D_AddFile(fullpath))
                     {
                         iwadfound = 1;
+                        D_CheckSupportedPWAD(file);
                         if (W_MergeFile(file))
                         {
                             modifiedgame = true;
-                            D_CheckSupportedPWAD(file);
                             LoadDehFile(file);
                         }
                     }
                     else
                     {
                         // still nothing? try the DOOMWADDIR environment variable
-                        M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", getenv("DOOMWADDIR"),
-                            (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
+                        M_snprintf(fullpath, sizeof(fullpath), "%s"DIR_SEPARATOR_S"%s",
+                            getenv("DOOMWADDIR"), (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
                         IdentifyIWADByName(fullpath);
                         if (D_AddFile(fullpath))
                         {
                             iwadfound = 1;
+                            D_CheckSupportedPWAD(file);
                             if (W_MergeFile(file))
                             {
                                 modifiedgame = true;
-                                D_CheckSupportedPWAD(file);
                                 LoadDehFile(file);
                             }
                         }
@@ -725,16 +846,16 @@ static int D_ChooseIWAD(void)
                 {
                     static char     fullpath[MAX_PATH];
 
-                    M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", strdup(M_ExtractFolder(file)),
-                        "BTSX_E2B.WAD");
+                    M_snprintf(fullpath, sizeof(fullpath), "%s"DIR_SEPARATOR_S"%s",
+                        strdup(M_ExtractFolder(file)), "BTSX_E2B.WAD");
                     return W_MergeFile(fullpath);
                 }
                 else if (!BTSXE2A && BTSXE2B)
                 {
                     static char     fullpath[MAX_PATH];
 
-                    M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", strdup(M_ExtractFolder(file)),
-                        "BTSX_E2A.WAD");
+                    M_snprintf(fullpath, sizeof(fullpath), "%s"DIR_SEPARATOR_S"%s",
+                        strdup(M_ExtractFolder(file)), "BTSX_E2A.WAD");
                     return W_MergeFile(fullpath);
                 }
             }
@@ -743,12 +864,14 @@ static int D_ChooseIWAD(void)
         // more than one file was selected
         else
         {
+            bool        isDOOM2 = false;
+
+#if defined(WIN32)
             LPSTR       iwadpass = ofn.lpstrFile;
             LPSTR       pwadpass1 = ofn.lpstrFile;
             LPSTR       pwadpass2 = ofn.lpstrFile;
             LPSTR       dehpass = ofn.lpstrFile;
-            boolean     isDOOM2 = false;
-
+            
             iwadpass += lstrlen(iwadpass) + 1;
 
             // find and add IWAD first
@@ -756,7 +879,19 @@ static int D_ChooseIWAD(void)
             {
                 static char     fullpath[MAX_PATH];
 
-                M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", strdup(szFile), iwadpass);
+                M_snprintf(fullpath, sizeof(fullpath), "%s"DIR_SEPARATOR_S"%s", strdup(szFile),
+                    iwadpass);
+
+#elif defined(__MACOSX__)
+            char        *szFile;
+
+            for (NSURL* url in urls)
+            {
+                char    *fullpath = (char *)[url fileSystemRepresentation];
+                char    *iwadpass = (char *)[[url lastPathComponent] UTF8String];
+
+                szFile = (char *)[[url URLByDeletingLastPathComponent] fileSystemRepresentation];
+#endif
 
                 if (D_IsDOOMIWAD(fullpath)
                     || (W_WadType(fullpath) == IWAD
@@ -782,7 +917,8 @@ static int D_ChooseIWAD(void)
                     static char     fullpath2[MAX_PATH];
 
                     // try the current folder first
-                    M_snprintf(fullpath2, sizeof(fullpath2), "%s\\DOOM2.WAD", strdup(szFile));
+                    M_snprintf(fullpath2, sizeof(fullpath2), "%s"DIR_SEPARATOR_S"DOOM2.WAD",
+                        strdup(szFile));
                     IdentifyIWADByName(fullpath2);
                     if (D_AddFile(fullpath2))
                     {
@@ -798,7 +934,8 @@ static int D_ChooseIWAD(void)
                     else
                     {
                         // otherwise try the iwadfolder setting in doomretro.cfg
-                        M_snprintf(fullpath2, sizeof(fullpath2), "%s\\DOOM2.WAD", iwadfolder);
+                        M_snprintf(fullpath2, sizeof(fullpath2), "%s"DIR_SEPARATOR_S"DOOM2.WAD",
+                            iwadfolder);
                         IdentifyIWADByName(fullpath2);
                         if (D_AddFile(fullpath2))
                         {
@@ -814,7 +951,7 @@ static int D_ChooseIWAD(void)
                         else
                         {
                             // still nothing? try the DOOMWADDIR environment variable
-                            M_snprintf(fullpath2, sizeof(fullpath2), "%s\\DOOM2.WAD",
+                            M_snprintf(fullpath2, sizeof(fullpath2), "%s"DIR_SEPARATOR_S"DOOM2.WAD",
                                 getenv("DOOMWADDIR"));
                             IdentifyIWADByName(fullpath2);
                             if (D_AddFile(fullpath2))
@@ -831,8 +968,9 @@ static int D_ChooseIWAD(void)
                         }
                     }
                 }
-
+#if defined(WIN32)
                 iwadpass += lstrlen(iwadpass) + 1;
+#endif
             }
 
             // merge any pwads
@@ -842,87 +980,99 @@ static int D_ChooseIWAD(void)
                 // and then try to load it first
                 if (!iwadfound)
                 {
+#if defined(WIN32)
                     pwadpass1 += lstrlen(pwadpass1) + 1;
-
+                    
                     while (pwadpass1[0])
                     {
                         static char     fullpath[MAX_PATH];
-
+                        
                         M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", strdup(szFile),
-                            pwadpass1);
+                                   pwadpass1);
+#elif defined(__MACOSX__)
+                    for (NSURL* url in urls)
+                    {
+                        char    *fullpath = (char *)[url fileSystemRepresentation];
+                        char    *pwadpass1 = (char *)[[url lastPathComponent] UTF8String];
+#endif
 
                         if (W_WadType(fullpath) == PWAD && !D_IsUnsupportedPWAD(fullpath)
                             && !D_IsDehFile(fullpath))
                         {
                             int         iwadrequired = IWADRequiredByPWAD(fullpath);
+                            static char fullpath2[MAX_PATH];
 
-                            if (iwadrequired != indetermined)
+                            if (iwadrequired == indetermined)
+                                iwadrequired = doom2;
+
+                            // try the current folder first
+                            M_snprintf(fullpath2, sizeof(fullpath2), "%s"DIR_SEPARATOR_S"%s",
+                                strdup(M_ExtractFolder(pwadpass1)),
+                                (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
+                            IdentifyIWADByName(fullpath2);
+                            if (D_AddFile(fullpath2))
                             {
-                                static char     fullpath2[MAX_PATH];
-
-                                // try the current folder first
-                                M_snprintf(fullpath2, sizeof(fullpath2), "%s\\%s",
-                                    strdup(M_ExtractFolder(pwadpass1)),
-                                    (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
+                                iwadfound = 1;
+                                iwadfolder = strdup(M_ExtractFolder(pwadpass1));
+                            }
+                            else
+                            {
+                                // otherwise try the iwadfolder setting in doomretro.cfg
+                                M_snprintf(fullpath2, sizeof(fullpath2), "%s"DIR_SEPARATOR_S"%s",
+                                    iwadfolder, (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
                                 IdentifyIWADByName(fullpath2);
                                 if (D_AddFile(fullpath2))
-                                {
                                     iwadfound = 1;
-                                    iwadfolder = strdup(M_ExtractFolder(pwadpass1));
-                                }
                                 else
                                 {
-                                    // otherwise try the iwadfolder setting in doomretro.cfg
-                                    M_snprintf(fullpath2, sizeof(fullpath2), "%s\\%s", iwadfolder,
-                                        (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
+                                    // still nothing? try the DOOMWADDIR environment variable
+                                    M_snprintf(fullpath2, sizeof(fullpath2), "%s"DIR_SEPARATOR_S"%s",
+                                        getenv("DOOMWADDIR"), (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
                                     IdentifyIWADByName(fullpath2);
                                     if (D_AddFile(fullpath2))
                                         iwadfound = 1;
-                                    else
-                                    {
-                                        // still nothing? try the DOOMWADDIR environment variable
-                                        M_snprintf(fullpath2, sizeof(fullpath2), "%s\\%s",
-                                            getenv("DOOMWADDIR"),
-                                            (iwadrequired == doom ? "DOOM.WAD" : "DOOM2.WAD"));
-                                        IdentifyIWADByName(fullpath2);
-                                        if (D_AddFile(fullpath2))
-                                            iwadfound = 1;
-                                    }
                                 }
                             }
                         }
+#if defined(WIN32)
                         pwadpass1 += lstrlen(pwadpass1) + 1;
+#endif
                     }
                 }
 
                 // if an iwad has now been found, make a second pass through the pwads to merge them
                 if (iwadfound)
                 {
-                    boolean     mapspresent = false;
-
+                    bool     mapspresent = false;
+#if defined(WIN32)
                     pwadpass2 += lstrlen(pwadpass2) + 1;
 
                     while (pwadpass2[0])
                     {
                         static char     fullpath[MAX_PATH];
-
+                        
                         M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", strdup(szFile),
-                            pwadpass2);
-
+                                   pwadpass2);
+#elif defined(__MACOSX__)
+                    for (NSURL *url in urls)
+                    {
+                        char    *fullpath = (char *)[url fileSystemRepresentation];
+#endif
                         if (W_WadType(fullpath) == PWAD && !D_IsUnsupportedPWAD(fullpath)
                             && !D_IsDehFile(fullpath))
                         {
+                            D_CheckSupportedPWAD(fullpath);
                             if (W_MergeFile(fullpath))
                             {
                                 modifiedgame = true;
-                                D_CheckSupportedPWAD(fullpath);
                                 LoadDehFile(fullpath);
                             }
                             if (IWADRequiredByPWAD(fullpath) != indetermined)
                                 mapspresent = true;
                         }
-
+#if defined(WIN32)
                         pwadpass2 += lstrlen(pwadpass2) + 1;
+#endif
                     }
 
                     // try to autoload NERVE.WAD if DOOM2.WAD is the iwad and none of the pwads
@@ -931,7 +1081,8 @@ static int D_ChooseIWAD(void)
                     {
                         static char     fullpath[MAX_PATH];
 
-                        M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", strdup(szFile), "NERVE.WAD");
+                        M_snprintf(fullpath, sizeof(fullpath), "%s"DIR_SEPARATOR_S"%s",
+                            strdup(szFile), "NERVE.WAD");
                         if (W_MergeFile(fullpath))
                         {
                             modifiedgame = true;
@@ -942,19 +1093,26 @@ static int D_ChooseIWAD(void)
                 }
             }
 
+#if defined(WIN32)
             // process any dehacked files last of all
             dehpass += lstrlen(dehpass) + 1;
 
             while (dehpass[0])
             {
                 static char     fullpath[MAX_PATH];
-
                 M_snprintf(fullpath, sizeof(fullpath), "%s\\%s", strdup(szFile), dehpass);
+                
+#elif defined(__MACOSX__)
+            for (NSURL *url in urls)
+            {
+                char    *fullpath = (char *)[url fileSystemRepresentation];
+#endif
 
                 if (D_IsDehFile(fullpath))
                     LoadDehFile(fullpath);
-
+#if defined(WIN32)
                 dehpass += lstrlen(dehpass) + 1;
+#endif
             }
         }
     }
@@ -1001,10 +1159,14 @@ static void D_ProcessDehInWad(void)
 //  line of execution so its stack space can be freed
 static void D_DoomMainSetup(void)
 {
-    int p;
-    int choseniwad = 0;
+    int         p;
+    int         choseniwad = 0;
+    static char lumpname[6];
 
-    version = PACKAGE_VERSIONSTRING;
+
+    C_PrintCompileDate();
+
+    C_PrintSDLVersions();
 
     iwadfile = D_FindIWAD();
 
@@ -1014,29 +1176,30 @@ static void D_DoomMainSetup(void)
 
     D_ProcessDehCommandLine();
 
-    nomonsters = M_CheckParm("-nomonsters");
-    respawnparm = M_CheckParm("-respawn");
-    fastparm = M_CheckParm("-fast");
-    devparm = M_CheckParm("-devparm");
+    if (nomonsters = M_CheckParm("-nomonsters"))
+        C_Output("Found -NOMONSTERS parameter on command-line. No monsters will be spawned.");
+
+    if (respawnparm = M_CheckParm("-respawn"))
+        C_Output("Found -RESPAWN parameter on command-line. Items will respawn.");
+
+    if (fastparm = M_CheckParm("-fast"))
+        C_Output("Found -FAST parameter on command-line. Monsters will be faster.");
 
     // turbo option
     p = M_CheckParm("-turbo");
     if (p)
     {
-        int        scale = 200;
-        extern int forwardmove[2];
-        extern int sidemove[2];
+        int             scale = 200;
+        extern int      forwardmove[2];
+        extern int      sidemove[2];
 
         if (p < myargc - 1)
-            scale = atoi(myargv[p + 1]);
-        if (scale < 10)
-            scale = 10;
-        if (scale > 400)
-            scale = 400;
-        forwardmove[0] = forwardmove[0] * scale / 100;
-        forwardmove[1] = forwardmove[1] * scale / 100;
-        sidemove[0] = sidemove[0] * scale / 100;
-        sidemove[1] = sidemove[1] * scale / 100;
+            scale = BETWEEN(10, atoi(myargv[p + 1]), 400);
+        forwardmove[0] *= scale / 100;
+        forwardmove[1] *= scale / 100;
+        sidemove[0] *= scale / 100;
+        sidemove[1] *= scale / 100;
+        C_Output("Found -TURBO parameter on command-line. Player will be %i%% faster.", scale);
     }
 
     // init subsystems
@@ -1045,7 +1208,19 @@ static void D_DoomMainSetup(void)
     // Load configuration files before initialising other subsystems.
     M_LoadDefaults();
 
+    if (runcount < 2)
+        C_Output(PACKAGE_NAME" has been run %s.", (runcount == 0 ? "once" : "twice"));
+    else
+        C_Output(PACKAGE_NAME" has been run %s times.", commify(runcount + 1));
+
+#if defined(WIN32)
     if (!M_FileExists(PACKAGE_WAD))
+#elif defined(__MACOSX__)
+    NSString *packageWadFullpath =
+        [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@PACKAGE_WAD];
+
+    if (!M_FileExists((char *)[packageWadFullpath UTF8String]))
+#endif
         I_Error("Can't find %s.", uppercase(PACKAGE_WAD));
 
     p = M_CheckParmsWithArgs("-file", "-pwad", 1);
@@ -1056,24 +1231,27 @@ static void D_DoomMainSetup(void)
             if (runcount < RUNCOUNT_MAX)
                 runcount++;
     }
-#ifdef WIN32
     else if (!p)
     {
         if (!runcount)
             D_FirstUse();
+
+#if defined(WIN32) || defined(__MACOSX__)
         do
         {
             if ((choseniwad = D_ChooseIWAD()) == -1)
                 I_Quit(false);
+#if defined(WIN32)
             else if (!choseniwad)
                 PlaySound((LPCTSTR)SND_ALIAS_SYSTEMHAND, NULL, SND_ALIAS_ID | SND_ASYNC);
+#endif
         } while (!choseniwad);
+#endif
 
         if (runcount < RUNCOUNT_MAX)
             ++runcount;
     }
     M_SaveDefaults();
-#endif
 
     if (p > 0)
     {
@@ -1083,10 +1261,10 @@ static void D_DoomMainSetup(void)
 
             if (iwadfile)
             {
+                D_CheckSupportedPWAD(file);
                 if (W_MergeFile(file))
                 {
                     modifiedgame = true;
-                    D_CheckSupportedPWAD(file);
                     LoadDehFile(file);
                 }
             }
@@ -1106,10 +1284,10 @@ static void D_DoomMainSetup(void)
                     if (D_AddFile(fullpath))
                     {
                         iwadfolder = strdup(M_ExtractFolder(file));
+                        D_CheckSupportedPWAD(file);
                         if (W_MergeFile(file))
                         {
                             modifiedgame = true;
-                            D_CheckSupportedPWAD(file);
                             LoadDehFile(file);
                         }
                     }
@@ -1121,10 +1299,10 @@ static void D_DoomMainSetup(void)
                         IdentifyIWADByName(fullpath);
                         if (D_AddFile(fullpath))
                         {
+                            D_CheckSupportedPWAD(file);
                             if (W_MergeFile(file))
                             {
                                 modifiedgame = true;
-                                D_CheckSupportedPWAD(file);
                                 LoadDehFile(file);
                             }
                         }
@@ -1137,10 +1315,10 @@ static void D_DoomMainSetup(void)
                             IdentifyIWADByName(fullpath);
                             if (D_AddFile(fullpath))
                             {
+                                D_CheckSupportedPWAD(file);
                                 if (W_MergeFile(file))
                                 {
                                     modifiedgame = true;
-                                    D_CheckSupportedPWAD(file);
                                     LoadDehFile(file);
                                 }
                             }
@@ -1151,13 +1329,18 @@ static void D_DoomMainSetup(void)
         }
     }
 
-    I_InitGraphics();
-
     if (!iwadfile && !modifiedgame && !choseniwad)
         I_Error("Game mode indeterminate. No IWAD file was found. Try\n"
                 "specifying one with the '-iwad' command-line parameter.");
 
+    if (BTSX)
+        C_SetBTSXColorScheme();
+
+#if defined(WIN32)
     if (!W_MergeFile(PACKAGE_WAD))
+#elif defined(__MACOSX__)
+    if (!W_MergeFile((char*)[packageWadFullpath UTF8String]))
+#endif
         I_Error("Can't find %s.", uppercase(PACKAGE_WAD));
 
     if (!CheckPackageWADVersion())
@@ -1199,8 +1382,6 @@ static void D_DoomMainSetup(void)
 
     bfgedition = (DMENUPIC && W_CheckNumForName("M_ACPT") >= 0);
 
-    I_InitTimer();
-    I_InitGamepad();
 
     // Generate the WAD hash table. Speed things up a bit.
     W_GenerateHashTable();
@@ -1210,6 +1391,11 @@ static void D_DoomMainSetup(void)
     D_ProcessDehInWad();
     D_SetGameDescription();
     D_SetSaveGameDir();
+
+    I_InitTimer();
+    I_InitGamepad();
+
+    I_InitGraphics();
 
     // Check for -file in shareware
     if (modifiedgame)
@@ -1249,8 +1435,19 @@ static void D_DoomMainSetup(void)
 
         if (temp >= sk_baby && temp <= sk_nightmare)
         {
-            startskill = (skill_t)temp;
-            autostart = true;
+            char *skilllevels[] =
+            {
+                { "I\'m too young to die" },
+                { "Hey, not too rough"    },
+                { "Hurt me plenty"        },
+                { "Ultra-Violence"        },
+                { "Nightmare"             }
+            };
+
+            selectedskilllevel = startskill = (skill_t)temp;
+            M_SaveDefaults();
+            C_Output("Found -SKILL parameter on command-line. Skill level is now \"%s\".",
+                skilllevels[startskill]);
         }
     }
 
@@ -1264,9 +1461,25 @@ static void D_DoomMainSetup(void)
                 && ((gamemode == registered && temp <= 3)
                     || (gamemode == retail && temp <= 4))))
         {
+            char *episodes[] =
+            {
+                { "Knee-Deep in the Dead" },
+                { "The Shores of Hell"    },
+                { "Inferno"               },
+                { "Thy Flesh Consumed"    }
+            };
+
             startepisode = temp;
+            selectedepisode = temp - 1;
+            M_SaveDefaults();
             startmap = 1;
+            if (gamemode == commercial)
+                M_snprintf(lumpname, sizeof(lumpname), "MAP%02i", startmap);
+            else
+                M_snprintf(lumpname, sizeof(lumpname), "E%iM%i", startepisode, startmap);
             autostart = true;
+            C_Output("Found -EPISODE parameter on command-line. Episode is now \"%s\".",
+                episodes[selectedepisode]);
         }
     }
 
@@ -1277,11 +1490,21 @@ static void D_DoomMainSetup(void)
 
         if (gamemode == commercial && temp <= (nerve ? 2 : 1))
         {
+            char *expansions[] =
+            {
+                { "Hell on Earth"          },
+                { "No Rest for the Living" }
+            };
+
             gamemission = (temp == 1 ? doom2 : pack_nerve);
             selectedexpansion = temp - 1;
+            M_SaveDefaults();
             startepisode = 1;
             startmap = 1;
+            M_snprintf(lumpname, sizeof(lumpname), "MAP%02i", startmap);
             autostart = true;
+            C_Output("Found -EXPANSION parameter on command-line. Expansion is now \"%s\".",
+                expansions[selectedexpansion]);
         }
     }
 
@@ -1296,12 +1519,16 @@ static void D_DoomMainSetup(void)
         timelimit = 20;
 
     p = M_CheckParmWithArgs("-warp", 1);
-    if (!p)
+    if (p)
+        C_Output("Found -WARP parameter on command-line.");
+    else
+    {
         p = M_CheckParmWithArgs("+map", 1);
+        if (p)
+            C_Output("Found +MAP parameter on command-line.");
+    }
     if (p)
     {
-        static char lumpname[6];
-
         if (gamemode == commercial)
         {
             if (strlen(myargv[p + 1]) == 5 &&
@@ -1370,10 +1597,13 @@ static void D_DoomMainSetup(void)
 
     AM_Init();
 
+    C_Init();
 
     if (startloadgame >= 0)
     {
         I_InitKeyboard();
+        if (alwaysrun)
+            C_PlayerMessage(s_ALWAYSRUNON);
         G_LoadGame(P_SaveGameFile(startloadgame));
     }
 
@@ -1389,6 +1619,9 @@ static void D_DoomMainSetup(void)
         if (autostart)
         {
             I_InitKeyboard();
+            if (alwaysrun)
+                C_PlayerMessage(s_ALWAYSRUNON);
+            C_Output("Warping to %s...", lumpname);
             G_DeferredInitNew(startskill, startepisode, startmap);
         }
         else

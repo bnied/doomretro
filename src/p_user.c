@@ -36,6 +36,7 @@
 ========================================================================
 */
 
+#include "c_console.h"
 #include "d_event.h"
 #include "doomstat.h"
 #include "i_gamepad.h"
@@ -44,9 +45,10 @@
 #include "p_local.h"
 #include "s_sound.h"
 
-extern boolean  followplayer;
+extern boolean  followmode;
 extern boolean  oldweaponsowned[];
 extern boolean  skipaction;
+extern boolean  footclip;
 
 void G_RemoveChoppers(void);
 
@@ -124,19 +126,17 @@ void P_CalcHeight(player_t *player)
         }
         player->viewz = mo->z + player->viewheight + bob;
 
+        if ((mo->flags2 & MF2_FEETARECLIPPED) && footclip)
+        {
+            sector_t        *sec = mo->subsector->sector;
+
+            if (mo->z <= mo->floorz && mo->floorz == sec->floorheight
+                && sec->lines[0]->frontsector != sec->lines[0]->backsector)
+                player->viewz -= FOOTCLIPSIZE;
+        }
     }
     else
         player->viewz = mo->z + player->viewheight;
-
-    if (mo->flags2 & MF2_FEETARECLIPPED)
-    {
-        sector_t        *sec = mo->subsector->sector;
-
-        if (player->playerstate != PST_DEAD
-            && mo->z <= mo->floorz && mo->floorz == sec->floorheight
-            && sec->lines[0]->frontsector != sec->lines[0]->backsector)
-            player->viewz -= FOOTCLIPSIZE;
-    }
 
     player->viewz = BETWEEN(mo->floorz + 4 * FRACUNIT, player->viewz, mo->ceilingz - 4 * FRACUNIT);
 }
@@ -184,7 +184,7 @@ void P_DeathThink(player_t *player)
     mobj_t              *mo = player->mo;
     mobj_t              *attacker = player->attacker;
 
-#ifdef SDL20
+#if defined(SDL20)
     const Uint8         *keystate = SDL_GetKeyboardState(NULL);
 #else
     Uint8               *keystate = SDL_GetKeyState(NULL);
@@ -233,15 +233,16 @@ void P_DeathThink(player_t *player)
     else if (player->damagecount > 0)
         player->damagecount--;
 
+    if (consoleheight)
+        return;
+
     if (((player->cmd.buttons & BT_USE)
         || ((player->cmd.buttons & BT_ATTACK) && !player->damagecount && count > TICRATE * 2)
-
-#ifdef SDL20
+#if defined(SDL20)
         || keystate[SDL_SCANCODE_RETURN] || keystate[SDL_SCANCODE_KP_ENTER]))
 #else
         || keystate[SDLK_RETURN] || keystate[SDLK_KP_ENTER]))
 #endif
-
     {
         count = 0;
         damagevibrationtics = 1;
@@ -300,7 +301,7 @@ void P_PlayerThink(player_t *player)
     if (cmd->buttons & BT_SPECIAL)
         cmd->buttons = 0;
 
-    if ((cmd->buttons & BT_CHANGE) && (!automapactive || (automapactive && followplayer)))
+    if ((cmd->buttons & BT_CHANGE) && (!automapactive || (automapactive && followmode)))
     {
         // The actual changing of the weapon is done when the weapon psprite can do it
         //  (read: not in the middle of an attack).

@@ -36,20 +36,12 @@
 ========================================================================
 */
 
-#ifndef __P_LOCAL__
+#if !defined(__P_LOCAL__)
 #define __P_LOCAL__
 
-#ifndef __R_LOCAL__
-#include "r_local.h"
-#endif
-
-#ifndef __M_CONFIG__
-#include "m_config.h"
-#endif
-
-#ifndef __D_MAIN__
 #include "d_main.h"
-#endif
+#include "m_config.h"
+#include "r_local.h"
 
 #define FOOTCLIPSIZE            (10 * FRACUNIT)
 
@@ -88,10 +80,18 @@
 #define MOUSE_LEFTBUTTON        1
 #define MOUSE_RIGHTBUTTON       2
 #define MOUSE_MIDDLEBUTTON      4
+#if defined(SDL20)
+#define MOUSE_WHEELUP           8
+#define MOUSE_WHEELDOWN         9
+#else
 #define MOUSE_WHEELUP           8
 #define MOUSE_WHEELDOWN         16
+#endif
 
 #define NEEDEDCARDTICS          85
+
+#define WEAPONBOTTOM            128 * FRACUNIT
+#define WEAPONTOP               32 * FRACUNIT
 
 //
 // P_TICK
@@ -135,13 +135,17 @@ extern mobj_t           *bloodSplatQueue[BLOODSPLATS_MAX];
 extern int              bloodSplatQueueSlot;
 extern int              bloodsplats;
 
-extern int              corpses;
+extern boolean          corpses_mirror;
+extern boolean          corpses_moreblood;
+extern boolean          corpses_slide;
+extern boolean          corpses_smearblood;
 
 void P_InitCards(player_t *player);
 
 void P_RespawnSpecials(void);
 
 mobj_t *P_SpawnMobj(fixed_t x, fixed_t y, fixed_t z, mobjtype_t type);
+int P_FindDoomedNum(unsigned int type);
 
 void P_RemoveMobj(mobj_t *th);
 boolean P_SetMobjState(mobj_t *mobj, statenum_t state);
@@ -207,7 +211,7 @@ boolean P_BlockThingsIterator(int x, int y, boolean(*func)(mobj_t *));
 #define PT_ADDTHINGS    2
 #define PT_EARLYOUT     4
 
-extern divline_t        trace;
+extern divline_t        dlTrace;
 
 boolean P_PathTraverse(fixed_t x1, fixed_t y1, fixed_t x2, fixed_t y2, int flags,
                        boolean (*trav)(intercept_t *));

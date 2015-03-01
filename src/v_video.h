@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __V_VIDEO__
+#if !defined(__V_VIDEO__)
 #define __V_VIDEO__
 
 #include "r_data.h"
@@ -68,14 +68,19 @@ void V_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int dest
 void V_FillRect(int scrn, int x, int y, int width, int height, byte color);
 
 void V_DrawPatch(int x, int y, int scrn, patch_t *patch);
+void V_DrawTranslucentPatch(int x, int y, int scrn, patch_t *patch);
 void V_DrawBigPatch(int x, int y, int scrn, patch_t *patch);
+void V_DrawConsoleChar(int x, int y, patch_t *patch, int color, boolean italics);
+void V_DrawTranslucentConsolePatch(int x, int y, patch_t *patch);
 void V_DrawShadowPatch(int x, int y, patch_t *patch);
 void V_DrawSolidShadowPatch(int x, int y, patch_t *patch);
+void V_DrawSpectreShadowPatch(int x, int y, patch_t *patch);
 boolean V_EmptyPatch(patch_t *patch);
 void V_DrawPatchWithShadow(int x, int y, patch_t *patch, boolean flag);
 void V_DrawFlippedPatch(int x, int y, patch_t *patch);
 void V_DrawFlippedShadowPatch(int x, int y, patch_t *patch);
 void V_DrawFlippedSolidShadowPatch(int x, int y, patch_t *patch);
+void V_DrawFlippedSpectreShadowPatch(int x, int y, patch_t *patch);
 void V_DrawCenteredPatch(int y, patch_t *patch);
 void V_DrawFuzzPatch(int x, int y, patch_t *patch);
 void V_DrawFlippedFuzzPatch(int x, int y, patch_t *patch);

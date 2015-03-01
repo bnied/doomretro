@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __D_STATE__
+#if !defined(__D_STATE__)
 #define __D_STATE__
 
 // We need globally shared data structures,
@@ -53,8 +53,6 @@
 extern  boolean         nomonsters;     // checkparm of -nomonsters
 extern  boolean         respawnparm;    // checkparm of -respawn
 extern  boolean         fastparm;       // checkparm of -fast
-
-extern  boolean         devparm;        // DEBUG: launched with -devparm
 
 // -----------------------------------------------------
 // Game Mode - identify IWAD as shareware, retail etc.
@@ -89,6 +87,9 @@ extern int              gamemap;
 
 extern boolean          nerve;
 extern boolean          bfgedition;
+
+extern boolean          mergedcacodemon;
+extern boolean          mergednoble;
 
 extern boolean          chex;
 extern boolean          chexdeh;
@@ -168,7 +169,7 @@ extern int              snd_SfxDevice;
 extern boolean          statusbaractive;
 
 extern boolean          automapactive;  // In AutoMap mode?
-extern boolean          followplayer;   // Following player in AutoMap mode?
+extern boolean          followmode;     // Following player in AutoMap mode?
 extern boolean          menuactive;     // Menu overlayed?
 extern boolean          paused;         // Game Pause?
 

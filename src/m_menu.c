@@ -40,6 +40,7 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "c_console.h"
 #include "d_deh.h"
 #include "d_main.h"
 #include "doomstat.h"
@@ -662,7 +663,10 @@ void M_DrawString(int x, int y, char *str)
         while (kern[k].char1)
         {
             if (prev == kern[k].char1 && str[i] == kern[k].char2)
+            {
                 x += kern[k].adjust;
+                break;
+            }
             ++k;
         }
 
@@ -959,8 +963,8 @@ void M_LoadGame(int choice)
 
 #define CARETTICS       20
 
-boolean showcaret = true;
-int     carettics = 0;
+static boolean  showcaret = true;
+static int      carettics = 0;
 
 //
 //  M_SaveGame & Cie.
@@ -1482,8 +1486,8 @@ void M_DrawEpisode(void)
         M_DrawCenteredString(44 + OFFSET, s_M_WHICHEPISODE);
 }
 
-#ifdef SDL20
-extern SDL_Window *sdl_window;
+#if defined(SDL20)
+extern SDL_Window       *window;
 #endif
 
 void M_SetWindowCaption(void)
@@ -1503,8 +1507,8 @@ void M_SetWindowCaption(void)
             M_snprintf(caption, sizeof(caption), "%s (%s)", caption, s_CAPTION_BFGEDITION);
     }
 
-#ifdef SDL20
-    SDL_SetWindowTitle(sdl_window, caption);
+#if defined(SDL20)
+    SDL_SetWindowTitle(window, caption);
 #else
     SDL_WM_SetCaption(caption, NULL);
 #endif
@@ -1660,7 +1664,7 @@ void M_ChangeMessages(int choice)
     messages = !messages;
     if (menuactive)
         message_dontpause = true;
-    players[consoleplayer].message = (messages ? s_MSGON : s_MSGOFF);
+    HU_PlayerMessage(messages ? s_MSGON : s_MSGOFF);
     message_dontfuckwithme = true;
     M_SaveDefaults();
 }
@@ -1669,6 +1673,20 @@ void M_ChangeMessages(int choice)
 // M_EndGame
 //
 boolean endinggame = false;
+
+void M_EndingGame(void)
+{
+    endinggame = true;
+    if (widescreen)
+    {
+        ToggleWidescreen(false);
+        returntowidescreen = true;
+    }
+    usergame = false;
+    C_AddConsoleDivider();
+    M_SetWindowCaption();
+    D_StartTitle(1);
+}
 
 void M_EndGameResponse(int key)
 {
@@ -1689,15 +1707,7 @@ void M_EndGameResponse(int key)
     S_StartSound(NULL, sfx_swtchx);
     I_WaitVBL(2 * TICRATE);
     MainDef.lastOn = 0;
-    endinggame = true;
-    if (widescreen)
-    {
-        ToggleWideScreen(false);
-        returntowidescreen = true;
-    }
-    usergame = false;
-    M_SetWindowCaption();
-    D_StartTitle(1);
+    M_EndingGame();
 }
 
 void M_EndGame(int choice)
@@ -1881,6 +1891,7 @@ void M_ChangeDetail(int choice)
         players[consoleplayer].message = (graphicdetail == HIGH ? s_DETAILHI : s_DETAILLO);
         message_dontfuckwithme = true;
     }
+    C_PlayerMessage(graphicdetail == HIGH ? s_DETAILHI : s_DETAILLO);
     M_SaveDefaults();
 }
 
@@ -1903,7 +1914,7 @@ void M_SizeDisplay(int choice)
                 if (!hud)
                     hud = true;
                 else
-                    ToggleWideScreen(false);
+                    ToggleWidescreen(false);
                 S_StartSound(NULL, sfx_stnmov);
                 M_SaveDefaults();
             }
@@ -1936,7 +1947,7 @@ void M_SizeDisplay(int choice)
                     }
                     else
                     {
-                        ToggleWideScreen(true);
+                        ToggleWidescreen(true);
                         if (!widescreen)
                             R_SetViewSize(++screensize);
                     }
@@ -2111,6 +2122,23 @@ void M_WriteText(int x, int y, char *string, boolean shadow)
     }
 }
 
+void M_ShowHelp(void)
+{
+    functionkey = KEY_F1;
+    M_StartControlPanel();
+    currentMenu = &ReadDef;
+    itemOn = 0;
+    S_StartSound(NULL, sfx_swtchn);
+    inhelpscreens = true;
+    if (widescreen)
+    {
+        ToggleWidescreen(false);
+        returntowidescreen = true;
+    }
+    if (!automapactive && gamestate == GS_LEVEL)
+        R_SetViewSize(8);
+}
+
 //
 // CONTROL PANEL
 //
@@ -2131,7 +2159,8 @@ boolean M_Responder(event_t *ev)
     int         i;
     static int  keywait = 0;
     char        *tempstring = "";
-#ifdef SDL20
+
+#if defined(SDL20)
     SDL_Keymod  modstate = SDL_GetModState();
 #else
     SDLMod      modstate = SDL_GetModState();
@@ -2241,6 +2270,7 @@ boolean M_Responder(event_t *ev)
             usinggamepad = false;
         }
 
+#if !defined(SDL20)
         else if (!messageToPrint)
         {
             // select previous menu item
@@ -2259,7 +2289,31 @@ boolean M_Responder(event_t *ev)
                 usinggamepad = false;
             }
         }
+#endif
     }
+#if defined(SDL20)
+    else if (ev->type == ev_mousewheel)
+    {
+        if (!messageToPrint)
+        {
+            // select previous menu item
+            if (ev->data1 > 0)
+            {
+                key = KEY_UPARROW;
+                mousewait = I_GetTime() + 3;
+                usinggamepad = false;
+            }
+
+            // select next menu item
+            else if (ev->data1 < 0)
+            {
+                key = KEY_DOWNARROW;
+                mousewait = I_GetTime() + 3;
+                usinggamepad = false;
+            }
+        }
+    }
+#endif
     else if (ev->type == ev_keydown)
     {
         key = ev->data1;
@@ -2439,6 +2493,18 @@ boolean M_Responder(event_t *ev)
             return false;
         }
 
+        // Console
+        else if (key == KEY_TILDE && (modstate & KMOD_CTRL) && (modstate & KMOD_ALT) && !keydown)
+        {
+            keydown = key;
+            if (consoleheight < CONSOLEHEIGHT && consoledirection == -1)
+            {
+                consoleheight = MAX(1, consoleheight);
+                consoledirection = 1;
+                return true;
+            }
+        }
+
         // Help key
         else if (key == KEY_F1 && (!functionkey || functionkey == KEY_F1)
                  && !keydown)
@@ -2452,26 +2518,12 @@ boolean M_Responder(event_t *ev)
                 if (inhelpscreens)
                 {
                     R_SetViewSize(screensize);
-                    if (returntowidescreen)
-                        ToggleWideScreen(true);
+                    if (returntowidescreen && gamestate == GS_LEVEL)
+                        ToggleWidescreen(true);
                 }
             }
             else
-            {
-                functionkey = KEY_F1;
-                M_StartControlPanel();
-                currentMenu = &ReadDef;
-                itemOn = 0;
-                S_StartSound(NULL, sfx_swtchn);
-                inhelpscreens = true;
-                if (widescreen)
-                {
-                    ToggleWideScreen(false);
-                    returntowidescreen = true;
-                }
-                if (!automapactive)
-                    R_SetViewSize(8);
-            }
+                M_ShowHelp();
             return false;
         }
 
@@ -2651,7 +2703,7 @@ boolean M_Responder(event_t *ev)
             if (buf[strlen(buf) - 1] == '0' && buf[strlen(buf) - 2] == '0')
                 buf[strlen(buf) - 1] = '\0';
         }
-        players[consoleplayer].message = buf;
+        HU_PlayerMessage(buf);
 
         message_dontpause = true;
         message_dontfuckwithme = true;
@@ -2685,7 +2737,7 @@ boolean M_Responder(event_t *ev)
     }
     if (!paused)
     {
-        if (key == KEY_DOWNARROW && keywait < I_GetTime())
+        if (key == KEY_DOWNARROW && keywait < I_GetTime() && !inhelpscreens)
         {
             // Move down to next item
             if (currentMenu == &LoadDef)
@@ -2748,7 +2800,7 @@ boolean M_Responder(event_t *ev)
             M_SetWindowCaption();
             return false;
         }
-        else if (key == KEY_UPARROW && keywait < I_GetTime())
+        else if (key == KEY_UPARROW && keywait < I_GetTime() && !inhelpscreens)
         {
             // Move back up to previous item
             if (currentMenu == &LoadDef)
@@ -2812,8 +2864,8 @@ boolean M_Responder(event_t *ev)
             return false;
         }
 
-        else if (key == KEY_LEFTARROW
-                 || (key == KEY_MINUS && !(currentMenu == &OptionsDef && itemOn == 1)))
+        else if (key == KEY_LEFTARROW || (key == KEY_MINUS && !(currentMenu == &OptionsDef
+            && itemOn == 1)) && !inhelpscreens)
         {
             // Slide slider left
             if (currentMenu->menuitems[itemOn].routine
@@ -2828,8 +2880,8 @@ boolean M_Responder(event_t *ev)
             return false;
         }
 
-        else if (key == KEY_RIGHTARROW
-                 || (key == KEY_EQUALS && !(currentMenu == &OptionsDef && itemOn == 1)))
+        else if (key == KEY_RIGHTARROW || (key == KEY_EQUALS && !(currentMenu == &OptionsDef
+            && itemOn == 1)) && !inhelpscreens)
         {
             // Slide slider right
             if (currentMenu->menuitems[itemOn].routine
@@ -2855,7 +2907,7 @@ boolean M_Responder(event_t *ev)
                 S_StartSound(NULL, sfx_swtchx);
                 R_SetViewSize(screensize);
                 if (returntowidescreen)
-                    ToggleWideScreen(true);
+                    ToggleWidescreen(true);
                 return true;
             }
             if (currentMenu->menuitems[itemOn].routine &&
@@ -2907,8 +2959,8 @@ boolean M_Responder(event_t *ev)
             if (inhelpscreens)
             {
                 R_SetViewSize(screensize);
-                if (returntowidescreen)
-                    ToggleWideScreen(true);
+                if (returntowidescreen && gamestate == GS_LEVEL)
+                    ToggleWidescreen(true);
             }
             M_SetWindowCaption();
             return true;
@@ -3156,6 +3208,19 @@ void M_Drawer(void)
     if (currentMenu == &LoadDef || currentMenu == &SaveDef)
     {
         patch_t *patch = W_CacheLumpName(skullName[whichSkull], PU_CACHE);
+
+        if (currentMenu == &LoadDef)
+        {
+            int old = itemOn;
+
+            while (!strcasecmp(savegamestrings[itemOn], s_EMPTYSTRING))
+                itemOn = (!itemOn ? currentMenu->numitems - 1 : itemOn - 1);
+            if (itemOn != old)
+            {
+                SaveDef.lastOn = selectedsavegame = itemOn;
+                M_SaveDefaults();
+            }
+        }
 
         if (M_SKULL1)
             M_DrawPatchWithShadow(x - 43, currentMenu->y + itemOn * 17 - 8 + OFFSET + chex, patch);

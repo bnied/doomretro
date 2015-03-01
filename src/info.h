@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __INFO__
+#if !defined(__INFO__)
 #define __INFO__
 
 #include "doomtype.h"
@@ -1182,21 +1182,12 @@ typedef struct
     long        misc2;
 } state_t;
 
-typedef struct
-{
-    char        name[9];
-    short       x;
-    short       y;
-    boolean     canmodify;
-} offset_t;
-
 extern state_t  states[NUMSTATES];
 extern char     *sprnames[];
 
-extern offset_t sproffsets[];
-
 typedef enum 
 {
+    NOTYPE = -1,
     MT_PLAYER,
     MT_POSSESSED,
     MT_SHOTGUY,
@@ -1372,10 +1363,26 @@ typedef struct
     int         raisestate;
     int         frames;
     int         blood;
-    char        *description;
+    int         shadowoffset;
+    char        *name1;
+    char        *plural1;
+    char        *name2;
+    char        *plural2;
     void        (*colfunc)(void);
+    boolean     canmodify;
 } mobjinfo_t;
 
 extern mobjinfo_t       mobjinfo[NUMMOBJTYPES];
+
+typedef struct
+{
+    char        name[9];
+    short       x;
+    short       y;
+    mobjtype_t  type;
+    boolean     canmodify;
+} offset_t;
+
+extern offset_t sproffsets[];
 
 #endif

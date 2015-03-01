@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __G_GAME__
+#if !defined(__G_GAME__)
 #define __G_GAME__
 
 #include "doomdef.h"
@@ -72,14 +72,13 @@ void G_SecretExitLevel(void);
 void G_WorldDone(void);
 
 // Read current data from inputs and build a player movement command.
-
-void G_BuildTiccmd(ticcmd_t *cmd, int maketic);
+void G_BuildTiccmd(ticcmd_t *cmd);
 
 void G_Ticker(void);
 boolean G_Responder(event_t *ev);
 
 void G_ScreenShot(void);
-void ToggleWideScreen(boolean toggle);
+void ToggleWidescreen(boolean toggle);
 
 extern boolean  canmodify;
 extern boolean  flag667;

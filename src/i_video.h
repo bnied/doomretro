@@ -36,16 +36,14 @@
 ========================================================================
 */
 
-#ifndef __I_VIDEO__
+#if !defined(__I_VIDEO__)
 #define __I_VIDEO__
 
 #include "doomtype.h"
 #include "SDL.h"
 
-#if (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION == 0)
+#if SDL_VERSION_ATLEAST(2, 0, 0)
 #define SDL20
-#elif (SDL_MAJOR_VERSION == 1 && SDL_MINOR_VERSION == 2)
-#define SDL12
 #endif
 
 #define MAX_MOUSE_BUTTONS       8
@@ -99,5 +97,8 @@ extern float    gammalevels[GAMMALEVELS];
 
 extern boolean  blurred;
 extern boolean  splashscreen;
+extern boolean  noinput;
+
+extern boolean showfps;
 
 #endif

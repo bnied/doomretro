@@ -42,12 +42,17 @@
 
 #include <stdarg.h>
 
-#ifdef WIN32
+#if defined(WIN32)
 #define WIN32_LEAN_AND_MEAN
-void done_win32(void);
 #include <windows.h>
+
+void I_ShutdownWindows32(void);
 #else
 #include <unistd.h>
+#endif
+
+#if !defined(SDL20) && defined(__MACOSX__)
+#include <CoreFoundation/CFUserNotification.h>
 #endif
 
 #include "d_net.h"
@@ -55,7 +60,6 @@ void done_win32(void);
 #include "doomstat.h"
 #include "g_game.h"
 #include "i_gamepad.h"
-#include "i_system.h"
 #include "i_timer.h"
 #include "i_video.h"
 #include "m_argv.h"
@@ -68,9 +72,9 @@ void done_win32(void);
 #include "w_wad.h"
 #include "z_zone.h"
 
-#ifdef __MACOSX__
-#include <CoreFoundation/CFUserNotification.h>
-#endif
+extern boolean  widescreen;
+extern boolean  hud;
+extern boolean  returntowidescreen;
 
 //
 // I_Quit
@@ -95,8 +99,8 @@ void I_Quit(boolean shutdown)
         I_ShutdownGamepad();
     }
 
-#ifdef WIN32
-    done_win32();
+#if defined(WIN32)
+    I_ShutdownWindows32();
 #endif
 
     SDL_Quit();
@@ -109,12 +113,11 @@ void I_WaitVBL(int count)
     I_Sleep((count * 1000) / 70);
 }
 
-#if !defined(WIN32) && !defined(__MACOSX__)
+#if !defined(SDL20) && !defined(WIN32) && !defined(__MACOSX__)
 
 #define ZENITY_BINARY "/usr/bin/zenity"
 
 // returns non-zero if zenity is available
-
 static int ZenityAvailable(void)
 {
     return system(ZENITY_BINARY " --help >/dev/null 2>&1") == 0;
@@ -122,11 +125,10 @@ static int ZenityAvailable(void)
 
 // Escape special characters in the given string so that they can be
 // safely enclosed in shell quotes.
-
 static char *EscapeShellString(char *string)
 {
-    char *result;
-    char *r, *s;
+    char        *result;
+    char        *r, *s;
 
     // In the worst case, every character might be escaped.
     result = malloc(strlen(string) * 2 + 3);
@@ -145,7 +147,6 @@ static char *EscapeShellString(char *string)
         //   of $, `, \, and, when history expansion is enabled, !."
         //
         // Therefore, escape these characters by prefixing with a backslash.
-
         if (strchr("$`\\!", *s) != NULL)
         {
             *r = '\\';
@@ -165,18 +166,15 @@ static char *EscapeShellString(char *string)
 }
 
 // Open a native error box with a message using zenity
-
 static int ZenityErrorBox(char *message)
 {
-    int result;
-    char *escaped_message;
-    char *errorboxpath;
-    static size_t errorboxpath_size;
+    int                 result;
+    char                *escaped_message;
+    char                *errorboxpath;
+    static size_t       errorboxpath_size;
 
     if (!ZenityAvailable())
-    {
         return 0;
-    }
 
     escaped_message = EscapeShellString(message);
 
@@ -192,7 +190,6 @@ static int ZenityErrorBox(char *message)
 
     return result;
 }
-
 #endif
 
 //
@@ -204,7 +201,10 @@ void I_Error(char *error, ...)
 {
     va_list     argptr;
     char        msgbuf[512];
+
+#if !defined(SDL20) && defined(WIN32)
     wchar_t     wmsgbuf[512];
+#endif
 
     if (already_quitting)
         exit(-1);
@@ -230,14 +230,14 @@ void I_Error(char *error, ...)
     M_vsnprintf(msgbuf, sizeof(msgbuf) - 1, error, argptr);
     va_end(argptr);
 
-#ifdef WIN32
+#if defined(SDL20)
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, PACKAGE_NAME, msgbuf, NULL);
+#elif defined(WIN32)
     MultiByteToWideChar(CP_ACP, 0, msgbuf, strlen(msgbuf) + 1, wmsgbuf, sizeof(wmsgbuf));
 
     MessageBoxW(NULL, wmsgbuf, PACKAGE_NAME_W, MB_ICONERROR | MB_OK);
 
-    done_win32();
-
-    SDL_Quit();
+    I_ShutdownWindows32();
 
 #elif defined(__MACOSX__)
     {
@@ -255,11 +255,13 @@ void I_Error(char *error, ...)
         message = CFStringCreateWithCString(NULL, msgbuf, kCFStringEncodingUTF8);
 
         CFUserNotificationDisplayNotice(0, kCFUserNotificationCautionAlertLevel, NULL, NULL, NULL,
-            CFSTR(PACKAGE_STRING), message, NULL);
+            CFSTR(PACKAGE_NAME), message, NULL);
     }
 #else
-        ZenityErrorBox(msgbuf);
+    ZenityErrorBox(msgbuf);
 #endif
+
+    SDL_Quit();
 
     exit(-1);
 }

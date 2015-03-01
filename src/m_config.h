@@ -36,10 +36,12 @@
 ========================================================================
 */
 
-#ifndef __M_CONFIG__
+#if !defined(__M_CONFIG__)
 #define __M_CONFIG__
 
 #define ALWAYSRUN_DEFAULT                       false
+
+#define ANIMATEDLIQUID_DEFAULT                  true
 
 #define UNLIMITED                               32768
 #define BLOODSPLATS_MIN                         0
@@ -50,13 +52,13 @@
 
 #define CENTERWEAPON_DEFAULT                    true
 
-#define MIRROR                                  1
-#define SLIDE                                   2
-#define SMEARBLOOD                              4
-#define MOREBLOOD                               8
-#define CORPSES_MIN                             0
-#define CORPSES_DEFAULT                         (MIRROR | SLIDE | SMEARBLOOD | MOREBLOOD)
-#define CORPSES_MAX                             (MIRROR | SLIDE | SMEARBLOOD | MOREBLOOD)
+#define CORPSES_MIRROR_DEFAULT                  true
+
+#define CORPSES_MOREBLOOD_DEFAULT               true
+
+#define CORPSES_SLIDE_DEFAULT                   true
+
+#define CORPSES_SMEARBLOOD_DEFAULT              true
 
 #define DCLICKUSE_DEFAULT                       false
 
@@ -120,11 +122,7 @@
 
 #define GAMEPADLEFTHANDED_DEFAULT               false
 
-#define DAMAGE                                  1
-#define WEAPONS                                 2
-#define GAMEPADVIBRATE_MIN                      0
-#define GAMEPADVIBRATE_DEFAULT                  (DAMAGE | WEAPONS)
-#define GAMEPADVIBRATE_MAX                      (DAMAGE | WEAPONS)
+#define GAMEPADVIBRATE_DEFAULT                  true
 
 #define GAMMALEVEL_MIN                          gammalevels[0]
 #define GAMMALEVEL_DEFAULT                      0.75
@@ -206,13 +204,7 @@
 
 #define KEYWEAPON7_DEFAULT                      '7'
 
-#define LINEDEFS                                1
-#define SECTORS                                 2
-#define THINGS                                  4
-#define VERTEXES                                8
-#define MAPFIXES_MIN                            0
-#define MAPFIXES_DEFAULT                        (LINEDEFS | SECTORS | THINGS | VERTEXES)
-#define MAPFIXES_MAX                            (LINEDEFS | SECTORS | THINGS | VERTEXES)
+#define MAPFIXES_DEFAULT                        true
 
 #define MESSAGES_DEFAULT                        false
 
@@ -224,9 +216,17 @@
 
 #define MOUSEFORWARD_DEFAULT                    -1
 
+#if defined(SDL20)
+#define MOUSEPREVWEAPON_DEFAULT                 MOUSE_WHEELUP
+#else
 #define MOUSEPREVWEAPON_DEFAULT                 3
+#endif
 
+#if defined(SDL20)
+#define MOUSENEXTWEAPON_DEFAULT                 MOUSE_WHEELDOWN
+#else
 #define MOUSENEXTWEAPON_DEFAULT                 4
+#endif
 
 #define MOUSESENSITIVITY_MIN                    0
 #define MOUSESENSITIVITY_DEFAULT                16
@@ -260,11 +260,13 @@
 
 #define RUNCOUNT_MAX                            32768
 
-#define SATURATION_MIN                          0.0
-#define SATURATION_DEFAULT                      1.0
-#define SATURATION_MAX                          1.0
-
 #define SAVEGAME_DEFAULT                        0
+
+#if defined(SDL20)
+#define SCALEDRIVER_DEFAULT                     "opengl"
+
+#define SCALEQUALITY_DEFAULT                    "nearest"
+#endif
 
 #define SCREENSIZE_MIN                          0
 #define SCREENSIZE_DEFAULT                      7
@@ -284,13 +286,7 @@
 #define SKILLLEVEL_DEFAULT                      sk_medium
 #define SKILLLEVEL_MAX                          sk_nightmare
 
-#define PLAYER                                  1
-#define REVENANT1                               2
-#define REVENANT2                               4
-#define CYBERDEMON                              8
-#define SMOKETRAILS_MIN                         0
-#define SMOKETRAILS_DEFAULT                     (PLAYER | REVENANT2 | CYBERDEMON)
-#define SMOKETRAILS_MAX                         (PLAYER | REVENANT1 | REVENANT2 | CYBERDEMON)
+#define SMOKETRAILS_DEFAULT                     true
 
 #define SND_MAXSLICETIME_MS_DEFAULT             28
 
@@ -298,14 +294,14 @@
 
 #define TRANSLUCENCY_DEFAULT                    true
 
-#ifdef WIN32
-#ifdef SDL20
+#if defined(WIN32)
 #define VIDEODRIVER_DEFAULT                     "windows"
 #else
-#define VIDEODRIVER_DEFAULT                     "directx"
-#endif
-#else
 #define VIDEODRIVER_DEFAULT                     ""
+#endif
+
+#if defined(SDL20)
+#define VSYNC_DEFAULT                           false
 #endif
 
 #define WIDESCREEN_DEFAULT                      false
@@ -316,7 +312,53 @@
 
 #define WINDOWHEIGHT_DEFAULT                    (SCREENWIDTH * 3 / 4)
 
+typedef enum
+{
+    DEFAULT_INT,
+    DEFAULT_INT_HEX,
+    DEFAULT_INT_PERCENT,
+    DEFAULT_STRING,
+    DEFAULT_FLOAT,
+    DEFAULT_FLOAT_PERCENT,
+    DEFAULT_KEY
+} default_type_t;
+
+typedef struct
+{
+    // Name of the variable
+    char                *name;
+
+    // Pointer to the location in memory of the variable
+    void                *location;
+
+    // Type of the variable
+    default_type_t      type;
+
+    // If this is a key value, the original integer scancode we read from
+    // the config file before translating it to the internal key value.
+    // If zero, we didn't read this value from a config file.
+    int                 untranslated;
+
+    // The value we translated the scancode into when we read the
+    // config file on startup.  If the variable value is different from
+    // this, it has been changed and needs to be converted; otherwise,
+    // use the 'untranslated' value.
+    int                 original_translated;
+
+    int                 set;
+} default_t;
+
+typedef struct
+{
+    default_t           *defaults;
+    int                 numdefaults;
+    char                *filename;
+} default_collection_t;
+
+extern default_collection_t doom_defaults;
+
 void M_LoadDefaults(void);
 void M_SaveDefaults(void);
+char *striptrailingzero(float value);
 
 #endif

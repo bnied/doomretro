@@ -39,9 +39,11 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "c_console.h"
 #include "doomtype.h"
 #include "doomdef.h"
 #include "m_cheat.h"
+#include "m_misc.h"
 
 //
 // CHEAT SEQUENCE PACKAGE
@@ -55,6 +57,19 @@ char    cheatkey = '\0';
 
 int cht_CheckCheat(cheatseq_t *cht, char key)
 {
+    if (consolecheat[0] && !strcasecmp(consolecheat, cht->sequence))
+    {
+        consolecheat[0] = 0;
+        if (consolecheatparm)
+        {
+            cht->parameter_buf[0] = consolecheatparm[0];
+            cht->parameter_buf[1] = consolecheatparm[1];
+            cht->param_chars_read = 2;
+            consolecheatparm[0] = 0;
+        }
+        return true;
+    }
+
     // [BH] you have two seconds to enter each character of a cheat sequence
     if (!idbehold)
     {
@@ -63,11 +78,6 @@ int cht_CheckCheat(cheatseq_t *cht, char key)
                 cht->chars_read = cht->param_chars_read = 0;
         cht->timeout = leveltime;
     }
-
-    // if we make a short sequence on a cheat with parameters, this
-    // will not work in vanilla doom. behave the same.
-    if (cht->parameter_chars > 0 && strlen(cht->sequence) < cht->sequence_len)
-        return false;
 
     if (cht->chars_read < strlen(cht->sequence))
     {
@@ -103,8 +113,15 @@ int cht_CheckCheat(cheatseq_t *cht, char key)
     if (cht->chars_read >= strlen(cht->sequence)
         && cht->param_chars_read >= cht->parameter_chars)
     {
-        cht->chars_read = cht->param_chars_read = cht->timeout = 0;
+        if (cht != &cheat_clev && cht != &cheat_mus)
+        {
+            if (cht->param_chars_read)
+                C_Print(input, "%s%c%c", cht->sequence, cht->parameter_buf[0], cht->parameter_buf[1]);
+            else
+                C_Print(input, cht->sequence);
+        }
 
+        cht->chars_read = cht->param_chars_read = cht->timeout = 0;
         return true;
     }
 

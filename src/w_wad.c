@@ -38,6 +38,7 @@
 
 #include <ctype.h>
 
+#include "c_console.h"
 #include "doomdef.h"
 #include "doomstat.h"
 #include "i_swap.h"
@@ -46,7 +47,7 @@
 #include "w_wad.h"
 #include "z_zone.h"
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #pragma pack(push)
 #pragma pack(1)
 #endif
@@ -66,7 +67,7 @@ typedef struct
     char        name[8];
 } PACKEDATTR filelump_t;
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #pragma pack(pop)
 #endif
 
@@ -249,6 +250,10 @@ wad_file_t *W_AddFile(char *filename)
         Z_Free(lumphash);
         lumphash = NULL;
     }
+
+    header.identification[4] = 0;
+    C_Output("Added %s lumps from %s file %s.",
+        commify(numlumps - startlump), header.identification, uppercase(filename));
 
     return wad_file;
 }

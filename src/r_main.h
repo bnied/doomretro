@@ -36,7 +36,7 @@
 ========================================================================
 */
 
-#ifndef __R_MAIN__
+#if !defined(__R_MAIN__)
 #define __R_MAIN__
 
 #include "d_player.h"
@@ -61,9 +61,6 @@ extern fixed_t          projectiony;
 
 extern int              validcount;
 
-extern int              linecount;
-extern int              loopcount;
-
 //
 // Lighting LUT.
 // Used for z-depth cuing per column/row,
@@ -71,14 +68,13 @@ extern int              loopcount;
 //
 
 // Lighting constants.
-#define LIGHTLEVELS             32
-#define LIGHTSEGSHIFT           3
+#define LIGHTLEVELS             128
+#define LIGHTSEGSHIFT           1
 #define LIGHTBRIGHT             2
-
-#define MAXLIGHTSCALE           48
-#define LIGHTSCALESHIFT         13
-#define MAXLIGHTZ               128
-#define LIGHTZSHIFT             20
+#define MAXLIGHTSCALE           384
+#define LIGHTSCALESHIFT         12
+#define MAXLIGHTZ               1024
+#define LIGHTZSHIFT             17
 
 extern lighttable_t     *scalelight[LIGHTLEVELS][MAXLIGHTSCALE];
 extern lighttable_t     *psprscalelight[LIGHTLEVELS][MAXLIGHTSCALE];

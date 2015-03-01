@@ -36,18 +36,24 @@
 ========================================================================
 */
 
-#define PACKAGE_VERSION                 1,6,5,0
-#define PACKAGE_VERSIONSTRING           "1.6.5"
-#define PACKAGE_WADVERSIONSTRING        "DOOM RETRO v1.6.5"
-#define PACKAGE_SAVEGAMEVERSIONSTRING   "DOOM RETRO v1.6"
+#if !defined(__VERSION__)
+#define __VERSION__
+
+#define PACKAGE_VERSION                 1,7,0,0
+#define PACKAGE_VERSIONSTRING           "1.7"
+#define PACKAGE_NAMEANDVERSIONSTRING    "DOOM RETRO v1.7"
 
 #define PACKAGE                         "doomretro"
 #define PACKAGE_CONFIG                  "doomretro.cfg"
 #define PACKAGE_COPYRIGHT               "(C) 2013-2015 Brad Harding. All rights reserved."
 #define PACKAGE_EMAIL                   "brad@doomretro.com"
+#define PACKAGE_EXE                     "doomretro.exe"
 #define PACKAGE_ICON_PATH               "..\\res\\doomretro.ico"
 #define PACKAGE_MUTEX                   "DOOMRETRO-CC4F1071-8B24-4E91-A207-D792F39636CD"
 #define PACKAGE_NAME_A                  "DOOM RETRO"
 #define PACKAGE_NAME_W                  L"DOOM RETRO"
 #define PACKAGE_NAME                    PACKAGE_NAME_A
 #define PACKAGE_WAD                     "doomretro.wad"
+#define PACKAGE_WIKI_URL                "http:\\\\wiki.doomretro.com"
+
+#endif

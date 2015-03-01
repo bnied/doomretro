@@ -47,9 +47,6 @@
 #define LOWERSPEED              6 * FRACUNIT
 #define RAISESPEED              6 * FRACUNIT
 
-#define WEAPONBOTTOM            128 * FRACUNIT
-#define WEAPONTOP               32 * FRACUNIT
-
 #define CHAINSAWIDLEMOTORSPEED  15000
 #define MAXMOTORSPEED           65535
 
@@ -178,7 +175,7 @@ void P_FireWeapon(player_t *player)
 {
     weapontype_t        readyweapon;
 
-    if (!P_CheckAmmo(player) || (automapactive && !followplayer))
+    if (!P_CheckAmmo(player) || (automapactive && !followmode))
         return;
 
     readyweapon = player->readyweapon;
@@ -191,7 +188,7 @@ void P_FireWeapon(player_t *player)
 
     P_NoiseAlert(player->mo, player->mo);
 
-    if ((gamepadvibrate & WEAPONS) && vibrate)
+    if (gamepadvibrate && vibrate)
     {
         int     motorspeed = weaponinfo[readyweapon].motorspeed;
 
@@ -241,7 +238,7 @@ void A_WeaponReady(player_t *player, pspdef_t *psp)
     //  if player is dead, put the weapon away
     if (pendingweapon != wp_nochange || !player->health)
     {
-        if ((gamepadvibrate & WEAPONS) && vibrate)
+        if (gamepadvibrate && vibrate)
         {
             if (pendingweapon == wp_chainsaw)
             {

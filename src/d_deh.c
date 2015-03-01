@@ -38,6 +38,7 @@
 
 #include <ctype.h>
 
+#include "c_console.h"
 #include "d_deh.h"
 #include "doomdef.h"
 #include "doomstat.h"
@@ -365,6 +366,10 @@ char *s_STSTR_CHOPPERS = STSTR_CHOPPERS;
 char *s_STSTR_CLEV = STSTR_CLEV;
 char *s_STSTR_CLEVSAME = STSTR_CLEVSAME;
 char *s_STSTR_MYPOS = STSTR_MYPOS;
+char *s_STSTR_NTON = STSTR_NTON;
+char *s_STSTR_NTOFF = STSTR_NTOFF;
+char *s_STSTR_GODON = STSTR_GODON;
+char *s_STSTR_GODOFF = STSTR_GODOFF;
 
 char *s_E1TEXT = E1TEXT;
 char *s_E2TEXT = E2TEXT;
@@ -507,8 +512,15 @@ deh_strs deh_strlookup[] =
     { &s_MSGOFF,               "MSGOFF",               false },
     { &s_MSGON,                "MSGON",                false },
     { &s_ENDGAME,              "ENDGAME",              false },
+
+#if defined(WIN32)
     { &s_DOSY,                 "DOSY",                 false },
     { &s_DOSA,                 "DOSA",                 false },
+#else
+    { &s_DOSY,                 "OTHERY",               false },
+    { &s_DOSA,                 "OTHERA",               false },
+#endif
+
     { &s_DETAILHI,             "DETAILHI",             false },
     { &s_DETAILLO,             "DETAILLO",             false },
     { &s_GAMMALVL,             "GAMMALVL",             false },
@@ -751,6 +763,10 @@ deh_strs deh_strlookup[] =
     { &s_STSTR_CLEV,           "STSTR_CLEV",           false },
     { &s_STSTR_CLEVSAME,       "STSTR_CLEVSAME",       false },
     { &s_STSTR_MYPOS,          "STSTR_MYPOS",          false },
+    { &s_STSTR_NTON,           "STSTR_NTON",           false },
+    { &s_STSTR_NTOFF,          "STSTR_NTOFF",          false },
+    { &s_STSTR_GODON,          "STSTR_GODON",          false },
+    { &s_STSTR_GODOFF,         "STSTR_GODOFF",         false },
 
     { &s_E1TEXT,               "E1TEXT",               false },
     { &s_E2TEXT,               "E2TEXT",               false },
@@ -1544,7 +1560,7 @@ boolean CheckPackageWADVersion(void)
                 if (!*inbuffer || *inbuffer == '#' || *inbuffer == ' ')
                     continue;   // Blank line or comment line
 
-                if (!strcasecmp(inbuffer, PACKAGE_WADVERSIONSTRING))
+                if (!strcasecmp(inbuffer, PACKAGE_NAMEANDVERSIONSTRING))
                     return true;
             }
         }
@@ -1569,7 +1585,7 @@ void ProcessDehFile(char *filename, char *outfilename, int lumpnum)
     char        inbuffer[DEH_BUFFERMAX];        // Place to put the primary infostring
     const char  *file_or_lump;
 
-#ifdef _DEBUG
+#if defined(_DEBUG)
     // Open output file if we're writing output
     if (outfilename && *outfilename && !fileout)
     {
@@ -1592,6 +1608,8 @@ void ProcessDehFile(char *filename, char *outfilename, int lumpnum)
             return;     // should be checked up front anyway
         infile.lump = NULL;
         file_or_lump = "file";
+        C_Output("Parsed %s file %s.",
+            (M_StringEndsWith(filename, "BEX") ? "BEX" : "DEH"), uppercase(filename));
     }
     else        // DEH file comes from lump indicated by third argument
     {
@@ -1599,6 +1617,8 @@ void ProcessDehFile(char *filename, char *outfilename, int lumpnum)
         infile.inp = infile.lump = W_CacheLumpNum(lumpnum, PU_STATIC);
         filename = lumpinfo[lumpnum].wad_file->path;
         file_or_lump = "lump from";
+        C_Output("Parsed DEHACKED lump from %s file %s.",
+            (W_WadType(filename) == IWAD ? "IWAD" : "PWAD"), uppercase(filename));
     }
 
     if (fileout)
@@ -2246,7 +2266,7 @@ void deh_procSprite(DEHFILE *fpin, FILE* fpout, char *line) // Not supported
 extern int pars[5][10];
 extern int cpars[33];
 
-#ifndef WIN32
+#if !defined(WIN32)
 char *strlwr(char *str)
 {
     size_t      i;
@@ -2874,10 +2894,9 @@ void deh_procStrings(DEHFILE *fpin, FILE* fpout, char *line)
 //
 boolean deh_procStringSub(char *key, char *lookfor, char *newstring, FILE *fpout)
 {
-    boolean     found;  // loop exit flag
-    int         i;      // looper
+    boolean     found = false;  // loop exit flag
+    int         i;              // looper
 
-    found = false;
     for (i = 0; i < deh_numstrlookup; i++)
     {
         found = (lookfor ? !strcasecmp(*deh_strlookup[i].ppstr, lookfor) :
@@ -2896,14 +2915,18 @@ boolean deh_procStringSub(char *key, char *lookfor, char *newstring, FILE *fpout
 
             *deh_strlookup[i].ppstr = t = strdup(newstring);    // orphan originalstring
             found = true;
+
             // Handle embedded \n's in the incoming string, convert to 0x0a's
             {
-                char    *s;
+                const char      *s;
 
                 for (s = *deh_strlookup[i].ppstr; *s; ++s, ++t)
                 {
                     if (*s == '\\' && (s[1] == 'n' || s[1] == 'N'))     // found one
-                        ++s, *t = '\n'; // skip one extra for second character
+                    {
+                        ++s;
+                        *t = '\n';      // skip one extra for second character
+                    }
                     else
                         *t = *s;
                 }
