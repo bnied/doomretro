@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -74,9 +74,6 @@
 #define ST_X                    0
 #define ST_X2                   104
 
-#define ST_FX                   143
-#define ST_FY                   169
-
 // Number of status faces.
 #define ST_NUMPAINFACES         5
 #define ST_NUMSTRAIGHTFACES     3
@@ -99,9 +96,13 @@
 #define ST_FACESX               (chex ? 144 : 143)
 #define ST_FACESY               168
 
+#define ST_FACEBACKX            (143 * SCREENSCALE)
+#define ST_FACEBACKY            (168 * SCREENSCALE)
+#define ST_FACEBACKWIDTH        (34 * SCREENSCALE)
+#define ST_FACEBACKHEIGHT       (32 * SCREENSCALE)
+
 #define ST_EVILGRINCOUNT        (2 * TICRATE)
 #define ST_TURNCOUNT            (1 * TICRATE)
-#define ST_OUCHCOUNT            (1 * TICRATE)
 #define ST_RAMPAGEDELAY         (2 * TICRATE)
 
 #define ST_MUCHPAIN             20
@@ -117,11 +118,11 @@
 // AMMO number pos.
 #define ST_AMMOWIDTH            3
 #define ST_AMMOX                44
-#define ST_AMMOY                172
+#define ST_AMMOY                171
 
 // HEALTH number pos.
 #define ST_HEALTHX              90
-#define ST_HEALTHY              172
+#define ST_HEALTHY              171
 
 // Weapon pos.
 #define ST_ARMSX                111
@@ -131,26 +132,15 @@
 #define ST_ARMSXSPACE           12
 #define ST_ARMSYSPACE           10
 
-// Frags pos.
-//#define ST_FRAGSX               138
-//#define ST_FRAGSY               172
-//#define ST_FRAGSWIDTH           2
-
 // ARMOR number pos.
-
-#define ST_ARMORWIDTH           3
 #define ST_ARMORX               220
-#define ST_ARMORY               172
+#define ST_ARMORY               171
 
 // Key icon positions.
-#define ST_KEY0WIDTH            8
-#define ST_KEY0HEIGHT           5
 #define ST_KEY0X                238
 #define ST_KEY0Y                171
-#define ST_KEY1WIDTH            ST_KEY0WIDTH
 #define ST_KEY1X                238
 #define ST_KEY1Y                181
-#define ST_KEY2WIDTH            ST_KEY0WIDTH
 #define ST_KEY2X                238
 #define ST_KEY2Y                191
 
@@ -185,99 +175,17 @@
 #define ST_MAXAMMO3X            314
 #define ST_MAXAMMO3Y            185
 
-// pistol
-#define ST_WEAPON0X             110
-#define ST_WEAPON0Y             172
-
-// shotgun
-#define ST_WEAPON1X             122
-#define ST_WEAPON1Y             172
-
-// chain gun
-#define ST_WEAPON2X             134
-#define ST_WEAPON2Y             172
-
-// missile launcher
-#define ST_WEAPON3X             110
-#define ST_WEAPON3Y             181
-
-// plasma gun
-#define ST_WEAPON4X             122
-#define ST_WEAPON4Y             181
-
-// bfg
-#define ST_WEAPON5X             134
-#define ST_WEAPON5Y             181
-
-// WPNS title
-#define ST_WPNSX                109
-#define ST_WPNSY                191
-
-// DETH title
-#define ST_DETHX                109
-#define ST_DETHY                191
-
-//Incoming messages window location
-#define ST_MSGTEXTX             0
-#define ST_MSGTEXTY             0
-// Dimensions given in characters.
-#define ST_MSGWIDTH             52
-// Or shall I say, in lines?
-#define ST_MSGHEIGHT            1
-
-#define ST_OUTTEXTX             0
-#define ST_OUTTEXTY             6
-
-// Width, in characters again.
-#define ST_OUTWIDTH             52
-// Height, in lines.
-#define ST_OUTHEIGHT            1
-
-#define ST_MAPWIDTH             (strlen(mapnames[(gameepisode - 1) * 9 + (gamemap - 1)]))
-
-#define ST_MAPTITLEX            (SCREENWIDTH - ST_MAPWIDTH * ST_CHATFONTWIDTH)
-
-#define ST_MAPTITLEY            0
-#define ST_MAPHEIGHT            1
-
 // main player in game
 static player_t                 *plyr;
 
 // ST_Start() has just been called
-static boolean                  st_firsttime;
+static dboolean                 st_firsttime;
 
 // lump number for PLAYPAL
 static int                      lu_palette;
 
-// used for making messages go away
-static int                      st_msgcounter = 0;
-
-// used when in chat
-//static st_chatstateenum_t       st_chatstate;
-
-// whether in automap or first-person
-static st_stateenum_t           st_gamestate;
-
 // whether left-side main status bar is active
-static boolean                  st_statusbaron;
-
-// whether status bar chat is active
-//static boolean                  st_chat;
-
-// value of st_chat before message popped up
-//static boolean                  st_oldchat;
-
-// whether chat window has the cursor on
-//static boolean                  st_cursoron;
-
-// !deathmatch
-//static boolean                  st_notdeathmatch;
-
-// !deathmatch && st_statusbaron
-static boolean                  st_armson;
-
-// !deathmatch
-//static boolean                  st_fragson;
+static dboolean                 st_statusbaron;
 
 // main bar left
 static patch_t                  *sbar;
@@ -288,7 +196,7 @@ patch_t                         *tallnum[10];
 
 // tall % sign
 patch_t                         *tallpercent;
-boolean                         emptytallpercent;
+dboolean                        emptytallpercent;
 
 // 0-9, short, yellow (,different!) numbers
 static patch_t                  *shortnum[10];
@@ -298,9 +206,6 @@ static patch_t                  *keys[NUMCARDS];
 
 // face status patches
 static patch_t                  *faces[ST_NUMFACES];
-
-// face background
-static patch_t                  *faceback;
 
 // main bar right
 static patch_t                  *armsbg;
@@ -312,9 +217,6 @@ static int                      armsnum;
 
 // ready-weapon widget
 static st_number_t              w_ready;
-
-// in deathmatch only, summary of frags stats
-//static st_number_t              w_frags;
 
 // health widget
 static st_percent_t             w_health;
@@ -341,20 +243,27 @@ static st_number_t              w_ammo[4];
 // max ammo widgets
 static st_number_t              w_maxammo[4];
 
-// number of frags so far in deathmatch
-//static int                      st_fragscount;
+patch_t                         *grnrock;
+patch_t                         *brdr_t;
+patch_t                         *brdr_b;
+patch_t                         *brdr_l;
+patch_t                         *brdr_r;
+patch_t                         *brdr_tl;
+patch_t                         *brdr_tr;
+patch_t                         *brdr_bl;
+patch_t                         *brdr_br;
 
-// used to use appopriately pained face
+// used to use appropriately pained face
 static int                      st_oldhealth = -1;
 
 // used for evil grin
-boolean                         oldweaponsowned[NUMWEAPONS];
+dboolean                        oldweaponsowned[NUMWEAPONS];
 
 // count until face changes
 int                             st_facecount = 0;
 
 // current face index, used by w_faces
-static int                      st_faceindex = 0;
+static int                      st_faceindex;
 
 // holds key-type for each key box on bar
 static int                      keyboxes[3];
@@ -364,13 +273,17 @@ static int                      st_randomnumber;
 
 int                             oldhealth = 100;
 
-boolean                         idclev = false;
+dboolean                        idclev = false;
 
 int                             idclevtics = 0;
 
-boolean                         idmus = false;
+dboolean                        idmus = false;
 
-boolean                         samelevel;
+dboolean                        samelevel;
+
+int                             faceback = faceback_default;
+
+unsigned int                    stat_cheated = 0;
 
 cheatseq_t cheat_mus = CHEAT("idmus", 0);
 cheatseq_t cheat_mus_xy = CHEAT("idmus", 2);
@@ -397,7 +310,7 @@ cheatseq_t cheat_clev_xy = CHEAT("idclev", 2);
 cheatseq_t cheat_mypos = CHEAT("idmypos", 0);
 cheatseq_t cheat_amap = CHEAT("iddt", 0);
 
-static boolean actionkey(char key)
+static dboolean actionkey(char key)
 {
     return (key == key_right
         || key == key_left
@@ -507,17 +420,16 @@ int mus[IDMUS_MAX][6] =
 // STATUS BAR CODE
 //
 void ST_Stop(void);
-boolean P_GiveBody(player_t *player, int num);
 int ST_calcPainOffset(void);
 void P_KillMobj(mobj_t *source, mobj_t *target);
 
-extern int graphicdetail;
+extern int r_detail;
 
 void ST_refreshBackground(void)
 {
     if (st_statusbaron)
     {
-        if (STBAR || graphicdetail == LOW)
+        if (STBAR || r_detail == lowdetail)
             V_DrawPatch(ST_X, 0, BG, sbar);
         else
             V_DrawBigPatch(ST_X, 0, BG, sbar2);
@@ -536,40 +448,28 @@ void ST_refreshBackground(void)
 //
 void ST_AutomapEvent(int type)
 {
-    switch (type)
-    {
-    case AM_MSGENTERED:
-        st_gamestate = AutomapState;
+    if (type == AM_MSGENTERED)
         st_firsttime = true;
-        break;
-    case AM_MSGEXITED:
-        st_gamestate = FirstPersonState;
-        break;
-    }
 }
 
 extern char     cheatkey;
-extern int      selectedepisode;
+extern int      episode;
 extern menu_t   EpiDef;
 extern int      cardsfound;
 
 // Respond to keyboard input events,
 //  intercept cheats.
-boolean ST_Responder(event_t *ev)
+dboolean ST_Responder(event_t *ev)
 {
-    int         i;
-    angle_t     angle;
-    fixed_t     x;
-    fixed_t     y;
-    mobj_t      *thing;
-
     // if a user keypress...
     if (ev->type == ev_keydown || consolecheat[0])
     {
         if (!menuactive && !paused)     // [BH] no cheats when in menu or paused
         {
-            // [BH]
-            if (!consolecheat[0] && cht_CheckCheat(&cheat_mus, ev->data2) && !nomusic && musicVolume)
+            int i;
+
+            if (!consolecheat[0] && cht_CheckCheat(&cheat_mus, ev->data2) && !nomusic
+                && musicVolume)
                 idmus = true;
 
             // 'dqd' cheat for toggleable god mode
@@ -577,38 +477,7 @@ boolean ST_Responder(event_t *ev)
             {
                 // [BH] if player is dead, resurrect them first
                 if (!plyr->health)
-                {
-                    // remove player's corpse
-                    P_RemoveMobj(plyr->mo);
-
-                    // spawn a teleport fog
-                    x = plyr->mo->x;
-                    y = plyr->mo->y;
-                    angle = plyr->mo->angle >> ANGLETOFINESHIFT;
-                    thing = P_SpawnMobj(x + 20 * finecosine[angle], y + 20 * finesine[angle],
-                                        ONFLOORZ, MT_TFOG);
-                    thing->angle = plyr->mo->angle;
-                    S_StartSound(thing, sfx_telept);
-
-                    // telefrag anything in this spot
-                    P_TeleportMove(thing, thing->x, thing->y, thing->z, true);
-
-                    // respawn the player.
-                    thing = P_SpawnMobj(x, y, ONFLOORZ, MT_PLAYER);
-                    thing->angle = plyr->mo->angle;
-                    thing->player = plyr;
-                    thing->health = 100;
-                    thing->reactiontime = 18;
-                    plyr->mo = thing;
-                    plyr->playerstate = PST_LIVE;
-                    plyr->viewheight = VIEWHEIGHT;
-                    plyr->health = 0;
-                    infight = false;
-                    P_SetupPsprites(plyr);
-                    P_MapEnd();
-                    ST_Start();
-                    HU_Start();
-                }
+                    P_ResurrectPlayer(plyr);
 
                 plyr->cheats ^= CF_GODMODE;
                 if (plyr->cheats & CF_GODMODE)
@@ -618,20 +487,29 @@ boolean ST_Responder(event_t *ev)
                     oldhealth = plyr->health;
                     P_GiveBody(plyr, 100);
 
-                    HU_PlayerMessage(s_STSTR_DQDON);
+                    C_Input(cheat_god.sequence);
+
+                    HU_PlayerMessage(s_STSTR_DQDON, false);
 
                     // [BH] always display message
-                    message_dontfuckwithme = true;
+                    if (!consoleactive)
+                        message_dontfuckwithme = true;
 
                     // [BH] play sound
                     S_StartSound(NULL, sfx_getpow);
+
+                    stat_cheated = SafeAdd(stat_cheated, 1);
+                    players[0].cheated++;
                 }
                 else
                 {
-                    HU_PlayerMessage(s_STSTR_DQDOFF);
+                    C_Input(cheat_god.sequence);
+
+                    HU_PlayerMessage(s_STSTR_DQDOFF, false);
 
                     // [BH] always display message
-                    message_dontfuckwithme = true;
+                    if (!consoleactive)
+                        message_dontfuckwithme = true;
 
                     // [BH] restore player's health
                     plyr->health = plyr->mo->health = oldhealth;
@@ -639,7 +517,7 @@ boolean ST_Responder(event_t *ev)
                     if (!oldhealth)
                     {
                         // [BH] The player originally used this cheat to
-                        // ressurect themselves, and now they have the audacity
+                        // resurrect themselves, and now they have the audacity
                         // to disable it. Kill them!
                         plyr->attacker = NULL;
                         P_KillMobj(NULL, plyr->mo);
@@ -657,9 +535,9 @@ boolean ST_Responder(event_t *ev)
                      // [BH] can only enter cheat while player is alive
                      && plyr->health)
             {
-                boolean    ammogiven = false;
-                boolean    armorgiven = false;
-                boolean    weaponsgiven = false;
+                dboolean        ammogiven = false;
+                dboolean        armorgiven = false;
+                dboolean        weaponsgiven = false;
 
                 // [BH] note if doesn't have full armor before giving it
                 if (plyr->armorpoints < idfa_armor || plyr->armortype < idfa_armor_class)
@@ -670,81 +548,12 @@ boolean ST_Responder(event_t *ev)
                 }
 
                 // [BH] note if any weapons given that player didn't have already
-                if (!oldweaponsowned[wp_shotgun])
-                {
-                    weaponsgiven = true;
-                    plyr->weaponowned[wp_shotgun] = true;
-                    oldweaponsowned[wp_shotgun] = true;
-                }
-                if (!oldweaponsowned[wp_chaingun])
-                {
-                    weaponsgiven = true;
-                    plyr->weaponowned[wp_chaingun] = true;
-                    oldweaponsowned[wp_chaingun] = true;
-                }
-                if (!oldweaponsowned[wp_missile])
-                {
-                    weaponsgiven = true;
-                    plyr->weaponowned[wp_missile] = true;
-                    oldweaponsowned[wp_missile] = true;
-                }
-                if (gamemode != shareware)
-                {
-                    if (!oldweaponsowned[wp_plasma])
-                    {
-                        weaponsgiven = true;
-                        plyr->weaponowned[wp_plasma] = true;
-                        oldweaponsowned[wp_plasma] = true;
-                    }
-                    if (!oldweaponsowned[wp_bfg])
-                    {
-                        weaponsgiven = true;
-                        plyr->weaponowned[wp_bfg] = true;
-                        oldweaponsowned[wp_bfg] = true;
-                    }
-                }
-                if (!oldweaponsowned[wp_chainsaw])
-                {
-                    weaponsgiven = true;
-                    plyr->weaponowned[wp_chainsaw] = true;
-                    oldweaponsowned[wp_chainsaw] = true;
-                    plyr->fistorchainsaw = wp_chainsaw;
-
-                    // [BH] if fist is current weapon, switch to new chainsaw
-                    if (plyr->readyweapon == wp_fist)
-                        plyr->pendingweapon = wp_chainsaw;
-                }
-                if (gamemode == commercial && !oldweaponsowned[wp_supershotgun])
-                {
-                    plyr->preferredshotgun = wp_supershotgun;
-                    weaponsgiven = true;
-                    plyr->weaponowned[wp_supershotgun] = true;
-                    oldweaponsowned[wp_supershotgun] = true;
-
-                    // [BH] if shotgun is current weapon, switch to new super shotgun
-                    if (plyr->readyweapon == wp_shotgun)
-                        plyr->pendingweapon = wp_supershotgun;
-                }
-                plyr->shotguns = (plyr->weaponowned[wp_shotgun]
-                                  || plyr->weaponowned[wp_supershotgun]);
+                weaponsgiven = P_GiveAllWeapons(plyr);
 
                 // [BH] give player a backpack if they don't have one
-                if (!plyr->backpack)
-                {
-                    for (i = 0; i < NUMAMMO; i++)
-                        plyr->maxammo[i] *= 2;
-                    plyr->backpack = true;
-                }
+                P_GiveBackpack(plyr, false);
 
-                for (i = 0; i < NUMAMMO; i++)
-                {
-                    // [BH] note if any ammo given
-                    if (plyr->ammo[i] < plyr->maxammo[i])
-                    {
-                        plyr->ammo[i] = plyr->maxammo[i];
-                        ammogiven = true;
-                    }
-                }
+                ammogiven = P_GiveFullAmmo(plyr);
 
                 // [BH] show evil grin if player was given any new weapons
                 if (weaponsgiven
@@ -761,13 +570,19 @@ boolean ST_Responder(event_t *ev)
                     // [BH] flash screen
                     P_AddBonus(plyr, BONUSADD);
 
-                    HU_PlayerMessage(s_STSTR_FAADDED);
+                    C_Input(cheat_ammonokey.sequence);
+
+                    HU_PlayerMessage(s_STSTR_FAADDED, false);
 
                     // [BH] always display message
-                    message_dontfuckwithme = true;
+                    if (!consoleactive)
+                        message_dontfuckwithme = true;
 
                     // [BH] play sound
                     S_StartSound(NULL, sfx_getpow);
+
+                    stat_cheated = SafeAdd(stat_cheated, 1);
+                    players[0].cheated++;
                 }
             }
 
@@ -776,10 +591,10 @@ boolean ST_Responder(event_t *ev)
                      // [BH] can only enter cheat while player is alive
                      && plyr->health)
             {
-                boolean    ammogiven = false;
-                boolean    armorgiven = false;
-                boolean    keysgiven = false;
-                boolean    weaponsgiven = false;
+                dboolean        ammogiven = false;
+                dboolean        armorgiven = false;
+                dboolean        keysgiven = false;
+                dboolean        weaponsgiven = false;
 
                 // [BH] note if doesn't have full armor before giving it
                 if (plyr->armorpoints < idkfa_armor || plyr->armortype < idkfa_armor_class)
@@ -790,92 +605,16 @@ boolean ST_Responder(event_t *ev)
                 }
 
                 // [BH] note if any weapons given that player didn't have already
-                if (!oldweaponsowned[wp_shotgun])
-                {
-                    weaponsgiven = true;
-                    plyr->weaponowned[wp_shotgun] = true;
-                    oldweaponsowned[wp_shotgun] = true;
-                }
-                if (!oldweaponsowned[wp_chaingun])
-                {
-                    weaponsgiven = true;
-                    plyr->weaponowned[wp_chaingun] = true;
-                    oldweaponsowned[wp_chaingun] = true;
-                }
-                if (!oldweaponsowned[wp_missile])
-                {
-                    weaponsgiven = true;
-                    plyr->weaponowned[wp_missile] = true;
-                    oldweaponsowned[wp_missile] = true;
-                }
-                if (gamemode != shareware)
-                {
-                    if (!oldweaponsowned[wp_plasma])
-                    {
-                        weaponsgiven = true;
-                        plyr->weaponowned[wp_plasma] = true;
-                        oldweaponsowned[wp_plasma] = true;
-                    }
-                    if (!oldweaponsowned[wp_bfg])
-                    {
-                        weaponsgiven = true;
-                        plyr->weaponowned[wp_bfg] = true;
-                        oldweaponsowned[wp_bfg] = true;
-                    }
-                }
-                if (!oldweaponsowned[wp_chainsaw])
-                {
-                    weaponsgiven = true;
-                    plyr->weaponowned[wp_chainsaw] = true;
-                    oldweaponsowned[wp_chainsaw] = true;
-                    plyr->fistorchainsaw = wp_chainsaw;
-
-                    // [BH] if fist is current weapon, switch to new chainsaw
-                    if (plyr->readyweapon == wp_fist)
-                        plyr->pendingweapon = wp_chainsaw;
-                }
-                if (gamemode == commercial && !oldweaponsowned[wp_supershotgun])
-                {
-                    plyr->preferredshotgun = wp_supershotgun;
-                    weaponsgiven = true;
-                    plyr->weaponowned[wp_supershotgun] = true;
-                    oldweaponsowned[wp_supershotgun] = true;
-
-                    // [BH] if shotgun is current weapon, switch to new super shotgun
-                    if (plyr->readyweapon == wp_shotgun)
-                        plyr->pendingweapon = wp_supershotgun;
-                }
-                plyr->shotguns = (plyr->weaponowned[wp_shotgun]
-                                  || plyr->weaponowned[wp_supershotgun]);
+                weaponsgiven = P_GiveAllWeapons(plyr);
 
                 // [BH] give player a backpack if they don't have one
-                if (!plyr->backpack)
-                {
-                    for (i = 0; i < NUMAMMO; i++)
-                        plyr->maxammo[i] *= 2;
-                    plyr->backpack = true;
-                }
+                P_GiveBackpack(plyr, false);
 
-                for (i = 0; i < NUMAMMO; i++)
-                {
-                    // [BH] note if any ammo given
-                    if (plyr->ammo[i] < plyr->maxammo[i])
-                    {
-                        plyr->ammo[i] = plyr->maxammo[i];
-                        ammogiven = true;
-                    }
-                }
+                ammogiven = P_GiveFullAmmo(plyr);
 
                 // [BH] only give the player the keycards or skull keys from the
                 //  current level, and note if any keys given
-                cardsfound = 0;
-                for (i = NUMCARDS - 1; i >= 0; i--)
-                    if (plyr->cards[i] != CARDNOTINMAP)
-                    {
-                        if (plyr->cards[i] == CARDNOTFOUNDYET)
-                            keysgiven = true;
-                        P_GiveCard(plyr, i);
-                    }
+                keysgiven = P_GiveAllCards(plyr);
 
                 // [BH] show evil grin if player was given any new weapons
                 if (weaponsgiven && !(plyr->cheats & CF_GODMODE)
@@ -891,13 +630,19 @@ boolean ST_Responder(event_t *ev)
                     // [BH] flash screen
                     P_AddBonus(plyr, BONUSADD);
 
-                    HU_PlayerMessage(s_STSTR_KFAADDED);
+                    C_Input(cheat_ammo.sequence);
+
+                    HU_PlayerMessage(s_STSTR_KFAADDED, false);
 
                     // [BH] always display message
-                    message_dontfuckwithme = true;
+                    if (!consoleactive)
+                        message_dontfuckwithme = true;
 
                     // [BH] play sound
                     S_StartSound(NULL, sfx_getpow);
+
+                    stat_cheated = SafeAdd(stat_cheated, 1);
+                    players[0].cheated++;
                 }
             }
 
@@ -907,7 +652,6 @@ boolean ST_Responder(event_t *ev)
                      && !nomusic && musicVolume)
             {
                 char   buf[3];
-                //int  musnum;
 
                 // [BH] only display message if parameter is valid
                 cht_GetParam(&cheat_mus_xy, buf);
@@ -933,38 +677,79 @@ boolean ST_Responder(event_t *ev)
                         {
                             static char msg[80];
 
-                            S_ChangeMusic(musnum, 1, true);
+                            S_ChangeMusic(musnum, 1, true, false);
+
+                            C_Input("%s%c%c", cheat_mus_xy.sequence, buf[0], buf[1]);
 
                             M_snprintf(msg, sizeof(msg), s_STSTR_MUS, S_music[musnum].name);
-                            HU_PlayerMessage(msg);
+                            HU_PlayerMessage(msg, false);
 
                             // [BH] always display message
-                            message_dontfuckwithme = true;
+                            if (!consoleactive)
+                                message_dontfuckwithme = true;
 
                             // [BH] play sound
                             S_StartSound(NULL, sfx_getpow);
+
+                            stat_cheated = SafeAdd(stat_cheated, 1);
+                            players[0].cheated++;
                         }
                     }
                 }
             }
 
             // no clipping mode cheat
-            else if (((cht_CheckCheat(&cheat_noclip, ev->data2) && gamemode != commercial)
-                      || (cht_CheckCheat(&cheat_commercial_noclip, ev->data2)
-                          && gamemode == commercial))
+            else if (cht_CheckCheat(&cheat_noclip, ev->data2) && gamemode != commercial
                      && gameskill != sk_nightmare
                      // [BH] can only enter cheat while player is alive
                      && plyr->health)
             {
                 plyr->cheats ^= CF_NOCLIP;
 
-                HU_PlayerMessage((plyr->cheats & CF_NOCLIP) ? s_STSTR_NCON : s_STSTR_NCOFF);
+                C_Input(cheat_noclip.sequence);
+
+                HU_PlayerMessage(((plyr->cheats & CF_NOCLIP) ? s_STSTR_NCON : s_STSTR_NCOFF),
+                    false);
 
                 // [BH] always display message
-                message_dontfuckwithme = true;
+                if (!consoleactive)
+                    message_dontfuckwithme = true;
 
                 // [BH] play sound
                 S_StartSound(NULL, sfx_getpow);
+
+                if (plyr->cheats & CF_NOCLIP)
+                {
+                    stat_cheated = SafeAdd(stat_cheated, 1);
+                    players[0].cheated++;
+                }
+            }
+
+            // no clipping mode cheat
+            else if (cht_CheckCheat(&cheat_commercial_noclip, ev->data2) && gamemode == commercial
+                && gameskill != sk_nightmare
+                // [BH] can only enter cheat while player is alive
+                && plyr->health)
+            {
+                plyr->cheats ^= CF_NOCLIP;
+
+                C_Input(cheat_commercial_noclip.sequence);
+
+                HU_PlayerMessage(((plyr->cheats & CF_NOCLIP) ? s_STSTR_NCON : s_STSTR_NCOFF),
+                    false);
+
+                // [BH] always display message
+                if (!consoleactive)
+                    message_dontfuckwithme = true;
+
+                // [BH] play sound
+                S_StartSound(NULL, sfx_getpow);
+
+                if (plyr->cheats & CF_NOCLIP)
+                {
+                    stat_cheated = SafeAdd(stat_cheated, 1);
+                    players[0].cheated++;
+                }
             }
 
             // 'behold?' power-up cheats
@@ -974,7 +759,8 @@ boolean ST_Responder(event_t *ev)
                     // [BH] can only enter cheat while player is alive
                     && plyr->health)
                 {
-                    if ((i != pw_strength && plyr->powers[i] >= 0 && plyr->powers[i] <= STARTFLASHING)
+                    if ((i != pw_strength && plyr->powers[i] >= 0
+                        && plyr->powers[i] <= STARTFLASHING)
                         || (i == pw_strength && !plyr->powers[i]))
                     {
                         P_GivePower(plyr, i);
@@ -1008,7 +794,13 @@ boolean ST_Responder(event_t *ev)
                               }
                         }
 
-                        HU_PlayerMessage(s_STSTR_BEHOLDON);
+                        C_Input(cheat_powerup[i].sequence);
+
+                        HU_PlayerMessage((!M_StringCompare(s_STSTR_BEHOLDX, STSTR_BEHOLDX) ?
+                            s_STSTR_BEHOLDX : s_STSTR_BEHOLDON), false);
+
+                        stat_cheated = SafeAdd(stat_cheated, 1);
+                        players[0].cheated++;
                     }
                     else
                     {
@@ -1036,7 +828,10 @@ boolean ST_Responder(event_t *ev)
                             plyr->powers[i] = STARTFLASHING * (i != pw_allmap);
                         }
 
-                        HU_PlayerMessage(s_STSTR_BEHOLDOFF);
+                        C_Input(cheat_powerup[i].sequence);
+
+                        HU_PlayerMessage((!M_StringCompare(s_STSTR_BEHOLDX, STSTR_BEHOLDX) ?
+                            s_STSTR_BEHOLDX : s_STSTR_BEHOLDOFF), false);
                     }
 
                     // [BH] reset all cheat sequences
@@ -1059,7 +854,8 @@ boolean ST_Responder(event_t *ev)
                     cheatkey = '\0';
 
                     // [BH] always display message
-                    message_dontfuckwithme = true;
+                    if (!consoleactive)
+                        message_dontfuckwithme = true;
 
                     // [BH] play sound
                     S_StartSound(NULL, sfx_getpow);
@@ -1111,15 +907,21 @@ boolean ST_Responder(event_t *ev)
                     P_GivePower(plyr, pw_invulnerability);
                     plyr->powers[pw_invulnerability] = -1;
 
-                    HU_PlayerMessage(s_STSTR_CHOPPERS);
+                    C_Input(cheat_choppers.sequence);
+
+                    HU_PlayerMessage(s_STSTR_CHOPPERS, false);
 
                     // [BH] always display message
-                    message_dontfuckwithme = true;
+                    if (!consoleactive)
+                        message_dontfuckwithme = true;
 
                     // [BH] play sound
                     S_StartSound(NULL, sfx_getpow);
 
                     plyr->cheats |= CF_CHOPPERS;
+
+                    stat_cheated = SafeAdd(stat_cheated, 1);
+                    players[0].cheated++;
                 }
                 else
                 {
@@ -1133,33 +935,51 @@ boolean ST_Responder(event_t *ev)
                         plyr->pendingweapon = plyr->weaponbeforechoppers;
                     plyr->weaponowned[wp_chainsaw] = plyr->chainsawbeforechoppers;
                     oldweaponsowned[wp_chainsaw] = plyr->chainsawbeforechoppers;
+
+                    C_Input(cheat_choppers.sequence);
                 }
             }
 
             // 'mypos' for player position
             else if (cht_CheckCheat(&cheat_mypos, ev->data2))
             {
+                C_Input(cheat_mypos.sequence);
+
                 // [BH] message stays on screen until toggled off again using
                 //  cheat. Code is in hu_stuff.c.
                 plyr->cheats ^= CF_MYPOS;
                 if (!(plyr->cheats & CF_MYPOS))
-                    HU_clearMessages();
+                {
+                    message_clearable = true;
+                    HU_ClearMessages();
+                }
 
                 // [BH] play sound
                 S_StartSound(NULL, sfx_getpow);
+
+                stat_cheated = SafeAdd(stat_cheated, 1);
+                players[0].cheated++;
             }
 
-            else if (automapactive && cht_CheckCheat(&cheat_amap, ev->data2))
+            else if ((automapactive || mapwindow)
+                && cht_CheckCheat(&cheat_amap, ev->data2))
             {
               if (plyr->cheats & CF_ALLMAP)
               {
                   plyr->cheats ^= CF_ALLMAP;
                   plyr->cheats ^= CF_ALLMAP_THINGS;
+                  stat_cheated = SafeAdd(stat_cheated, 1);
+                  players[0].cheated++;
               }
               else if (plyr->cheats & CF_ALLMAP_THINGS)
                   plyr->cheats ^= CF_ALLMAP_THINGS;
               else
+              {
                   plyr->cheats ^= CF_ALLMAP;
+                  stat_cheated = SafeAdd(stat_cheated, 1);
+                  players[0].cheated++;
+              }
+
               S_StartSound(NULL, sfx_getpow);
             }
         }
@@ -1199,22 +1019,28 @@ boolean ST_Responder(event_t *ev)
                 // [BH] only allow MAP01 to MAP09 when NERVE.WAD loaded
                 if (W_CheckNumForName(lump) < 0
                     || (gamemission == pack_nerve && map > 9)
-                    || (BTSX && (W_CheckMultipleLumps(lump) == 1)))
+                    || (BTSX && W_CheckMultipleLumps(lump) == 1))
                     idclev = false;
                 else
                 {
                     static char message[128];
 
+                    C_Input("%s%c%c", cheat_clev_xy.sequence, buf[0], buf[1]);
+
                     if (BTSX)
-                        M_snprintf(lump, sizeof(lump), "E%iM%c%c", (BTSXE1 ? 1 : 2), buf[0], buf[1]);
+                        M_snprintf(lump, sizeof(lump), "E%iM%c%c", (BTSXE1 ? 1 : 2),
+                            buf[0], buf[1]);
+                    else if (FREEDOOM && gamemode != commercial)
+                        M_snprintf(lump, sizeof(lump), "C%cM%c", buf[0], buf[1]);
 
                     if (epsd == gameepisode && map == gamemap)
                         M_snprintf(message, sizeof(message), s_STSTR_CLEVSAME, lump);
                     else
                         M_snprintf(message, sizeof(message), s_STSTR_CLEV, lump);
-                    HU_PlayerMessage(message);
+                    HU_PlayerMessage(message, false);
 
                     // [BH] always display message
+                    plyr->message = message;
                     message_dontfuckwithme = true;
 
                     // [BH] play sound
@@ -1225,11 +1051,15 @@ boolean ST_Responder(event_t *ev)
                     gameepisode = epsd;
                     if (gamemission == doom && epsd <= 4)
                     {
-                        selectedepisode = gameepisode - 1;
-                        EpiDef.lastOn = selectedepisode;
+                        episode = gameepisode - 1;
+                        EpiDef.lastOn = episode;
                     }
                     gamemap = map;
-                    idclevtics = 2 * TICRATE;
+                    idclevtics = MAPCHANGETICS;
+                    drawdisk = true;
+                    C_HideConsole();
+                    stat_cheated = SafeAdd(stat_cheated, 1);
+                    players[0].cheated++;
                 }
             }
         }
@@ -1245,7 +1075,7 @@ boolean ST_Responder(event_t *ev)
 
 int ST_calcPainOffset(void)
 {
-    int         health = (plyr->health > 100 ? 100 : plyr->health);
+    int         health = MIN(plyr->health, 100);
     static int  lastcalc;
     static int  oldhealth = -1;
 
@@ -1266,11 +1096,7 @@ int ST_calcPainOffset(void)
 void ST_updateFaceWidget(void)
 {
     int         i;
-    angle_t     badguyangle;
-    angle_t     diffang;
-    static int  lastattackdown = -1;
-    static int  priority = 0;
-    boolean     doevilgrin;
+    static int  priority;
 
     if (priority < 10)
     {
@@ -1288,7 +1114,7 @@ void ST_updateFaceWidget(void)
         if (plyr->bonuscount)
         {
             // picking up bonus
-            doevilgrin = false;
+            dboolean    doevilgrin = false;
 
             for (i = 0; i < NUMWEAPONS; i++)
             {
@@ -1327,8 +1153,9 @@ void ST_updateFaceWidget(void)
             }
             else
             {
-                badguyangle = R_PointToAngle2(plyr->mo->x, plyr->mo->y,
-                                              plyr->attacker->x, plyr->attacker->y);
+                angle_t badguyangle = R_PointToAngle2(plyr->mo->x, plyr->mo->y, plyr->attacker->x,
+                    plyr->attacker->y);
+                angle_t diffang;
 
                 if (badguyangle > plyr->mo->angle)
                 {
@@ -1341,7 +1168,7 @@ void ST_updateFaceWidget(void)
                     // whether left or right
                     diffang = plyr->mo->angle - badguyangle;
                     i = (diffang <= ANG180);
-                }       // confusing, aint it?
+                }       // confusing, ain't it?
 
                 st_facecount = ST_TURNCOUNT;
                 st_faceindex = ST_calcPainOffset();
@@ -1388,6 +1215,8 @@ void ST_updateFaceWidget(void)
 
     if (priority < 6)
     {
+        static int  lastattackdown = -1;
+
         if (plyr->attackdown
             // [BH] no rampage face when invulnerable
             && !(plyr->cheats & CF_GODMODE) && !plyr->powers[pw_invulnerability])
@@ -1448,25 +1277,8 @@ void ST_updateWidgets(void)
 
     // refresh everything if this is him coming back to life
     // [BH] but only if not paused and no menu
-    if (!paused && !menuactive)
+    if (!paused && !menuactive && !consoleactive)
         ST_updateFaceWidget();
-
-    // used by the w_armsbg widget
-    //st_notdeathmatch = !deathmatch;
-
-    // used by w_arms[] widgets
-    st_armson = (st_statusbaron && !deathmatch);
-
-    // used by w_frags widget
-    //st_fragson = (deathmatch && st_statusbaron);
-    //st_fragscount = 0;
-
-    //for (i = 0; i < MAXPLAYERS; i++)
-    //    st_fragscount += (i != consoleplayer ? plyr->frags[i] : -plyr->frags[i]);
-
-    // get rid of chat window if up because of message
-    //if (!--st_msgcounter)
-    //    st_chat = st_oldchat;
 }
 
 void ST_Ticker(void)
@@ -1475,8 +1287,8 @@ void ST_Ticker(void)
     ST_updateWidgets();
     st_oldhealth = plyr->health;
 
+    // [BH] action the IDCLEV cheat after a small delay to allow its player message to display
     if (idclevtics)
-    {
         if (!--idclevtics)
         {
             if (!samelevel)
@@ -1484,7 +1296,6 @@ void ST_Ticker(void)
 
             G_DeferredLoadLevel(gameskill, gameepisode, gamemap);
         }
-    }
 }
 
 int     st_palette = 0;
@@ -1494,22 +1305,26 @@ void ST_doPaletteStuff(void)
     int palette = 0;
     int count = plyr->damagecount;
 
-    if (plyr->powers[pw_strength]
-        && (plyr->pendingweapon == wp_fist
-            || (plyr->readyweapon == wp_fist && plyr->pendingweapon == wp_nochange))
+    if (plyr->powers[pw_strength] && (plyr->pendingweapon == wp_fist
+        || (plyr->readyweapon == wp_fist && plyr->pendingweapon == wp_nochange))
         && plyr->health > 0)
-        count = MAX(12, count);
-
-    if (count)
-        palette = MIN((count + 7) >> 3, NUMREDPALS);
+    {
+        if (plyr->bonuscount)
+            palette = STARTBONUSPALS + MIN((plyr->bonuscount + 7) >> 3, NUMBONUSPALS - 1);
+        else
+            palette = STARTREDPALS + MIN((count + 14) >> 3, NUMREDPALS - 1);
+    }
+    else if (count)
+        palette = STARTREDPALS + MIN((count + 7) >> 3, NUMREDPALS - 1);
     else if (plyr->health > 0)
     {
         if (plyr->bonuscount)
-            palette = MIN((plyr->bonuscount + 7) >> 3, NUMBONUSPALS) + STARTBONUSPALS - 1;
+            palette = STARTBONUSPALS + MIN((plyr->bonuscount + 7) >> 3, NUMBONUSPALS - 1);
         else if (plyr->powers[pw_ironfeet] > STARTFLASHING || (plyr->powers[pw_ironfeet] & 8))
             palette = RADIATIONPAL;
     }
 
+    // [BH] show green instead of red palette in Chex Quest
     if (chex && palette >= STARTREDPALS && palette < STARTREDPALS + NUMREDPALS)
         palette = RADIATIONPAL;
 
@@ -1520,15 +1335,9 @@ void ST_doPaletteStuff(void)
     }
 }
 
-void ST_drawWidgets(boolean refresh)
+void ST_drawWidgets(dboolean refresh)
 {
     int i;
-
-    // used by w_arms[] widgets
-    st_armson = (st_statusbaron && !deathmatch);
-
-    // used by w_frags widget
-    //st_fragson = (deathmatch && st_statusbaron);
 
     STlib_updateNum(&w_ready);
 
@@ -1542,7 +1351,7 @@ void ST_drawWidgets(boolean refresh)
 
     STlib_updatePercent(&w_armor, refresh);
 
-    if (STBAR || graphicdetail == LOW)
+    if (STBAR || r_detail == lowdetail)
         STlib_updateBinIcon(&w_armsbg, refresh);
     else
         STlib_updateBigBinIcon(&w_armsbg2, refresh);
@@ -1554,17 +1363,17 @@ void ST_drawWidgets(boolean refresh)
     for (i = 0; i < armsnum; i++)
         STlib_updateArmsIcon(&w_arms[i], refresh, i);
 
+    if (faceback != faceback_default)
+        V_FillRect(0, ST_FACEBACKX, ST_FACEBACKY, ST_FACEBACKWIDTH, ST_FACEBACKHEIGHT, faceback);
+
     STlib_updateMultIcon(&w_faces, refresh);
 
     for (i = 0; i < 3; i++)
         STlib_updateMultIcon(&w_keyboxes[i], refresh);
-
-    //STlib_updateNum(&w_frags);
 }
 
 void ST_doRefresh(void)
 {
-
     st_firsttime = false;
 
     // draw status bar background to off-screen buff
@@ -1580,12 +1389,12 @@ void ST_diffDraw(void)
     ST_drawWidgets(false);
 }
 
-void ST_Drawer(boolean fullscreen, boolean refresh)
+void ST_Drawer(dboolean fullscreen, dboolean refresh)
 {
     // Do red-/gold-shifts from damage/items
     ST_doPaletteStuff();
 
-    if (widescreen)
+    if (vid_widescreen)
         return;
 
     st_statusbaron = (!fullscreen || automapactive);
@@ -1646,13 +1455,9 @@ static void ST_loadUnloadGraphics(load_callback_t callback)
         arms[i][1] = shortnum[i + 2];
     }
 
-    // face backgrounds for different color players
-    M_snprintf(namebuf, 9, "STFB%d", consoleplayer);
-    callback(namebuf, &faceback);
-
     // status bar background bits
     callback("STBAR", &sbar);
-    callback("STBAR2", &sbar2);
+    callback("STBAR2", &sbar2); // [BH] double resolution
 
     // face states
     facenum = 0;
@@ -1676,14 +1481,25 @@ static void ST_loadUnloadGraphics(load_callback_t callback)
     }
     callback("STFGOD0", &faces[facenum++]);
     callback("STFDEAD0", &faces[facenum++]);
+
+    // back screen
+    callback((gamemode == commercial ? "GRNROCK" : "FLOOR7_2"), &grnrock);
+    callback("BRDR_T", &brdr_t);
+    callback("BRDR_B", &brdr_b);
+    callback("BRDR_L", &brdr_l);
+    callback("BRDR_R", &brdr_r);
+    callback("BRDR_TL", &brdr_tl);
+    callback("BRDR_TR", &brdr_tr);
+    callback("BRDR_BL", &brdr_bl);
+    callback("BRDR_BR", &brdr_br);
 }
 
 static void ST_loadCallback(char *lumpname, patch_t **variable)
 {
-    if (!strcasecmp(lumpname, "STARMS") && STARMS)
-        *variable = W_CacheLumpNum(W_GetNumForNameX("STARMS", FREEDOOM ? 1 : 2), PU_STATIC);
-    else if (!strcasecmp(lumpname, "STBAR") && STBAR)
-        *variable = W_CacheLumpNum(W_GetNumForNameX("STBAR", FREEDOOM ? 1 : 2), PU_STATIC);
+    if (M_StringCompare(lumpname, "STARMS") && STARMS)
+        *variable = W_CacheLumpNum(W_GetNumForNameX("STARMS", (FREEDOOM ? 1 : 2)), PU_STATIC);
+    else if (M_StringCompare(lumpname, "STBAR") && STBAR)
+        *variable = W_CacheLumpNum(W_GetNumForNameX("STBAR", (FREEDOOM ? 1 : 2)), PU_STATIC);
     else
         *variable = W_CacheLumpName(lumpname, PU_STATIC);
 }
@@ -1720,14 +1536,9 @@ void ST_initData(void)
     int    i;
 
     st_firsttime = true;
-    plyr = &players[consoleplayer];
-
-    //st_chatstate = StartChatState;
-    st_gamestate = FirstPersonState;
+    plyr = &players[0];
 
     st_statusbaron = true;
-    //st_oldchat = st_chat = false;
-    //st_cursoron = false;
 
     st_faceindex = 0;
     st_palette = -1;
@@ -1748,169 +1559,62 @@ void ST_createWidgets(void)
     int  i;
 
     // ready weapon ammo
-    STlib_initNum(&w_ready,
-                  ST_AMMOX,
-                  ST_AMMOY,
-                  tallnum,
-                  &plyr->ammo[weaponinfo[plyr->readyweapon].ammo],
-                  &st_statusbaron,
-                  ST_AMMOWIDTH);
+    STlib_initNum(&w_ready, ST_AMMOX, ST_AMMOY + !STBAR, tallnum,
+        &plyr->ammo[weaponinfo[plyr->readyweapon].ammo], &st_statusbaron, ST_AMMOWIDTH);
 
     // the last weapon type
     w_ready.data = plyr->readyweapon;
 
     // health percentage
-    STlib_initPercent(&w_health,
-                      ST_HEALTHX,
-                      ST_HEALTHY,
-                      tallnum,
-                      &plyr->health,
-                      &st_statusbaron,
-                      tallpercent);
+    STlib_initPercent(&w_health, ST_HEALTHX, ST_HEALTHY + !STBAR, tallnum, &plyr->health,
+        &st_statusbaron, tallpercent);
 
     // arms background
-    STlib_initBinIcon(&w_armsbg,
-                      ST_ARMSBGX,
-                      ST_ARMSBGY,
-                      armsbg,
-                      &st_statusbaron/*&st_notdeathmatch*/,
-                      &st_statusbaron);
-
-    STlib_initBinIcon(&w_armsbg2,
-                      ST_ARMSBGX * 2,
-                      ST_ARMSBGY * 2,
-                      armsbg2,
-                      &st_statusbaron/*&st_notdeathmatch*/,
-                      &st_statusbaron);
+    STlib_initBinIcon(&w_armsbg, ST_ARMSBGX, ST_ARMSBGY, armsbg, &st_statusbaron, &st_statusbaron);
+    STlib_initBinIcon(&w_armsbg2, ST_ARMSBGX * 2, ST_ARMSBGY * 2, armsbg2, &st_statusbaron,
+        &st_statusbaron);
 
     // weapons owned
     armsnum = (gamemode == shareware ? 4 : 6);
     for (i = 0; i < armsnum; i++)
-    {
-        STlib_initMultIcon(&w_arms[i],
-                           ST_ARMSX + (i % 3) * ST_ARMSXSPACE,
-                           ST_ARMSY + i / 3 * ST_ARMSYSPACE,
-                           arms[i],
-                           (i == 1 ? &plyr->shotguns : &plyr->weaponowned[i + 1]),
-                           &st_armson);
-    }
-
-    // frags sum
-    //STlib_initNum(&w_frags,
-    //              ST_FRAGSX,
-    //              ST_FRAGSY,
-    //              tallnum,
-    //              &st_fragscount,
-    //              &st_fragson,
-    //              ST_FRAGSWIDTH);
+        STlib_initMultIcon(&w_arms[i], ST_ARMSX + (i % 3) * ST_ARMSXSPACE,
+            ST_ARMSY + i / 3 * ST_ARMSYSPACE, arms[i], (i == 1 ? &plyr->shotguns :
+            &plyr->weaponowned[i + 1]), &st_statusbaron);
 
     // faces
-    STlib_initMultIcon(&w_faces,
-                       ST_FACESX,
-                       ST_FACESY,
-                       faces,
-                       &st_faceindex,
-                       &st_statusbaron);
+    STlib_initMultIcon(&w_faces, ST_FACESX, ST_FACESY, faces, &st_faceindex, &st_statusbaron);
 
     // armor percentage - should be colored later
-    STlib_initPercent(&w_armor,
-                      ST_ARMORX,
-                      ST_ARMORY,
-                      tallnum,
-                      &plyr->armorpoints,
-                      &st_statusbaron,
-                      tallpercent);
+    STlib_initPercent(&w_armor, ST_ARMORX, ST_ARMORY + !STBAR, tallnum, &plyr->armorpoints,
+        &st_statusbaron, tallpercent);
 
     // keyboxes 0-2
-    STlib_initMultIcon(&w_keyboxes[0],
-                       ST_KEY0X,
-                       ST_KEY0Y,
-                       keys,
-                       &keyboxes[0],
-                       &st_statusbaron);
-
-    STlib_initMultIcon(&w_keyboxes[1],
-                       ST_KEY1X,
-                       ST_KEY1Y,
-                       keys,
-                       &keyboxes[1],
-                       &st_statusbaron);
-
-    STlib_initMultIcon(&w_keyboxes[2],
-                       ST_KEY2X,
-                       ST_KEY2Y,
-                       keys,
-                       &keyboxes[2],
-                       &st_statusbaron);
+    STlib_initMultIcon(&w_keyboxes[0], ST_KEY0X, ST_KEY0Y, keys, &keyboxes[0], &st_statusbaron);
+    STlib_initMultIcon(&w_keyboxes[1], ST_KEY1X, ST_KEY1Y, keys, &keyboxes[1], &st_statusbaron);
+    STlib_initMultIcon(&w_keyboxes[2], ST_KEY2X, ST_KEY2Y, keys, &keyboxes[2], &st_statusbaron);
 
     // ammo count (all four kinds)
-    STlib_initNum(&w_ammo[0],
-                  ST_AMMO0X,
-                  ST_AMMO0Y,
-                  shortnum,
-                  &plyr->ammo[0],
-                  &st_statusbaron,
-                  ST_AMMO0WIDTH);
-
-    STlib_initNum(&w_ammo[1],
-                  ST_AMMO1X,
-                  ST_AMMO1Y,
-                  shortnum,
-                  &plyr->ammo[1],
-                  &st_statusbaron,
-                  ST_AMMO1WIDTH);
-
-    STlib_initNum(&w_ammo[2],
-                  ST_AMMO2X,
-                  ST_AMMO2Y,
-                  shortnum,
-                  &plyr->ammo[2],
-                  &st_statusbaron,
-                  ST_AMMO2WIDTH);
-
-    STlib_initNum(&w_ammo[3],
-                  ST_AMMO3X,
-                  ST_AMMO3Y,
-                  shortnum,
-                  &plyr->ammo[3],
-                  &st_statusbaron,
-                  ST_AMMO3WIDTH);
+    STlib_initNum(&w_ammo[0], ST_AMMO0X, ST_AMMO0Y, shortnum, &plyr->ammo[0], &st_statusbaron,
+        ST_AMMO0WIDTH);
+    STlib_initNum(&w_ammo[1], ST_AMMO1X, ST_AMMO1Y, shortnum, &plyr->ammo[1], &st_statusbaron,
+        ST_AMMO1WIDTH);
+    STlib_initNum(&w_ammo[2], ST_AMMO2X, ST_AMMO2Y, shortnum, &plyr->ammo[2], &st_statusbaron,
+        ST_AMMO2WIDTH);
+    STlib_initNum(&w_ammo[3], ST_AMMO3X, ST_AMMO3Y, shortnum, &plyr->ammo[3], &st_statusbaron,
+        ST_AMMO3WIDTH);
 
     // max ammo count (all four kinds)
-    STlib_initNum(&w_maxammo[0],
-                  ST_MAXAMMO0X,
-                  ST_MAXAMMO0Y,
-                  shortnum,
-                  &plyr->maxammo[0],
-                  &st_statusbaron,
-                  ST_MAXAMMO0WIDTH);
-
-    STlib_initNum(&w_maxammo[1],
-                  ST_MAXAMMO1X,
-                  ST_MAXAMMO1Y,
-                  shortnum,
-                  &plyr->maxammo[1],
-                  &st_statusbaron,
-                  ST_MAXAMMO1WIDTH);
-
-    STlib_initNum(&w_maxammo[2],
-                  ST_MAXAMMO2X,
-                  ST_MAXAMMO2Y,
-                  shortnum,
-                  &plyr->maxammo[2],
-                  &st_statusbaron,
-                  ST_MAXAMMO2WIDTH);
-
-    STlib_initNum(&w_maxammo[3],
-                  ST_MAXAMMO3X,
-                  ST_MAXAMMO3Y,
-                  shortnum,
-                  &plyr->maxammo[3],
-                  &st_statusbaron,
-                  ST_MAXAMMO3WIDTH);
+    STlib_initNum(&w_maxammo[0], ST_MAXAMMO0X, ST_MAXAMMO0Y, shortnum, &plyr->maxammo[0],
+        &st_statusbaron, ST_MAXAMMO0WIDTH);
+    STlib_initNum(&w_maxammo[1], ST_MAXAMMO1X, ST_MAXAMMO1Y, shortnum, &plyr->maxammo[1],
+        &st_statusbaron, ST_MAXAMMO1WIDTH);
+    STlib_initNum(&w_maxammo[2], ST_MAXAMMO2X, ST_MAXAMMO2Y, shortnum, &plyr->maxammo[2],
+        &st_statusbaron, ST_MAXAMMO2WIDTH);
+    STlib_initNum(&w_maxammo[3], ST_MAXAMMO3X, ST_MAXAMMO3Y, shortnum, &plyr->maxammo[3],
+        &st_statusbaron, ST_MAXAMMO3WIDTH);
 }
 
-static boolean st_stopped = true;
+static dboolean st_stopped = true;
 
 void ST_Start(void)
 {
@@ -1937,7 +1641,7 @@ void ST_Init(void)
     int    i;
 
     ST_loadData();
-    screens[4] = (byte *)Z_Malloc(ST_WIDTH * SBARHEIGHT, PU_STATIC, 0);
+    screens[4] = Z_Malloc(ST_WIDTH * SBARHEIGHT, PU_STATIC, 0);
 
     // [BH] fix evil grin being displayed when picking up first item after
     // loading save game or entering IDFA/IDKFA cheat

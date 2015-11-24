@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -46,8 +46,8 @@
 ///
 // d_main.C
 //
-//#define D_DEVSTR              "Development mode ON.\n"
-//#define D_CDROM               "CD-ROM Version: default.cfg from c:\\doomdata\n"
+#define D_DEVSTR                "Development mode ON.\n"
+#define D_CDROM                 "CD-ROM Version: default.cfg from c:\\doomdata\n"
 
 //
 // m_menu.c
@@ -55,15 +55,15 @@
 #define PRESSKEY                "press a key."
 #define PRESSYN                 "press y or n."
 #define QUITMSG                 "are you sure you want to\nquit this great game?"
-//#define LOADNET               "you can't do load while in a net game!\n\n"PRESSKEY
-//#define QLOADNET              "you can't quickload during a netgame!\n\n"PRESSKEY
-//#define QSAVESPOT             "you haven't picked a quicksave slot yet!\n\n"PRESSKEY
-//#define SAVEDEAD              "you can't save if you aren't playing!\n\n"PRESSKEY
-//#define QSPROMPT              "quicksave over your game named\n\n'%s'?\n\n"PRESSYN
+#define LOADNET                 "you can't do load while in a net game!\n\n"PRESSKEY
+#define QLOADNET                "you can't quickload during a netgame!\n\n"PRESSKEY
+#define QSAVESPOT               "you haven't picked a quicksave slot yet!\n\n"PRESSKEY
+#define SAVEDEAD                "you can't save if you aren't playing!\n\n"PRESSKEY
+#define QSPROMPT                "quicksave over your game named\n\n'%s'?\n\n"PRESSYN
 #define QLPROMPT                "do you want to quickload the game named\n\n'%s'?\n\n"PRESSYN
 
-//#define NEWGAME               "you can't start a new game\n"\
-//                              "while in a network game.\n\n"PRESSKEY
+#define NEWGAME                 "you can't start a new game\n"\
+                                "while in a network game.\n\n"PRESSKEY
 
 #define NIGHTMARE               "are you sure? this skill level\n"\
                                 "isn't even remotely fair.\n\n"PRESSYN
@@ -73,18 +73,18 @@
 
 #define MSGOFF                  "Messages OFF"
 #define MSGON                   "Messages ON"
-//#define NETEND                "you can't end a netgame!\n\n"PRESSKEY
+#define NETEND                  "you can't end a netgame!\n\n"PRESSKEY
 #define ENDGAME                 "are you sure you want to end the game?\n\n"PRESSYN
 
 #define DOSY                    "(press y to quit to dos.)"
 
 #define DETAILHI                "High detail"
 #define DETAILLO                "Low detail"
-//#define GAMMALVL0             "Gamma correction OFF"
-//#define GAMMALVL1             "Gamma correction level 1"
-//#define GAMMALVL2             "Gamma correction level 2"
-//#define GAMMALVL3             "Gamma correction level 3"
-//#define GAMMALVL4             "Gamma correction level 4"
+#define GAMMALVL0               "Gamma correction OFF"
+#define GAMMALVL1               "Gamma correction level 1"
+#define GAMMALVL2               "Gamma correction level 2"
+#define GAMMALVL3               "Gamma correction level 3"
+#define GAMMALVL4               "Gamma correction level 4"
 #define EMPTYSTRING             "empty slot"
 
 //
@@ -146,11 +146,12 @@
 // g_game.c
 //
 #define GGSAVED                 "game saved."
+#define GSCREENSHOT             "screen shot"
 
 //
 //  hu_stuff.c
 //
-//#define HUSTR_MSGU            "[Message unsent]"
+#define HUSTR_MSGU              "[Message unsent]"
 
 #define HUSTR_E1M1              "E1M1: Hangar"
 #define HUSTR_E1M2              "E1M2: Nuclear Plant"
@@ -300,37 +301,32 @@
 #define THUSTR_31               "level 31: pharaoh"
 #define THUSTR_32               "level 32: caribbean"
 
-//#define HUSTR_CHATMACRO1      "I'm ready to kick butt!"
-//#define HUSTR_CHATMACRO2      "I'm OK."
-//#define HUSTR_CHATMACRO3      "I'm not looking too good!"
-//#define HUSTR_CHATMACRO4      "Help!"
-//#define HUSTR_CHATMACRO5      "You suck!"
-//#define HUSTR_CHATMACRO6      "Next time, scumbag..."
-//#define HUSTR_CHATMACRO7      "Come here!"
-//#define HUSTR_CHATMACRO8      "I'll take care of it."
-//#define HUSTR_CHATMACRO9      "Yes"
-//#define HUSTR_CHATMACRO0      "No"
+#define HUSTR_CHATMACRO1      "I'm ready to kick butt!"
+#define HUSTR_CHATMACRO2      "I'm OK."
+#define HUSTR_CHATMACRO3      "I'm not looking too good!"
+#define HUSTR_CHATMACRO4      "Help!"
+#define HUSTR_CHATMACRO5      "You suck!"
+#define HUSTR_CHATMACRO6      "Next time, scumbag..."
+#define HUSTR_CHATMACRO7      "Come here!"
+#define HUSTR_CHATMACRO8      "I'll take care of it."
+#define HUSTR_CHATMACRO9      "Yes"
+#define HUSTR_CHATMACRO0      "No"
 
-//#define HUSTR_TALKTOSELF1     "You mumble to yourself"
-//#define HUSTR_TALKTOSELF2     "Who's there?"
-//#define HUSTR_TALKTOSELF3     "You scare yourself"
-//#define HUSTR_TALKTOSELF4     "You start to rave"
-//#define HUSTR_TALKTOSELF5     "You've lost it..."
+#define HUSTR_TALKTOSELF1     "You mumble to yourself"
+#define HUSTR_TALKTOSELF2     "Who's there?"
+#define HUSTR_TALKTOSELF3     "You scare yourself"
+#define HUSTR_TALKTOSELF4     "You start to rave"
+#define HUSTR_TALKTOSELF5     "You've lost it..."
 
-//#define HUSTR_MESSAGESENT     "[Message Sent]"
+#define HUSTR_MESSAGESENT     "[Message Sent]"
 
 // The following should NOT be changed unless it seems
 // just AWFULLY necessary
 
-//#define HUSTR_PLRGREEN        "Green: "
-//#define HUSTR_PLRINDIGO       "Indigo: "
-//#define HUSTR_PLRBROWN        "Brown: "
-//#define HUSTR_PLRRED          "Red: "
-
-//#define HUSTR_KEYGREEN        'g'
-//#define HUSTR_KEYINDIGO       'i'
-//#define HUSTR_KEYBROWN        'b'
-//#define HUSTR_KEYRED          'r'
+#define HUSTR_PLRGREEN        "Green: "
+#define HUSTR_PLRINDIGO       "Indigo: "
+#define HUSTR_PLRBROWN        "Brown: "
+#define HUSTR_PLRRED          "Red: "
 
 //
 // am_map.c
@@ -348,7 +344,7 @@
 //  st_stuff.c
 //
 #define STSTR_MUS               "Music Change"
-//#define STSTR_NOMUS           "IMPOSSIBLE SELECTION"
+#define STSTR_NOMUS             "IMPOSSIBLE SELECTION"
 
 #define STSTR_DQDON             "Degreelessness Mode On"
 #define STSTR_DQDOFF            "Degreelessness Mode Off"
@@ -360,6 +356,7 @@
 #define STSTR_NCOFF             "No Clipping Mode OFF"
 
 #define STSTR_BEHOLD            "inVuln, Str, Inviso, Rad, Allmap, or Lite-amp"
+#define STSTR_BEHOLDX           "Power-up Toggled"
 
 #define STSTR_CHOPPERS          "... doesn't suck - GM"
 
@@ -673,102 +670,47 @@
 #define CC_CYBER                "THE CYBERDEMON"
 #define CC_HERO                 "OUR HERO"
 
-//
-// [BH] New strings
-// These strings are set in the DEHACKED lump in the accompanying doomretro.wad file
-//
-#define PRESSA                  ""
-#define DOSA                    ""
-#define GAMMALVL                ""
-#define GAMMAOFF                ""
-#define GOTCLIPX2               ""
-#define GOTHALFCLIP             ""
-#define GOTROCKETX2             ""
-#define GOTCELLX2               ""
-#define GOTSHELLSX2             ""
-#define PD_BLUEO2               ""
-#define PD_REDO2                ""
-#define PD_YELLOWO2             ""
-#define PD_BLUEK2               ""
-#define PD_REDK2                ""
-#define PD_YELLOWK2             ""
-#define GGLOADED                ""
-#define GSCREENSHOT             ""
-#define ALWAYSRUNOFF            ""
-#define ALWAYSRUNON             ""
-#define HUSTR_31_BFG            ""
-#define HUSTR_32_BFG            ""
-#define HUSTR_33_BFG            ""
-#define NHUSTR_1                ""
-#define NHUSTR_2                ""
-#define NHUSTR_3                ""
-#define NHUSTR_4                ""
-#define NHUSTR_5                ""
-#define NHUSTR_6                ""
-#define NHUSTR_7                ""
-#define NHUSTR_8                ""
-#define NHUSTR_9                ""
-#define AMSTR_MARKCLEARED       ""
-#define AMSTR_ROTATEON          ""
-#define AMSTR_ROTATEOFF         ""
-#define STSTR_BEHOLDON          ""
-#define STSTR_BEHOLDOFF         ""
-#define STSTR_CLEVSAME          ""
-#define STSTR_MYPOS             ""
-#define STSTR_NTON              ""
-#define STSTR_NTOFF             ""
-#define STSTR_GODON             ""
-#define STSTR_GODOFF            ""
-#define N1TEXT                  ""
-#define CC_SPECTRE              ""
-#define M_NEWGAME               ""
-#define M_OPTIONS               ""
-#define M_LOADGAME              ""
-#define M_SAVEGAME              ""
-#define M_QUITGAME              ""
-#define M_WHICHEPISODE          ""
-#define M_EPISODE1              ""
-#define M_EPISODE2              ""
-#define M_EPISODE3              ""
-#define M_EPISODE4              ""
-#define M_WHICHEXPANSION        ""
-#define M_EXPANSION1            ""
-#define M_EXPANSION2            ""
-#define M_CHOOSESKILLLEVEL      ""
-#define M_SKILLLEVEL1           ""
-#define M_SKILLLEVEL2           ""
-#define M_SKILLLEVEL3           ""
-#define M_SKILLLEVEL4           ""
-#define M_SKILLLEVEL5           ""
-#define M_ENDGAME               ""
-#define M_MESSAGES              ""
-#define M_ON                    ""
-#define M_OFF                   ""
-#define M_GRAPHICDETAIL         ""
-#define M_HIGH                  ""
-#define M_LOW                   ""
-#define M_SCREENSIZE            ""
-#define M_MOUSESENSITIVITY      ""
-#define M_GAMEPADSENSITIVITY    ""
-#define M_SOUNDVOLUME           ""
-#define M_SFXVOLUME             ""
-#define M_MUSICVOLUME           ""
-#define M_PAUSED                ""
-#define CAPTION_SHAREWARE       ""
-#define CAPTION_REGISTERED      ""
-#define CAPTION_ULTIMATE        ""
-#define CAPTION_DOOM2           ""
-#define CAPTION_HELLONEARTH     ""
-#define CAPTION_NERVE           ""
-#define CAPTION_BFGEDITION      ""
-#define CAPTION_PLUTONIA        ""
-#define CAPTION_TNT             ""
-#define CAPTION_CHEX            ""
-#define CAPTION_HACX            ""
-#define CAPTION_FREEDOOM1       ""
-#define CAPTION_FREEDOOM2       ""
-#define CAPTION_FREEDM          ""
-#define CAPTION_BTSXE1          ""
-#define CAPTION_BTSXE2          ""
+// [BH] Banner strings. Here to avoid errors in DeHackEd parsing. Otherwise ignored.
+#define BANNER1                 "                         " \
+                                "DOOM 2: Hell on Earth v%i.%i" \
+                                "                           "
+#define BANNER2                 "                            " \
+                                "DOOM Shareware Startup v%i.%i" \
+                                "                           "
+#define BANNER3                 "                            " \
+                                "DOOM Registered Startup v%i.%i" \
+                                "                           "
+#define BANNER4                 "                          " \
+                                "DOOM System Startup v%i.%i" \
+                                "                          "
+#define BANNER5                 "                         " \
+                                "The Ultimate DOOM Startup v%i.%i" \
+                                "                        "
+#define BANNER6                 "                     " \
+                                "DOOM 2: TNT - Evilution v%i.%i" \
+                                "                           "
+#define BANNER7                 "                   " \
+                                "DOOM 2: Plutonia Experiment v%i.%i" \
+                                "                           "
+
+// [BH] Copyright strings. Here to avoid errors in DeHackEd parsing. Otherwise ignored.
+#define COPYRIGHT1 \
+    "===========================================================================\n" \
+    "ATTENTION:  This version of DOOM has been modified.  If you would like to\n" \
+    "get a copy of the original game, call 1-800-IDGAMES or see the readme file.\n" \
+    "        You will not receive technical support for modified games.\n" \
+    "                      press enter to continue\n" \
+    "===========================================================================\n"
+
+#define COPYRIGHT2 \
+    "===========================================================================\n" \
+    "                 Commercial product - do not distribute!\n" \
+    "         Please report software piracy to the SPA: 1-800-388-PIR8\n" \
+    "===========================================================================\n"
+
+#define COPYRIGHT3 \
+    "===========================================================================\n" \
+    "                                Shareware!\n" \
+    "===========================================================================\n"
 
 #endif

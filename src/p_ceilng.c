@@ -1,43 +1,44 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
 
 #include "doomstat.h"
 #include "p_local.h"
+#include "p_tick.h"
 #include "s_sound.h"
 #include "z_zone.h"
 
@@ -45,9 +46,10 @@
 // CEILINGS
 //
 
-ceiling_t       *activeceilingshead;
+// the list of ceilings moving currently, including crushers
+ceilinglist_t   *activeceilings;
 
-extern boolean  canmodify;
+extern dboolean canmodify;
 
 //
 // T_MoveCeiling
@@ -64,24 +66,45 @@ void T_MoveCeiling(ceiling_t *ceiling)
 
         case 1:
             // UP
-            res = T_MovePlane(ceiling->sector, ceiling->speed, ceiling->topheight,
-                              false, 1, ceiling->direction);
+            res = T_MovePlane(ceiling->sector, ceiling->speed, ceiling->topheight, false, 1,
+                ceiling->direction);
 
             if (!(leveltime & 7) && ceiling->sector->ceilingheight != ceiling->topheight)
-                if (ceiling->type != silentCrushAndRaise)
-                    S_StartSound(&ceiling->sector->soundorg, sfx_stnmov);
+                switch (ceiling->type)
+                {
+                    case silentCrushAndRaise:
+                    case genSilentCrusher:
+                        break;
+
+                    default:
+                        S_StartSectorSound(&ceiling->sector->soundorg, sfx_stnmov);
+                        break;
+                }
 
             if (res == pastdest)
             {
                 switch (ceiling->type)
                 {
                     case raiseToHighest:
+                    case genCeiling:
+                        P_RemoveActiveCeiling(ceiling);
+                        break;
+
+                    // movers with texture change, change the texture then get removed
+                    case genCeilingChgT:
+                    case genCeilingChg0:
+                        ceiling->sector->special = ceiling->newspecial;
+
+                    case genCeilingChg:
+                        ceiling->sector->ceilingpic = ceiling->texture;
                         P_RemoveActiveCeiling(ceiling);
                         break;
 
                     case silentCrushAndRaise:
-                        S_StartSound(&ceiling->sector->soundorg, sfx_pstop);
+                        S_StartSectorSound(&ceiling->sector->soundorg, sfx_pstop);
 
+                    case genSilentCrusher:
+                    case genCrusher:
                     case fastCrushAndRaise:
                     case crushAndRaise:
                         ceiling->direction = -1;
@@ -96,18 +119,34 @@ void T_MoveCeiling(ceiling_t *ceiling)
         case -1:
             // DOWN
             res = T_MovePlane(ceiling->sector, ceiling->speed, ceiling->bottomheight,
-                              ceiling->crush, 1, ceiling->direction);
+                ceiling->crush, 1, ceiling->direction);
 
             if (!(leveltime & 7) && ceiling->sector->ceilingheight != ceiling->bottomheight)
-                if (ceiling->type != silentCrushAndRaise)
-                    S_StartSound(&ceiling->sector->soundorg, sfx_stnmov);
+                switch (ceiling->type)
+                {
+                    case silentCrushAndRaise:
+                    case genSilentCrusher:
+                        break;
+
+                    default:
+                        S_StartSectorSound(&ceiling->sector->soundorg, sfx_stnmov);
+                }
 
             if (res == pastdest)
             {
                 switch (ceiling->type)
                 {
+                    // 02/09/98 jff change slow crushers' speed back to normal
+                    // start back up
+                    case genSilentCrusher:
+                    case genCrusher:
+                        if (ceiling->oldspeed < CEILSPEED * 3)
+                            ceiling->speed = ceiling->oldspeed;
+                        ceiling->direction = 1; // jff 2/22/98 make it go back up!
+                        break;
+
                     case silentCrushAndRaise:
-                        S_StartSound(&ceiling->sector->soundorg, sfx_pstop);
+                        S_StartSectorSound(&ceiling->sector->soundorg, sfx_pstop);
 
                     case crushAndRaise:
                         ceiling->speed = CEILSPEED;
@@ -116,8 +155,22 @@ void T_MoveCeiling(ceiling_t *ceiling)
                         ceiling->direction = 1;
                         break;
 
+                    // in the case of ceiling mover/changer, change the texture
+                    // then remove the active ceiling
+                    case genCeilingChgT:
+                    case genCeilingChg0:
+                        ceiling->sector->special = ceiling->newspecial;
+
+                    case genCeilingChg:
+                        ceiling->sector->ceilingpic = ceiling->texture;
+                        P_RemoveActiveCeiling(ceiling);
+                        break;
+
                     case lowerAndCrush:
                     case lowerToFloor:
+                    case lowerToLowest:
+                    case lowerToMaxFloor:
+                    case genCeiling:
                         P_RemoveActiveCeiling(ceiling);
                         break;
 
@@ -131,6 +184,13 @@ void T_MoveCeiling(ceiling_t *ceiling)
                 {
                     switch (ceiling->type)
                     {
+                        // jff 02/08/98 slow down slow crushers on obstacle
+                        case genCrusher:
+                        case genSilentCrusher:
+                            if (ceiling->oldspeed < CEILSPEED * 3)
+                                ceiling->speed = CEILSPEED / 8;
+                            break;
+
                         case silentCrushAndRaise:
                         case crushAndRaise:
                         case lowerAndCrush:
@@ -150,10 +210,10 @@ void T_MoveCeiling(ceiling_t *ceiling)
 // EV_DoCeiling
 // Move a ceiling up/down and all around!
 //
-int EV_DoCeiling(line_t *line, ceiling_e type)
+dboolean EV_DoCeiling(line_t *line, ceiling_e type)
 {
     int         secnum = -1;
-    int         rtn = 0;
+    dboolean    rtn = false;
     sector_t    *sec;
     ceiling_t   *ceiling;
 
@@ -172,15 +232,16 @@ int EV_DoCeiling(line_t *line, ceiling_e type)
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)
     {
         sec = &sectors[secnum];
-        if (sec->specialdata)
+        if (P_SectorActive(ceiling_special, sec))
             continue;
 
         // new door thinker
-        rtn = 1;
+        rtn = true;
         ceiling = Z_Malloc(sizeof(*ceiling), PU_LEVSPEC, 0);
+        memset(ceiling, 0, sizeof(*ceiling));
         P_AddThinker(&ceiling->thinker);
-        sec->specialdata = ceiling;
-        ceiling->thinker.function.acp1 = (actionf_p1)T_MoveCeiling;
+        sec->ceilingdata = ceiling;
+        ceiling->thinker.function = T_MoveCeiling;
         ceiling->sector = sec;
         ceiling->crush = false;
 
@@ -202,8 +263,7 @@ int EV_DoCeiling(line_t *line, ceiling_e type)
             case lowerAndCrush:
             case lowerToFloor:
                 ceiling->bottomheight = sec->floorheight;
-                if (type != lowerToFloor
-                    && !(gamemission == doom2 && gamemap == 4 && canmodify))
+                if (type != lowerToFloor && !(gamemission == doom2 && gamemap == 4 && canmodify))
                     ceiling->bottomheight += 8 * FRACUNIT;
                 ceiling->direction = -1;
                 ceiling->speed = CEILSPEED;
@@ -212,6 +272,18 @@ int EV_DoCeiling(line_t *line, ceiling_e type)
             case raiseToHighest:
                 ceiling->topheight = P_FindHighestCeilingSurrounding(sec);
                 ceiling->direction = 1;
+                ceiling->speed = CEILSPEED;
+                break;
+
+            case lowerToLowest:
+                ceiling->bottomheight = P_FindLowestCeilingSurrounding(sec);
+                ceiling->direction = -1;
+                ceiling->speed = CEILSPEED;
+                break;
+
+            case lowerToMaxFloor:
+                ceiling->bottomheight = P_FindHighestFloorSurrounding(sec);
+                ceiling->direction = -1;
                 ceiling->speed = CEILSPEED;
                 break;
         }
@@ -224,76 +296,95 @@ int EV_DoCeiling(line_t *line, ceiling_e type)
 }
 
 //
+// P_AddActiveCeiling
 // Add an active ceiling
 //
-void P_AddActiveCeiling(ceiling_t *c)
+void P_AddActiveCeiling(ceiling_t *ceiling)
 {
-    ceiling_t *next = activeceilingshead;
+    ceilinglist_t       *list;
 
-    if (next)
-        next->prev = c;
-    activeceilingshead = c;
-    c->next = next;
-    c->prev = NULL;
+    list = malloc(sizeof(*list));
+    list->ceiling = ceiling;
+    ceiling->list = list;
+    if ((list->next = activeceilings))
+        list->next->prev = &list->next;
+    list->prev = &activeceilings;
+    activeceilings = list;
 }
 
 //
+// P_RemoveActiveCeiling
 // Remove a ceiling's thinker
 //
-void P_RemoveActiveCeiling(ceiling_t *c)
+void P_RemoveActiveCeiling(ceiling_t *ceiling)
 {
-    ceiling_t *next = c->next;
-    ceiling_t *prev = c->prev;
+    ceilinglist_t       *list = ceiling->list;
 
-    if (next)
-        next->prev = prev;
-
-    if (prev == NULL)
-        activeceilingshead = next;
-    else
-        prev->next = next;
-
-    c->sector->specialdata = NULL;
-    P_RemoveThinker(&c->thinker);
+    ceiling->sector->ceilingdata = NULL;
+    P_RemoveThinker(&ceiling->thinker);
+    if ((*list->prev = list->next))
+        list->next->prev = list->prev;
+    free(list);
 }
 
 //
+// P_RemoveAllActiveCeilings()
+// Removes all ceilings from the active ceiling list
+//
+void P_RemoveAllActiveCeilings(void)
+{
+    while (activeceilings)
+    {
+        ceilinglist_t   *next = activeceilings->next;
+
+        free(activeceilings);
+        activeceilings = next;
+    }
+}
+
+//
+// P_ActivateInStasisCeiling
 // Restart a ceiling that's in-stasis
 //
-int P_ActivateInStasisCeiling(line_t *line)
+dboolean P_ActivateInStasisCeiling(line_t *line)
 {
-    int         rtn = 0;
-    ceiling_t   *ceiling;
+    dboolean            result = false;
+    ceilinglist_t       *list;
 
-    for (ceiling = activeceilingshead; ceiling != NULL; ceiling = ceiling->next)
+    for (list = activeceilings; list; list = list->next)
     {
-        if (ceiling->tag == line->tag
-            && ceiling->thinker.function.acp1 == (actionf_p1)NULL)
+        ceiling_t       *ceiling = list->ceiling;
+
+        if (ceiling->tag == line->tag && !ceiling->direction)
         {
-            ceiling->thinker.function.acp1 = (actionf_p1)T_MoveCeiling;
-            rtn = 1;
+            ceiling->direction = ceiling->olddirection;
+            ceiling->thinker.function = T_MoveCeiling;
+            result = true;
         }
     }
-    return rtn;
+    return result;
 }
 
 //
 // EV_CeilingCrushStop
 // Stop a ceiling from crushing!
 //
-int EV_CeilingCrushStop(line_t *line)
+dboolean EV_CeilingCrushStop(line_t *line)
 {
-    int         rtn = 0;
-    ceiling_t   *ceiling;
+    dboolean            result = false;
+    ceilinglist_t       *list;
 
-    for (ceiling = activeceilingshead; ceiling != NULL; ceiling = ceiling->next)
+    for (list = activeceilings; list; list = list->next)
     {
-        if (ceiling->tag == line->tag
-            && ceiling->thinker.function.acp1 != (actionf_p1)NULL)
+        ceiling_t       *ceiling = list->ceiling;
+
+        if (ceiling->direction && ceiling->tag == line->tag)
         {
-            ceiling->thinker.function.acp1 = (actionf_p1)NULL;
-            rtn = 1;
+            ceiling->olddirection = ceiling->direction;
+            ceiling->direction = 0;
+            ceiling->thinker.function = NULL;
+            result = true;
         }
     }
-    return rtn;
+    return result;
 }

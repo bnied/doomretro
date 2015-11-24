@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -43,12 +43,14 @@
 #include <XInput.h>
 #endif
 
+#include "am_map.h"
 #include "c_cmds.h"
 #include "c_console.h"
 #include "d_deh.h"
 #include "d_event.h"
 #include "doomstat.h"
 #include "g_game.h"
+#include "hu_stuff.h"
 #include "i_gamepad.h"
 #include "i_swap.h"
 #include "i_system.h"
@@ -57,1732 +59,673 @@
 #include "m_config.h"
 #include "m_menu.h"
 #include "m_misc.h"
+#include "m_random.h"
 #include "p_inter.h"
 #include "p_local.h"
+#include "p_setup.h"
+#include "p_tick.h"
 #include "s_sound.h"
 #include "SDL.h"
+#include "sounds.h"
+#include "st_stuff.h"
 #include "v_video.h"
 #include "version.h"
 #include "w_wad.h"
 #include "z_zone.h"
 
-#define MAPCMDFORMAT    "map E~x~M~y~|MAP~xy~"
-#define SPAWNCMDFORMAT  "spawn ~type~"
-
-extern boolean  alwaysrun;
-extern boolean  animatedliquid;
-extern int      bloodsplats;
-extern int      brightmaps;
-extern boolean  centerweapon;
-extern char     *conback;
-extern boolean  corpses_mirror;
-extern boolean  corpses_moreblood;
-extern boolean  corpses_slide;
-extern boolean  corpses_smearblood;
-extern boolean  dclick_use;
-extern boolean  floatbob;
-extern boolean  footclip;
-extern boolean  fullscreen;
-extern int      gamepadautomap;
-extern int      gamepadautomapclearmark;
-extern int      gamepadautomapfollowmode;
-extern int      gamepadautomapgrid;
-extern int      gamepadautomapmark;
-extern int      gamepadautomapmaxzoom;
-extern int      gamepadautomaprotatemode;
-extern int      gamepadautomapzoomin;
-extern int      gamepadautomapzoomout;
-extern int      gamepadfire;
-extern int      gamepadleftdeadzone;
-extern float    gamepadleftdeadzone_percent;
-extern int      gamepadrightdeadzone;
-extern float    gamepadrightdeadzone_percent;
-extern boolean  gamepadlefthanded;
-extern int      gamepadmenu;
-extern int      gamepadnextweapon;
-extern int      gamepadprevweapon;
-extern int      gamepadrun;
-extern int      gamepadsensitivity;
-extern int      gamepaduse;
-extern boolean  gamepadvibrate;
-extern int      gamepadweapon1;
-extern int      gamepadweapon2;
-extern int      gamepadweapon3;
-extern int      gamepadweapon4;
-extern int      gamepadweapon5;
-extern int      gamepadweapon6;
-extern int      gamepadweapon7;
-extern float    gammalevel;
-extern int      graphicdetail;
-extern boolean  grid;
-extern boolean  homindicator;
-extern boolean  hud;
-extern char     *iwadfolder;
-extern int      key_automap;
-extern int      key_automap_clearmark;
-extern int      key_automap_followmode;
-extern int      key_automap_grid;
-extern int      key_automap_mark;
-extern int      key_automap_maxzoom;
-extern int      key_automap_rotatemode;
-extern int      key_automap_zoomin;
-extern int      key_automap_zoomout;
-extern int      key_down;
-extern int      key_down2;
-extern int      key_fire;
-extern int      key_left;
-extern int      key_nextweapon;
-extern int      key_prevweapon;
-extern int      key_right;
-extern int      key_run;
-extern int      key_strafe;
-extern int      key_strafeleft;
-extern int      key_strafeleft2;
-extern int      key_straferight;
-extern int      key_straferight2;
-extern int      key_up;
-extern int      key_up2;
-extern int      key_use;
-extern int      key_weapon1;
-extern int      key_weapon2;
-extern int      key_weapon3;
-extern int      key_weapon4;
-extern int      key_weapon5;
-extern int      key_weapon6;
-extern int      key_weapon7;
-extern boolean  mapfixes;
-extern boolean  messages;
-extern boolean  mirrorweapons;
-extern int      mousesensitivity;
-extern float    mouse_acceleration;
-extern int      mouse_threshold;
-extern int      mousebfire;
-extern int      mousebforward;
-extern int      mousebprevweapon;
-extern int      mousebnextweapon;
-extern int      mousebstrafe;
-extern int      mousebuse;
-extern boolean  novert;
-extern int      pixelheight;
-extern int      pixelwidth;
-extern int      playerbob;
-extern boolean  rotatemode;
-extern int      runcount;
-extern int      screenheight;
-extern int      screenwidth;
-extern int      selectedepisode;
-extern int      selectedexpansion;
-extern int      selectedsavegame;
-extern int      selectedskilllevel;
-extern boolean  shadows;
-extern boolean  smoketrails;
-extern int      snd_maxslicetime_ms;
-extern char     *timidity_cfg_path;
-extern boolean  translucency;
-extern char     *videodriver;
-extern boolean  widescreen;
-extern int      windowheight;
-extern char     *windowposition;
-extern int      windowwidth;
-
-#if defined(SDL20)
-extern char     *scaledriver;
-extern char     *scalequality;
-extern boolean  vsync;
+#if !defined(MAX_PATH)
+#define MAX_PATH                260
 #endif
+
+#define GIVECMDSHORTFORMAT      "~items~"
+#define GIVECMDLONGFORMAT       "ammo|armor|health|keys|weapons|all|~item~"
+#define KILLCMDFORMAT           "player|all|~monster~"
+#define MAPCMDFORMAT            "E~x~M~y~|MAP~xy~"
+#define SPAWNCMDFORMAT          "~monster~|~item~"
+
+extern dboolean         alwaysrun;
+extern dboolean         am_external;
+extern dboolean         am_grid;
+extern dboolean         am_rotatemode;
+extern dboolean         centerweapon;
+extern dboolean         con_obituaries;
+extern dboolean         con_timestamps;
+extern char             *configfile;
+extern int              episode;
+extern int              expansion;
+extern int              faceback;
+extern int              gametime;
+extern float            gp_deadzone_left;
+extern float            gp_deadzone_right;
+extern int              gp_sensitivity;
+extern dboolean         gp_swapthumbsticks;
+extern dboolean         gp_vibrate;
+extern char             *iwadfolder;
+extern dboolean         messages;
+extern float            m_acceleration;
+extern dboolean         m_doubleclick_use;
+extern dboolean         m_novertical;
+extern int              m_sensitivity;
+extern int              m_threshold;
+extern int              movebob;
+extern char             *playername;
+extern dboolean         r_althud;
+extern int              r_blood;
+extern int              r_bloodsplats_max;
+extern int              r_bloodsplats_total;
+extern dboolean         r_brightmaps;
+extern dboolean         r_corpses_color;
+extern dboolean         r_corpses_mirrored;
+extern dboolean         r_corpses_moreblood;
+extern dboolean         r_corpses_nudge;
+extern dboolean         r_corpses_slide;
+extern dboolean         r_corpses_smearblood;
+extern int              r_detail;
+extern int              r_diskicon;
+extern dboolean         r_fixmaperrors;
+extern dboolean         r_fixspriteoffsets;
+extern dboolean         r_floatbob;
+extern float            r_gamma;
+extern dboolean         r_homindicator;
+extern dboolean         r_hud;
+extern dboolean         r_liquid_bob;
+extern dboolean         r_liquid_clipsprites;
+extern dboolean         r_liquid_current;
+extern dboolean         r_liquid_lowerview;
+extern dboolean         r_liquid_swirl;
+extern char             *r_lowpixelsize;
+extern dboolean         r_mirroredweapons;
+extern dboolean         r_playersprites;
+extern dboolean         r_rockettrails;
+extern int              r_screensize;
+extern dboolean         r_shadows;
+extern dboolean         r_shakescreen;
+extern dboolean         r_translucency;
+extern int              s_musicvolume;
+extern dboolean         s_randommusic;
+extern dboolean         s_randompitch;
+extern int              s_sfxvolume;
+extern char             *s_timiditycfgpath;
+extern int              skilllevel;
+extern unsigned int     stat_cheated;
+extern unsigned int     stat_damageinflicted;
+extern unsigned int     stat_damagereceived;
+extern unsigned int     stat_deaths;
+extern unsigned int     stat_itemspickedup;
+extern unsigned int     stat_monsterskilled;
+extern unsigned int     stat_monsterskilled_arachnotrons;
+extern unsigned int     stat_monsterskilled_archviles;
+extern unsigned int     stat_monsterskilled_baronsofhell;
+extern unsigned int     stat_monsterskilled_cacodemons;
+extern unsigned int     stat_monsterskilled_cyberdemons;
+extern unsigned int     stat_monsterskilled_demons;
+extern unsigned int     stat_monsterskilled_heavyweapondudes;
+extern unsigned int     stat_monsterskilled_hellknights;
+extern unsigned int     stat_monsterskilled_imps;
+extern unsigned int     stat_monsterskilled_lostsouls;
+extern unsigned int     stat_monsterskilled_mancubi;
+extern unsigned int     stat_monsterskilled_painelementals;
+extern unsigned int     stat_monsterskilled_revenants;
+extern unsigned int     stat_monsterskilled_shotgunguys;
+extern unsigned int     stat_monsterskilled_spectres;
+extern unsigned int     stat_monsterskilled_spidermasterminds;
+extern unsigned int     stat_monsterskilled_zombiemen;
+extern unsigned int     stat_secretsrevealed;
+extern unsigned int     stat_shotsfired;
+extern unsigned int     stat_shotshit;
+extern unsigned int     stat_time;
+extern int              stillbob;
+extern dboolean         vid_capfps;
+extern int              vid_display;
+#if !defined(WIN32)
+extern char             *vid_driver;
+#endif
+extern dboolean         vid_fullscreen;
+extern char             *vid_scaledriver;
+extern char             *vid_scalefilter;
+extern char             *vid_screenresolution;
+extern dboolean         vid_vsync;
+extern dboolean         vid_widescreen;
+extern char             *vid_windowposition;
+extern char             *vid_windowsize;
+
+extern int              gamepadalwaysrun;
+extern int              gamepadautomap;
+extern int              gamepadautomapclearmark;
+extern int              gamepadautomapfollowmode;
+extern int              gamepadautomapgrid;
+extern int              gamepadautomapmark;
+extern int              gamepadautomapmaxzoom;
+extern int              gamepadautomaprotatemode;
+extern int              gamepadautomapzoomin;
+extern int              gamepadautomapzoomout;
+extern int              gamepadfire;
+extern int              gamepadmenu;
+extern int              gamepadnextweapon;
+extern int              gamepadprevweapon;
+extern int              gamepadrun;
+extern int              gamepaduse;
+extern int              gamepadweapon1;
+extern int              gamepadweapon2;
+extern int              gamepadweapon3;
+extern int              gamepadweapon4;
+extern int              gamepadweapon5;
+extern int              gamepadweapon6;
+extern int              gamepadweapon7;
+extern int              key_alwaysrun;
+extern int              key_automap;
+extern int              key_automap_clearmark;
+extern int              key_automap_followmode;
+extern int              key_automap_grid;
+extern int              key_automap_mark;
+extern int              key_automap_maxzoom;
+extern int              key_automap_rotatemode;
+extern int              key_automap_zoomin;
+extern int              key_automap_zoomout;
+extern int              key_down;
+extern int              key_down2;
+extern int              key_fire;
+extern int              key_left;
+extern int              key_nextweapon;
+extern int              key_prevweapon;
+extern int              key_right;
+extern int              key_run;
+extern int              key_strafe;
+extern int              key_strafeleft;
+extern int              key_strafeleft2;
+extern int              key_straferight;
+extern int              key_straferight2;
+extern int              key_up;
+extern int              key_up2;
+extern int              key_use;
+extern int              key_weapon1;
+extern int              key_weapon2;
+extern int              key_weapon3;
+extern int              key_weapon4;
+extern int              key_weapon5;
+extern int              key_weapon6;
+extern int              key_weapon7;
+extern int              mousebfire;
+extern int              mousebforward;
+extern int              mousebprevweapon;
+extern int              mousebnextweapon;
+extern int              mousebstrafe;
+extern int              mousebuse;
+
+extern int              pixelwidth;
+extern int              pixelheight;
+extern int              screenheight;
+extern int              screenwidth;
 
 control_t controls[] =
 {
-    { "1",             keyboard, '1'            }, { "2",             keyboard, '2'            }, { "3",             keyboard, '3'            },
-    { "4",             keyboard, '4'            }, { "5",             keyboard, '5'            }, { "6",             keyboard, '6'            },
-    { "7",             keyboard, '7'            }, { "8",             keyboard, '8'            }, { "9",             keyboard, '9'            },
-    { "0",             keyboard, '0'            }, { "-",             keyboard, KEY_MINUS      }, { "=",             keyboard, KEY_EQUALS     },
-    { "+",             keyboard, KEY_EQUALS     }, { "backspace",     keyboard, KEY_BACKSPACE  }, { "tab",           keyboard, KEY_TAB        },
-    { "q",             keyboard, 'q'            }, { "w",             keyboard, 'w'            }, { "e",             keyboard, 'e'            },
-    { "r",             keyboard, 'r'            }, { "t",             keyboard, 't'            }, { "y",             keyboard, 'y'            },
-    { "u",             keyboard, 'u'            }, { "i",             keyboard, 'i'            }, { "o",             keyboard, 'o'            },
-    { "p",             keyboard, 'p'            }, { "[",             keyboard, '['            }, { "]",             keyboard, ']'            },
-    { "enter",         keyboard, KEY_ENTER      }, { "ctrl",          keyboard, KEY_RCTRL      }, { "a",             keyboard, 'a'            },
-    { "s",             keyboard, 's'            }, { "d",             keyboard, 'd'            }, { "f",             keyboard, 'f'            },
-    { "g",             keyboard, 'g'            }, { "h",             keyboard, 'h'            }, { "j",             keyboard, 'j'            },
-    { "k",             keyboard, 'k'            }, { "l",             keyboard, 'l'            }, { ";",             keyboard, ';'            },
-    { "\'",            keyboard, '\''           }, { "shift",         keyboard, KEY_RSHIFT     }, { "\\",            keyboard, '\\'           },
-    { "z",             keyboard, 'z'            }, { "x",             keyboard, 'x'            }, { "c",             keyboard, 'c'            },
-    { "v",             keyboard, 'v'            }, { "b",             keyboard, 'b'            }, { "n",             keyboard, 'n'            },
-    { "m",             keyboard, 'm'            }, { ",",             keyboard, ','            }, { ".",             keyboard, '.'            },
-    { "/",             keyboard, '/'            }, { "alt",           keyboard, KEY_RALT       }, { "space",         keyboard, ' '            },
-    { "numlock",       keyboard, KEY_NUMLOCK    }, { "scrolllock",    keyboard, KEY_SCRLCK     }, { "home",          keyboard, KEY_HOME       },
-    { "up",            keyboard, KEY_UPARROW    }, { "pageup",        keyboard, KEY_PGUP       }, { "left",          keyboard, KEY_LEFTARROW  },
-    { "right",         keyboard, KEY_RIGHTARROW }, { "end",           keyboard, KEY_END        }, { "down",          keyboard, KEY_DOWNARROW  },
-    { "pagedown",      keyboard, KEY_PGDN       }, { "insert",        keyboard, KEY_INS        }, { "delete",        keyboard, KEY_DEL        },
-    { "mouse1",        mouse,    0              }, { "mouse2",        mouse,    1              }, { "mouse3",        mouse,    2              },
-    { "mouse4",        mouse,    3              }, { "mouse5",        mouse,    4              }, { "mouse6",        mouse,    5              },
-    { "mouse7",        mouse,    6              }, { "mouse8",        mouse,    7              }, { "wheelup",       mouse,    8              },
-    { "wheeldown",     mouse,    9              }, { "dpadup",        gamepad,  1              }, { "dpaddown",      gamepad,  2              },
-    { "dpadleft",      gamepad,  4              }, { "dpadright",     gamepad,  8              }, { "start",         gamepad,  16             },
-    { "back",          gamepad,  32             }, { "leftthumb",     gamepad,  64             }, { "rightthumb",    gamepad,  128            },
-    { "leftshoulder",  gamepad,  256            }, { "rightshoulder", gamepad,  512            }, { "lefttrigger",   gamepad,  1024           },
-    { "righttrigger",  gamepad,  2048           }, { "gamepad1",      gamepad,  4096           }, { "gamepad2",      gamepad,  8192           },
-    { "gamepad3",      gamepad,  16384          }, { "gamepad4",      gamepad,  32768          }, { "",              0,        0              }
+    { "1",             keyboardcontrol, '1'            }, { "2",             keyboardcontrol, '2'            },
+    { "3",             keyboardcontrol, '3'            }, { "4",             keyboardcontrol, '4'            },
+    { "5",             keyboardcontrol, '5'            }, { "6",             keyboardcontrol, '6'            },
+    { "7",             keyboardcontrol, '7'            }, { "8",             keyboardcontrol, '8'            },
+    { "9",             keyboardcontrol, '9'            }, { "0",             keyboardcontrol, '0'            },
+    { "-",             keyboardcontrol, KEY_MINUS      }, { "=",             keyboardcontrol, KEY_EQUALS     },
+    { "+",             keyboardcontrol, KEY_EQUALS     }, { "backspace",     keyboardcontrol, KEY_BACKSPACE  },
+    { "tab",           keyboardcontrol, KEY_TAB        }, { "q",             keyboardcontrol, 'q'            },
+    { "w",             keyboardcontrol, 'w'            }, { "e",             keyboardcontrol, 'e'            },
+    { "r",             keyboardcontrol, 'r'            }, { "t",             keyboardcontrol, 't'            },
+    { "y",             keyboardcontrol, 'y'            }, { "u",             keyboardcontrol, 'u'            },
+    { "i",             keyboardcontrol, 'i'            }, { "o",             keyboardcontrol, 'o'            },
+    { "p",             keyboardcontrol, 'p'            }, { "[",             keyboardcontrol, '['            },
+    { "]",             keyboardcontrol, ']'            }, { "enter",         keyboardcontrol, KEY_ENTER      },
+    { "ctrl",          keyboardcontrol, KEY_RCTRL      }, { "a",             keyboardcontrol, 'a'            },
+    { "s",             keyboardcontrol, 's'            }, { "d",             keyboardcontrol, 'd'            },
+    { "f",             keyboardcontrol, 'f'            }, { "g",             keyboardcontrol, 'g'            },
+    { "h",             keyboardcontrol, 'h'            }, { "j",             keyboardcontrol, 'j'            },
+    { "k",             keyboardcontrol, 'k'            }, { "l",             keyboardcontrol, 'l'            },
+    { ";",             keyboardcontrol, ';'            }, { "\'",            keyboardcontrol, '\''           },
+    { "shift",         keyboardcontrol, KEY_RSHIFT     }, { "\\",            keyboardcontrol, '\\'           },
+    { "z",             keyboardcontrol, 'z'            }, { "x",             keyboardcontrol, 'x'            },
+    { "c",             keyboardcontrol, 'c'            }, { "v",             keyboardcontrol, 'v'            },
+    { "b",             keyboardcontrol, 'b'            }, { "n",             keyboardcontrol, 'n'            },
+    { "m",             keyboardcontrol, 'm'            }, { ",",             keyboardcontrol, ','            },
+    { ".",             keyboardcontrol, '.'            }, { "/",             keyboardcontrol, '/'            },
+    { "alt",           keyboardcontrol, KEY_RALT       }, { "space",         keyboardcontrol, ' '            },
+    { "numlock",       keyboardcontrol, KEY_NUMLOCK    }, { "capslock",      keyboardcontrol, KEY_CAPSLOCK   },
+    { "scrolllock",    keyboardcontrol, KEY_SCRLCK     }, { "home",          keyboardcontrol, KEY_HOME       },
+    { "up",            keyboardcontrol, KEY_UPARROW    }, { "pageup",        keyboardcontrol, KEY_PGUP       },
+    { "left",          keyboardcontrol, KEY_LEFTARROW  }, { "right",         keyboardcontrol, KEY_RIGHTARROW },
+    { "end",           keyboardcontrol, KEY_END        }, { "down",          keyboardcontrol, KEY_DOWNARROW  },
+    { "pagedown",      keyboardcontrol, KEY_PGDN       }, { "insert",        keyboardcontrol, KEY_INS        },
+    { "delete",        keyboardcontrol, KEY_DEL        }, { "mouse1",        mousecontrol,    0              },
+    { "mouse2",        mousecontrol,    1              }, { "mouse3",        mousecontrol,    2              },
+    { "mouse4",        mousecontrol,    3              }, { "mouse5",        mousecontrol,    4              },
+    { "mouse6",        mousecontrol,    5              }, { "mouse7",        mousecontrol,    6              },
+    { "mouse8",        mousecontrol,    7              }, { "wheelup",       mousecontrol,    8              },
+    { "wheeldown",     mousecontrol,    9              }, { "dpadup",        gamepadcontrol,  1              },
+    { "dpaddown",      gamepadcontrol,  2              }, { "dpadleft",      gamepadcontrol,  4              },
+    { "dpadright",     gamepadcontrol,  8              }, { "start",         gamepadcontrol,  16             },
+    { "back",          gamepadcontrol,  32             }, { "leftthumb",     gamepadcontrol,  64             },
+    { "rightthumb",    gamepadcontrol,  128            }, { "leftshoulder",  gamepadcontrol,  256            },
+    { "rightshoulder", gamepadcontrol,  512            }, { "lefttrigger",   gamepadcontrol,  1024           },
+    { "righttrigger",  gamepadcontrol,  2048           }, { "gamepad1",      gamepadcontrol,  4096           },
+    { "gamepad2",      gamepadcontrol,  8192           }, { "gamepad3",      gamepadcontrol,  16384          },
+    { "gamepad4",      gamepadcontrol,  32768          }, { "",              0,               0              }
 };
 
-action_t actions[] = 
+action_t actions[] =
 {
-    { "+automap",       &key_automap,            NULL,              NULL,              &gamepadautomap           },
-    { "+back",          &key_down,               &key_down2,        NULL,              NULL                      },
-    { "+clearmark",     &key_automap_clearmark,  NULL,              NULL,              &gamepadautomapclearmark  },
-    { "+fire",          &key_fire,               NULL,              &mousebfire,       &gamepadfire              },
-    { "+followmode",    &key_automap_followmode, NULL,              NULL,              &gamepadautomapfollowmode },
-    { "+forward",       &key_up,                 &key_up2,          &mousebforward,    NULL                      },
-    { "+grid",          &key_automap_grid,       NULL,              NULL,              &gamepadautomapgrid       },
-    { "+left",          &key_left,               NULL,              NULL,              NULL                      },
-    { "+mark",          &key_automap_mark,       NULL,              NULL,              &gamepadautomapmark       },
-    { "+maxzoom",       &key_automap_maxzoom,    NULL,              NULL,              &gamepadautomapmaxzoom    },
-    { "+menu",          NULL,                    NULL,              NULL,              &gamepadmenu              },
-    { "+nextweapon",    &key_nextweapon,         NULL,              &mousebnextweapon, &gamepadnextweapon        },
-    { "+prevweapon",    &key_prevweapon,         NULL,              &mousebprevweapon, &gamepadprevweapon        },
-    { "+right",         &key_right,              NULL,              NULL,              NULL                      },
-    { "+rotatemode",    &key_automap_rotatemode, NULL,              NULL,              &gamepadautomaprotatemode },
-    { "+run",           &key_run,                NULL,              NULL,              &gamepadrun               },
-    { "+strafe",        &key_strafe,             NULL,              &mousebstrafe,     NULL                      },
-    { "+strafeleft",    &key_strafeleft,         &key_strafeleft2,  NULL,              NULL                      },
-    { "+straferight",   &key_straferight,        &key_straferight2, NULL,              NULL                      },
-    { "+use",           &key_use,                NULL,              &mousebuse,        &gamepaduse               },
-    { "+weapon1",       &key_weapon1,            NULL,              NULL,              &gamepadweapon1           },
-    { "+weapon2",       &key_weapon2,            NULL,              NULL,              &gamepadweapon2           },
-    { "+weapon3",       &key_weapon3,            NULL,              NULL,              &gamepadweapon3           },
-    { "+weapon4",       &key_weapon4,            NULL,              NULL,              &gamepadweapon4           },
-    { "+weapon5",       &key_weapon5,            NULL,              NULL,              &gamepadweapon5           },
-    { "+weapon6",       &key_weapon6,            NULL,              NULL,              &gamepadweapon6           },
-    { "+weapon7",       &key_weapon7,            NULL,              NULL,              &gamepadweapon7           },
-    { "+zoomin",        &key_automap_zoomin,     NULL,              NULL,              &gamepadautomapzoomin     },
-    { "+zoomout",       &key_automap_zoomout,    NULL,              NULL,              &gamepadautomapzoomout    },
-    { "",               NULL,                    NULL,              NULL,              NULL                      }
+    { "+alwaysrun",    &key_alwaysrun,          NULL,              &gamepadalwaysrun         },
+    { "+automap",      &key_automap,            NULL,              &gamepadautomap           },
+    { "+back",         &key_down,               NULL,              NULL                      },
+    { "+back2",        &key_down2,              NULL,              NULL                      },
+    { "+clearmark",    &key_automap_clearmark,  NULL,              &gamepadautomapclearmark  },
+    { "+fire",         &key_fire,               &mousebfire,       &gamepadfire              },
+    { "+followmode",   &key_automap_followmode, NULL,              &gamepadautomapfollowmode },
+    { "+forward",      &key_up,                 &mousebforward,    NULL                      },
+    { "+forward2",     &key_up2,                NULL,              NULL                      },
+    { "+grid",         &key_automap_grid,       NULL,              &gamepadautomapgrid       },
+    { "+left",         &key_left,               NULL,              NULL                      },
+    { "+mark",         &key_automap_mark,       NULL,              &gamepadautomapmark       },
+    { "+maxzoom",      &key_automap_maxzoom,    NULL,              &gamepadautomapmaxzoom    },
+    { "+menu",         NULL,                    NULL,              &gamepadmenu              },
+    { "+nextweapon",   &key_nextweapon,         &mousebnextweapon, &gamepadnextweapon        },
+    { "+prevweapon",   &key_prevweapon,         &mousebprevweapon, &gamepadprevweapon        },
+    { "+right",        &key_right,              NULL,              NULL                      },
+    { "+rotatemode",   &key_automap_rotatemode, NULL,              &gamepadautomaprotatemode },
+    { "+run",          &key_run,                NULL,              &gamepadrun               },
+    { "+strafe",       &key_strafe,             &mousebstrafe,     NULL                      },
+    { "+strafeleft",   &key_strafeleft,         NULL,              NULL                      },
+    { "+strafeleft2",  &key_strafeleft2,        NULL,              NULL                      },
+    { "+straferight",  &key_straferight,        NULL,              NULL                      },
+    { "+straferight2", &key_straferight2,       NULL,              NULL                      },
+    { "+use",          &key_use,                &mousebuse,        &gamepaduse               },
+    { "+weapon1",      &key_weapon1,            NULL,              &gamepadweapon1           },
+    { "+weapon2",      &key_weapon2,            NULL,              &gamepadweapon2           },
+    { "+weapon3",      &key_weapon3,            NULL,              &gamepadweapon3           },
+    { "+weapon4",      &key_weapon4,            NULL,              &gamepadweapon4           },
+    { "+weapon5",      &key_weapon5,            NULL,              &gamepadweapon5           },
+    { "+weapon6",      &key_weapon6,            NULL,              &gamepadweapon6           },
+    { "+weapon7",      &key_weapon7,            NULL,              &gamepadweapon7           },
+    { "+zoomin",       &key_automap_zoomin,     NULL,              &gamepadautomapzoomin     },
+    { "+zoomout",      &key_automap_zoomout,    NULL,              &gamepadautomapzoomout    },
+    { "",              NULL,                    NULL,              NULL                      }
 };
 
-boolean C_BindCondition(char *, char *, char *);
-boolean C_BloodSplatsCondition(char *, char *, char *);
-boolean C_BooleanCondition(char *, char *, char *);
-boolean C_CheatCondition(char *, char *, char *);
-boolean C_ConBackCondition(char *, char *, char *);
-boolean C_DeadZoneCondition(char *, char *, char *);
-boolean C_GameCondition(char *, char *, char *);
-boolean C_GammaCondition(char *, char *, char *);
-boolean C_GiveCondition(char *, char *, char *);
-boolean C_GodCondition(char *, char *, char *);
-boolean C_GraphicDetailCondition(char *, char *, char *);
-boolean C_IntegerCondition(char *, char *, char *);
-boolean C_KillCondition(char *, char *, char *);
-boolean C_MapCondition(char *, char *, char *);
-boolean C_NoCondition(char *, char *, char *);
-boolean C_SpawnCondition(char *, char *, char *);
-boolean C_VolumeCondition(char *, char *, char *);
+static dboolean cheat_func1(char *, char *, char *, char *);
+static dboolean game_func1(char *, char *, char *, char *);
+static dboolean null_func1(char *, char *, char *, char *);
 
-void C_AlwaysRun(char *, char *, char *);
-void C_Bind(char *, char *, char *);
-void C_BloodSplats(char *, char *, char *);
-void C_Boolean(char *, char *, char *);
-void C_Clear(char *, char *, char *);
-void C_CmdList(char *, char *, char *);
-void C_ConBack(char *, char *, char *);
-void C_ConDump(char *, char *, char *);
-void C_CvarList(char *, char *, char *);
-void C_DeadZone(char *, char *, char *);
-void C_EndGame(char *, char *, char *);
-void C_Gamma(char *, char *, char *);
-void C_GamepadVibrate(char *, char *, char *);
-void C_God(char *, char *, char *);
-void C_Give(char *, char *, char *);
-void C_GraphicDetail(char *, char *, char *);
-void C_Help(char *, char *, char *);
-void C_Hud(char *, char *, char *);
-void C_Integer(char *, char *, char *);
-void C_Kill(char *, char *, char *);
-void C_Map(char *, char *, char *);
-void C_NoClip(char *, char *, char *);
-void C_NoTarget(char *, char *, char *);
-void C_Quit(char *, char *, char *);
-void C_ScreenSize(char *, char *, char *);
-void C_ShowFPS(char *, char *, char *);
-void C_Spawn(char *, char *, char *);
-void C_String(char *, char *, char *);
-void C_Volume(char *, char *, char *);
+static void clear_cmd_func2(char *, char *, char *, char *);
+static void cmdlist_cmd_func2(char *, char *, char *, char *);
+static void condump_cmd_func2(char *, char *, char *, char *);
+static void cvarlist_cmd_func2(char *, char *, char *, char *);
+static void endgame_cmd_func2(char *, char *, char *, char *);
+static void exitmap_cmd_func2(char *, char *, char *, char *);
+static dboolean give_cmd_func1(char *, char *, char *, char *);
+static void give_cmd_func2(char *, char *, char *, char *);
+static dboolean god_cmd_func1(char *, char *, char *, char *);
+static void god_cmd_func2(char *, char *, char *, char *);
+static void help_cmd_func2(char *, char *, char *, char *);
+static dboolean kill_cmd_func1(char *, char *, char *, char *);
+static void kill_cmd_func2(char *, char *, char *, char *);
+static dboolean load_cmd_func1(char *, char *, char *, char *);
+static void load_cmd_func2(char *, char *, char *, char *);
+static dboolean map_cmd_func1(char *, char *, char *, char *);
+static void map_cmd_func2(char *, char *, char *, char *);
+static void maplist_cmd_func2(char *, char *, char *, char *);
+static void mapstats_cmd_func2(char *, char *, char *, char *);
+static void noclip_cmd_func2(char *, char *, char *, char *);
+static void nomonsters_cmd_func2(char *, char *, char *, char *);
+static void notarget_cmd_func2(char *, char *, char *, char *);
+static void playerstats_cmd_func2(char *, char *, char *, char *);
+static void quit_cmd_func2(char *, char *, char *, char *);
+static dboolean resurrect_cmd_func1(char *, char *, char *, char *);
+static void resurrect_cmd_func2(char *, char *, char *, char *);
+static dboolean save_cmd_func1(char *, char *, char *, char *);
+static void save_cmd_func2(char *, char *, char *, char *);
+static dboolean spawn_cmd_func1(char *, char *, char *, char *);
+static void spawn_cmd_func2(char *, char *, char *, char *);
+static void thinglist_cmd_func2(char *, char *, char *, char *);
+static void unbind_cmd_func2(char *, char *, char *, char *);
 
-alias_t aliases[] =
-{
-    { "off",           0, 1 }, { "on",            1, 1 }, { "0",             0, 1 }, { "1",             1, 1 },
-    { "no",            0, 1 }, { "yes",           1, 1 }, { "false",         0, 1 }, { "true",          1, 1 },
-    { "none",          0, 2 }, { "off",           0, 2 }, { "no",            0, 2 }, { "false",         0, 2 },
-    { "unlimited", 32768, 2 }, { "on",        32768, 2 }, { "yes",       32768, 2 }, { "true",      32768, 2 },
-    { "low",           0, 3 }, { "high",          1, 3 }, { "0.5",           0, 4 }, { "0.55",          1, 4 },
-    { "0.6",           2, 4 }, { "0.65",          3, 4 }, { "0.7",           4, 4 }, { "0.75",          5, 4 },
-    { "0.8",           6, 4 }, { "0.85",          7, 4 }, { "0.9",           8, 4 }, { "0.95",          9, 4 },
-    { "off",          10, 4 }, { "1.0",          10, 4 }, { "1.05",         11, 4 }, { "1.1",          12, 4 },
-    { "1.15",         13, 4 }, { "1.2",          14, 4 }, { "1.25",         15, 4 }, { "1.3",          16, 4 },
-    { "1.35",         17, 4 }, { "1.4",          18, 4 }, { "1.45",         19, 4 }, { "1.5",          20, 4 },
-    { "1.55",         21, 4 }, { "1.6",          22, 4 }, { "1.65",         23, 4 }, { "1.7",          24, 4 },
-    { "1.75",         25, 4 }, { "1.8",          26, 4 }, { "1.85",         27, 4 }, { "1.9",          28, 4 },
-    { "1.95",         29, 4 }, { "2.0",          30, 4 }, { "desktop",       0, 5 }, { "",              0, 0 }
-};
+static dboolean bool_cvars_func1(char *, char *, char *, char *);
+static void bool_cvars_func2(char *, char *, char *, char *);
+static dboolean float_cvars_func1(char *, char *, char *, char *);
+static void float_cvars_func2(char *, char *, char *, char *);
+static dboolean int_cvars_func1(char *, char *, char *, char *);
+static void int_cvars_func2(char *, char *, char *, char *);
+static void str_cvars_func2(char *, char *, char *, char *);
+static void time_cvars_func2(char *, char *, char *, char *);
 
-int C_LookupValueFromAlias(char *text, int set)
+static void am_external_cvar_func2(char *, char *, char *, char *);
+static dboolean gp_deadzone_cvars_func1(char *, char *, char *, char *);
+static void gp_deadzone_cvars_func2(char *, char *, char *, char *);
+static void playername_cvar_func2(char *, char *, char *, char *);
+static void alwaysrun_cvar_func2(char *, char *, char *, char *);
+static dboolean r_blood_cvar_func1(char *, char *, char *, char *);
+static void r_blood_cvar_func2(char *, char *, char *, char *);
+static dboolean r_bloodsplats_max_cvar_func1(char *, char *, char *, char *);
+static void r_bloodsplats_max_cvar_func2(char *, char *, char *, char *);
+static dboolean r_detail_cvar_func1(char *, char *, char *, char *);
+static void r_detail_cvar_func2(char *, char *, char *, char *);
+static dboolean r_gamma_cvar_func1(char *, char *, char *, char *);
+static void r_gamma_cvar_func2(char *, char *, char *, char *);
+static void r_hud_cvar_func2(char *, char *, char *, char *);
+static void r_lowpixelsize_cvar_func2(char *, char *, char *, char *);
+static void r_screensize_cvar_func2(char *, char *, char *, char *);
+static dboolean s_volume_cvars_func1(char *, char *, char *, char *);
+static void s_volume_cvars_func2(char *, char *, char *, char *);
+static void vid_display_cvar_func2(char *, char *, char *, char *);
+static void vid_fullscreen_cvar_func2(char *, char *, char *, char *);
+static dboolean vid_scaledriver_cvar_func1(char *, char *, char *, char *);
+static void vid_scaledriver_cvar_func2(char *, char *, char *, char *);
+static dboolean vid_scalefilter_cvar_func1(char *, char *, char *, char *);
+static void vid_scalefilter_cvar_func2(char *, char *, char *, char *);
+static void vid_screenresolution_cvar_func2(char *, char *, char *, char *);
+static void vid_showfps_cvar_func2(char *, char *, char *, char *);
+static void vid_vsync_cvar_func2(char *, char *, char *, char *);
+static void vid_widescreen_cvar_func2(char *, char *, char *, char *);
+static void vid_windowposition_cvar_func2(char *, char *, char *, char *);
+static void vid_windowsize_cvar_func2(char *, char *, char *, char *);
+
+void C_Bind(char *, char *, char *, char *);
+
+static int C_LookupValueFromAlias(const char *text, int aliastype)
 {
     int i = 0;
 
     while (aliases[i].text[0])
     {
-        if (set == aliases[i].set && !strcasecmp(text, aliases[i].text))
+        if (aliastype == aliases[i].type && M_StringCompare(text, aliases[i].text))
             return aliases[i].value;
         ++i;
     }
     return -1;
 }
 
-char *C_LookupAliasFromValue(int value, int set)
+static char *C_LookupAliasFromValue(int value, alias_type_t aliastype)
 {
-    int         i = 0;
-    static char buffer[1024];
+    int i = 0;
 
     while (aliases[i].text[0])
     {
-        if (set == aliases[i].set && value == aliases[i].value)
+        if (aliastype == aliases[i].type && value == aliases[i].value)
             return aliases[i].text;
         ++i;
     }
-    return NULL;
+    return commify(value);
 }
+
+#define CMD(name, cond, func, parms, form, desc) \
+    { #name, cond, func, parms, CT_CMD, CF_NONE, NULL, 0, 0, 0, 0, form, desc }
+#define CMD_CHEAT(name, parms) \
+    { #name, cheat_func1, NULL, parms, CT_CHEAT, CF_NONE, NULL, 0, 0, 0, 0, "", "" }
+#define CVAR_BOOL(name, cond, func, desc) \
+    { #name, cond, func, 1, CT_CVAR, CF_BOOLEAN, &name, 1, false, true, name##_default, "", desc }
+#define CVAR_INT(name, cond, func, flags, aliases, desc) \
+    { #name, cond, func, 1, CT_CVAR, (CF_INTEGER | flags), &name, aliases, name##_min, \
+      name##_max, name##_default, "", desc }
+#define CVAR_FLOAT(name, cond, func, flags, desc) \
+    { #name, cond, func, 1, CT_CVAR, (CF_FLOAT | flags), &name, 0, 0, 0, 0, "", desc }
+#define CVAR_POS(name, cond, func, desc) \
+    { #name, cond, func, 1, CT_CVAR, CF_POSITION, &name, 0, 0, 0, 0, "", desc }
+#define CVAR_SIZE(name, cond, func, desc) \
+    { #name, cond, func, 1, CT_CVAR, CF_SIZE, &name, 0, 0, 0, 0, "", desc }
+#define CVAR_STR(name, cond, func, desc) \
+    { #name, cond, func, 1, CT_CVAR, CF_STRING, &name, 0, 0, 0, 0, "", desc }
+#define CVAR_TIME(name, cond, func, desc) \
+    { #name, cond, func, 1, CT_CVAR, (CF_TIME | CF_READONLY), &name, 0, 0, 0, 0, "", desc }
+
+int     numconsolecmds;
 
 consolecmd_t consolecmds[] =
 {
-    {
-        /* name        */ "alwaysrun",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_AlwaysRun,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &alwaysrun,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ ALWAYSRUN_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "animatedliquid",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &animatedliquid,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ ANIMATEDLIQUID_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "bind",
-        /* condition   */ C_BindCondition,
-        /* function    */ C_Bind,
-        /* parameters  */ 2,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "bind [~control~ [+~action~]]",
-        /* description */ "Bind an action to a control."
-    },
-
-    {
-        /* name        */ "bloodsplats",
-        /* condition   */ C_BloodSplatsCondition,
-        /* function    */ C_BloodSplats,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &bloodsplats,
-        /* aliases     */ 2,
-        /* minimum     */ BLOODSPLATS_MIN,
-        /* maximum     */ BLOODSPLATS_MAX,
-        /* default     */ BLOODSPLATS_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "brightmaps",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &brightmaps,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ BRIGHTMAPS_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "centerweapon",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &centerweapon,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ CENTERWEAPON_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "clear",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_Clear,
-        /* parameters  */ 0,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "clear",
-        /* description */ "Clear the console."
-    },
-
-    {
-        /* name        */ "cmdlist",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_CmdList,
-        /* parameters  */ 1,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "cmdlist [~pattern~]",
-        /* description */ "Display a list of console commands."
-    },
-
-    {
-        /* name        */ "conback",
-        /* condition   */ C_ConBackCondition,
-        /* function    */ C_ConBack,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_STRING,
-        /* variable    */ &conback,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "condump",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_ConDump,
-        /* parameters  */ 1,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "condump [~filename~]",
-        /* description */ "Dump the console to a file."
-    },
-
-    {
-        /* name        */ "corpses_mirror",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &corpses_mirror,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ CORPSES_MIRROR_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "corpses_moreblood",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &corpses_moreblood,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ CORPSES_MOREBLOOD_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "corpses_slide",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &corpses_slide,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ CORPSES_SLIDE_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "corpses_smearblood",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &corpses_smearblood,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ CORPSES_SMEARBLOOD_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "cvarlist",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_CvarList,
-        /* parameters  */ 1,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "cvarlist [~pattern~]",
-        /* description */ "Display a list of console variables."
-    },
-
-    {
-        /* name        */ "dclick_use",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &dclick_use,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ DCLICKUSE_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "endgame",
-        /* condition   */ C_GameCondition,
-        /* function    */ C_EndGame,
-        /* parameters  */ 0,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "endgame",
-        /* description */ "End a game."
-    },
-
-    {
-        /* name        */ "episode",
-        /* condition   */ C_IntegerCondition,
-        /* function    */ C_Integer,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &selectedepisode,
-        /* aliases     */ 0,
-        /* minimum     */ EPISODE_MIN,
-        /* maximum     */ EPISODE_MAX,
-        /* default     */ EPISODE_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "expansion",
-        /* condition   */ C_IntegerCondition,
-        /* function    */ C_Integer,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &selectedexpansion,
-        /* aliases     */ 0,
-        /* minimum     */ EXPANSION_MIN,
-        /* maximum     */ EXPANSION_MAX,
-        /* default     */ EXPANSION_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "floatbob",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &floatbob,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ FLOATBOB_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "followmode",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN | CF_NOTSAVED,
-        /* variable    */ &followmode,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "footclip",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &footclip,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ FOOTCLIP_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "fullscreen",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &fullscreen,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ FULLSCREEN_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "gamepad_leftdeadzone",
-        /* condition   */ C_DeadZoneCondition,
-        /* function    */ C_DeadZone,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_FLOAT_PERCENT,
-        /* variable    */ &gamepadleftdeadzone_percent,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "gamepad_lefthanded",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &gamepadlefthanded,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ GAMEPADLEFTHANDED_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "gamepad_rightdeadzone",
-        /* condition   */ C_DeadZoneCondition,
-        /* function    */ C_DeadZone,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_FLOAT_PERCENT,
-        /* variable    */ &gamepadrightdeadzone_percent,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "gamepad_sensitivity",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_Integer,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &gamepadsensitivity,
-        /* aliases     */ 0,
-        /* minimum     */ GAMEPADSENSITIVITY_MIN,
-        /* maximum     */ GAMEPADSENSITIVITY_MAX,
-        /* default     */ GAMEPADSENSITIVITY_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "gamepad_vibrate",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &gamepadvibrate,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ GAMEPADVIBRATE_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "gammacorrectionlevel",
-        /* condition   */ C_GammaCondition,
-        /* function    */ C_Gamma,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &gammaindex,
-        /* aliases     */ 4,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "god",
-        /* condition   */ C_GodCondition,
-        /* function    */ C_God,
-        /* parameters  */ 0,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "god",
-        /* description */ "Toggle god mode on/off."
-    },
-
-    {
-        /* name        */ "graphicdetail",
-        /* condition   */ C_GraphicDetailCondition,
-        /* function    */ C_GraphicDetail,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &graphicdetail,
-        /* aliases     */ 3,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ GRAPHICDETAIL_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "grid",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &grid,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ GRID_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "help",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_Help,
-        /* parameters  */ 0,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "help",
-        /* description */ "Display the help screen."
-    },
-
-    {
-        /* name        */ "homindicator",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &homindicator,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ HOMINDICATOR_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "hud",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Hud,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &hud,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ HUD_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idbeholda",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idbeholdl",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idbeholdi",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idbeholdr",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idbeholds",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idbeholdv",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idchoppers",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idclev",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 1,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idclip",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "iddqd",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "iddt",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idfa",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idkfa",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idmus",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 1,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idmypos",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "idspispopd",
-        /* condition   */ C_CheatCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ CT_CHEAT,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "iwadfolder",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_String,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_STRING,
-        /* variable    */ &iwadfolder,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "kill",
-        /* condition   */ C_KillCondition,
-        /* function    */ C_Kill,
-        /* parameters  */ 1,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "kill [all|monsters|~type~]",
-        /* description */ "Kill the player, all monsters or a type of monster."
-    },
-
-    {
-        /* name        */ "map",
-        /* condition   */ C_MapCondition,
-        /* function    */ C_Map,
-        /* parameters  */ 1,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ MAPCMDFORMAT,
-        /* description */ "Warp to a map."
-    },
-
-    {
-        /* name        */ "mapfixes",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &mapfixes,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ MAPFIXES_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "messages",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &messages,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ MESSAGES_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "mirrorweapons",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &mirrorweapons,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ MIRRORWEAPONS_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "mouse_sensitivity",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_Integer,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &mousesensitivity,
-        /* aliases     */ 0,
-        /* minimum     */ MOUSESENSITIVITY_MIN,
-        /* maximum     */ MOUSESENSITIVITY_MAX,
-        /* default     */ MOUSESENSITIVITY_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "musicvolume",
-        /* condition   */ C_VolumeCondition,
-        /* function    */ C_Volume,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER_PERCENT,
-        /* variable    */ &musicvolume_percent,
-        /* aliases     */ 0,
-        /* minimum     */ MUSICVOLUME_MIN,
-        /* maximum     */ MUSICVOLUME_MAX,
-        /* default     */ MUSICVOLUME_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "noclip",
-        /* condition   */ C_GameCondition,
-        /* function    */ C_NoClip,
-        /* parameters  */ 0,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "noclip",
-        /* description */ "Toggle no clipping mode on/off."
-    },
-
-    {
-        /* name        */ "notarget",
-        /* condition   */ C_GameCondition,
-        /* function    */ C_NoTarget,
-        /* parameters  */ 0,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "notarget",
-        /* description */ "Toggle no target mode on/off."
-    },
-
-    {
-        /* name        */ "novert",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &novert,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ NOVERT_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "quit",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_Quit,
-        /* parameters  */ 0,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "quit",
-        /* description */ "Quit DOOM RETRO."
-    },
-
-    {
-        /* name        */ "rotatemode",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &rotatemode,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ ROTATEMODE_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "runcount",
-        /* condition   */ C_IntegerCondition,
-        /* function    */ C_Integer,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER | CF_READONLY,
-        /* variable    */ &runcount,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-#if defined(SDL20)
-    {
-        /* name        */ "scaledriver",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_String,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_STRING,
-        /* variable    */ &scaledriver,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "scalequality",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_String,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_STRING,
-        /* variable    */ &scalequality,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
+    // console commands
+    CMD       (bind, null_func1, C_Bind, 2, "[~control~ [+~action~]]", "Binds an action to a control."),
+    CMD       (clear, null_func1, clear_cmd_func2, 0, "", "Clears the console."),
+    CMD       (cmdlist, null_func1, cmdlist_cmd_func2, 1, "[~searchstring~]", "Shows a list of console commands."),
+    CMD       (condump, null_func1, condump_cmd_func2, 1, "[~filename~.txt]", "Dumps the console to a file."),
+    CMD       (cvarlist, null_func1, cvarlist_cmd_func2, 1, "[~searchstring~]", "Shows a list of console variables."),
+    CMD       (endgame, game_func1, endgame_cmd_func2, 0, "", "Ends a game."),
+    CMD       (exit, null_func1, quit_cmd_func2, 0, "", ""),
+    CMD       (exitmap, game_func1, exitmap_cmd_func2, 0, "", "Exits the current map."),
+    CMD       (give, give_cmd_func1, give_cmd_func2, 1, GIVECMDSHORTFORMAT, "Gives items to the player."),
+    CMD       (god, god_cmd_func1, god_cmd_func2, 1, "[on|off]", "Toggles god mode."),
+    CMD       (help, null_func1, help_cmd_func2, 0, "", "Shows the help screen."),
+    CMD       (kill, kill_cmd_func1, kill_cmd_func2, 1, KILLCMDFORMAT, "Kills the player, all monsters or a type of monster."),
+    CMD       (load, load_cmd_func1, load_cmd_func2, 1, "~filename~.save", "Loads a game from a file."),
+    CMD       (map, map_cmd_func1, map_cmd_func2, 1, MAPCMDFORMAT, "Warps to a map."),
+    CMD       (maplist, null_func1, maplist_cmd_func2, 0, "", "Shows a list of the available maps."),
+    CMD       (mapstats, game_func1, mapstats_cmd_func2, 0, "", "Shows statistics about the current map."),
+    CMD       (noclip, game_func1, noclip_cmd_func2, 1, "[on|off]", "Toggles collision detection for the player."),
+    CMD       (nomonsters, null_func1, nomonsters_cmd_func2, 1, "[on|off]", "Toggles the presence of monsters in maps."),
+    CMD       (notarget, game_func1, notarget_cmd_func2, 1, "[on|off]", "Toggles the player as a target."),
+    CMD       (playerstats, null_func1, playerstats_cmd_func2, 0, "", "Shows statistics about the player."),
+    CMD       (quit, null_func1, quit_cmd_func2, 0, "", "Quits ~"PACKAGE_NAME"~."),
+    CMD       (resurrect, resurrect_cmd_func1, resurrect_cmd_func2, 0, "", "Resurrects the player."),
+    CMD       (save, save_cmd_func1, save_cmd_func2, 1, "~filename~.save", "Saves the game to a file."),
+    CMD       (spawn, spawn_cmd_func1, spawn_cmd_func2, 1, SPAWNCMDFORMAT, "Spawns a monster or item."),
+    CMD       (summon, spawn_cmd_func1, spawn_cmd_func2, 1, "", ""),
+    CMD       (thinglist, game_func1, thinglist_cmd_func2, 0, "", "Shows a list of things in the current map."),
+    CMD       (unbind, null_func1, unbind_cmd_func2, 1, "~control~", "Unbinds an action from a control."),
+    CMD       (warp, map_cmd_func1, map_cmd_func2, 1, "", ""),
+
+    // cheats
+    CMD_CHEAT (idbeholda, 0),
+    CMD_CHEAT (idbeholdl, 0),
+    CMD_CHEAT (idbeholdi, 0),
+    CMD_CHEAT (idbeholdr, 0),
+    CMD_CHEAT (idbeholds, 0),
+    CMD_CHEAT (idbeholdv, 0),
+    CMD_CHEAT (idchoppers, 0),
+    CMD_CHEAT (idclev, 1),
+    CMD_CHEAT (idclip, 0),
+    CMD_CHEAT (iddqd, 0),
+    CMD_CHEAT (iddt, 0),
+    CMD_CHEAT (idfa, 0),
+    CMD_CHEAT (idkfa, 0),
+    CMD_CHEAT (idmus, 1),
+    CMD_CHEAT (idmypos, 0),
+    CMD_CHEAT (idspispopd, 0),
+
+    // console variables
+    CVAR_BOOL (alwaysrun, bool_cvars_func1, alwaysrun_cvar_func2, "Toggles the player always running when moving."),
+    CVAR_BOOL (am_external, bool_cvars_func1, am_external_cvar_func2, "Toggles rendering of the automap on an external display."),
+    CVAR_BOOL (am_followmode, bool_cvars_func1, bool_cvars_func2, "Toggles follow mode in the automap."),
+    CVAR_BOOL (am_grid, bool_cvars_func1, bool_cvars_func2, "Toggles the grid in the automap."),
+    CVAR_BOOL (am_rotatemode, bool_cvars_func1, bool_cvars_func2, "Toggles rotate mode in the automap."),
+    CVAR_BOOL (centerweapon, bool_cvars_func1, bool_cvars_func2, "Toggles the centering of the player's weapon when firing."),
+    CVAR_BOOL (con_obituaries, bool_cvars_func1, bool_cvars_func2, "Toggles obituaries in the console when monsters are killed."),
+    CVAR_BOOL (con_timestamps, bool_cvars_func1, bool_cvars_func2, "Toggles timestamps in the console for player messages."),
+    CVAR_STR  (configfile, null_func1, str_cvars_func2, "The path of the configuration file."),
+    CVAR_INT  (episode, int_cvars_func1, int_cvars_func2, CF_NONE, NOALIAS, "The currently selected ~DOOM~ episode in the menu."),
+    CVAR_INT  (expansion, int_cvars_func1, int_cvars_func2, CF_NONE, NOALIAS, "The currently selected ~DOOM II~ expansion in the menu."),
+    CVAR_INT  (faceback, int_cvars_func1, int_cvars_func2, CF_NONE, NOALIAS, "The color behind the player's face in the status bar."),
+    CVAR_TIME (gametime, null_func1, time_cvars_func2, "The amount of time since ~"PACKAGE_NAME"~ started."),
+    CVAR_FLOAT(gp_deadzone_left, gp_deadzone_cvars_func1, gp_deadzone_cvars_func2, CF_PERCENT, "The dead zone of the gamepad's left thumbstick."),
+    CVAR_FLOAT(gp_deadzone_right, gp_deadzone_cvars_func1, gp_deadzone_cvars_func2, CF_PERCENT, "The dead zone of the gamepad's right thumbstick."),
+    CVAR_INT  (gp_sensitivity, null_func1, int_cvars_func2, CF_NONE, NOALIAS, "The gamepad's sensitivity."),
+    CVAR_BOOL (gp_swapthumbsticks, bool_cvars_func1, bool_cvars_func2, "Toggles swapping the gamepad's left and right thumbsticks."),
+    CVAR_BOOL (gp_vibrate, bool_cvars_func1, bool_cvars_func2, "Toggles vibration for XInput gamepads."),
+    CVAR_STR  (iwadfolder, null_func1, str_cvars_func2, "The folder where an IWAD file was last opened."),
+    CVAR_FLOAT(m_acceleration, float_cvars_func1, float_cvars_func2, CF_NONE, "The amount the mouse accelerates."),
+    CVAR_BOOL (m_doubleclick_use, bool_cvars_func1, bool_cvars_func2, "Toggles double-clicking a mouse button for the +use action."),
+    CVAR_BOOL (m_novertical, bool_cvars_func1, bool_cvars_func2, "Toggles no vertical movement of the mouse."),
+    CVAR_INT  (m_sensitivity, int_cvars_func1, int_cvars_func2, CF_NONE, NOALIAS, "The mouse's sensitivity."),
+    CVAR_INT  (m_threshold, int_cvars_func1, int_cvars_func2, CF_NONE, NOALIAS, "The mouse's acceleration threshold."),
+    CVAR_BOOL (messages, bool_cvars_func1, bool_cvars_func2, "Toggles messages."),
+    CVAR_INT  (movebob, null_func1, int_cvars_func2, CF_PERCENT, NOALIAS, "The amount the player bobs when moving."),
+    CVAR_STR  (playername, null_func1, playername_cvar_func2, "The name of the player used in messages."),
+    CVAR_BOOL (r_althud, bool_cvars_func1, bool_cvars_func2, "Toggles the display of an alternate HUD when the HUD is on."),
+    CVAR_INT  (r_blood, r_blood_cvar_func1, r_blood_cvar_func2, CF_NONE, BLOODALIAS, "The color of the blood of the player and monsters."),
+    CVAR_INT  (r_bloodsplats_max, r_bloodsplats_max_cvar_func1, r_bloodsplats_max_cvar_func2, CF_NONE, SPLATALIAS, "The maximum number of blood splats allowed in a map."),
+    CVAR_INT  (r_bloodsplats_total, int_cvars_func1, int_cvars_func2, CF_READONLY, NOALIAS, "The total number of blood splats in the current map."),
+    CVAR_BOOL (r_brightmaps, bool_cvars_func1, bool_cvars_func2, "Toggles brightmaps on certain wall textures."),
+    CVAR_BOOL (r_corpses_color, bool_cvars_func1, bool_cvars_func2, "Toggles corpses of marines being randomly colored."),
+    CVAR_BOOL (r_corpses_mirrored, bool_cvars_func1, bool_cvars_func2, "Toggles corpses being randomly mirrored."),
+    CVAR_BOOL (r_corpses_moreblood, bool_cvars_func1, bool_cvars_func2, "Toggles blood splats around corpses when a map is loaded."),
+    CVAR_BOOL (r_corpses_nudge, bool_cvars_func1, bool_cvars_func2, "Toggles corpses being nudged when monsters walk over them."),
+    CVAR_BOOL (r_corpses_slide, bool_cvars_func1, bool_cvars_func2, "Toggles corpses reacting to barrel and rocket explosions."),
+    CVAR_BOOL (r_corpses_smearblood, bool_cvars_func1, bool_cvars_func2, "Toggles corpses producing blood splats as they slide."),
+    CVAR_BOOL (r_detail, r_bloodsplats_max_cvar_func1, r_bloodsplats_max_cvar_func2, "Toggles the graphic detail."),
+    CVAR_BOOL (r_diskicon, bool_cvars_func1, bool_cvars_func2, "Toggles showing a disk icon when loading and saving."),
+    CVAR_BOOL (r_fixmaperrors, bool_cvars_func1, bool_cvars_func2, "Toggles the fixing of mapping errors in the ~DOOM~ IWADs."),
+    CVAR_BOOL (r_fixspriteoffsets, bool_cvars_func1, bool_cvars_func2, "Toggles the fixing of sprite offsets."),
+    CVAR_BOOL (r_floatbob, bool_cvars_func1, bool_cvars_func2, "Toggles powerups bobbing up and down."),
+    CVAR_FLOAT(r_gamma, r_gamma_cvar_func1, r_gamma_cvar_func2, CF_NONE, "The gamma correction level."),
+    CVAR_BOOL (r_homindicator, bool_cvars_func1, bool_cvars_func2, "Toggles the flashing \"Hall of Mirrors\" indicator."),
+    CVAR_BOOL (r_hud, bool_cvars_func1, r_hud_cvar_func2, "Toggles the heads-up display when in widescreen mode."),
+    CVAR_BOOL (r_liquid_bob, bool_cvars_func1, bool_cvars_func2, "Toggles the bobbing effect of liquid sectors."),
+    CVAR_BOOL (r_liquid_clipsprites, bool_cvars_func1, bool_cvars_func2, "Toggles the bottom of sprites being clipped in liquid sectors."),
+    CVAR_BOOL (r_liquid_current, bool_cvars_func1, bool_cvars_func2, "Toggles a slight current being applied to liquid sectors."),
+    CVAR_BOOL (r_liquid_lowerview, bool_cvars_func1, bool_cvars_func2, "Toggles lowering the player's view in liquid sectors."),
+    CVAR_BOOL (r_liquid_swirl, bool_cvars_func1, bool_cvars_func2, "Toggles the swirl effect of liquid sectors."),
+    CVAR_SIZE (r_lowpixelsize, null_func1, r_lowpixelsize_cvar_func2, "The size of pixels when the graphic detail is low."),
+    CVAR_BOOL (r_mirroredweapons, bool_cvars_func1, bool_cvars_func2, "Toggles randomly mirroring weapons dropped by monsters."),
+    CVAR_BOOL (r_playersprites, bool_cvars_func1, bool_cvars_func2,"Toggles the display of the player's weapon."),
+    CVAR_BOOL (r_rockettrails, bool_cvars_func1, bool_cvars_func2, "Toggles rocket trails behind player and Cyberdemon rockets."),
+    CVAR_INT  (r_screensize, int_cvars_func1, r_screensize_cvar_func2, CF_NONE, NOALIAS, "The screen size."),
+    CVAR_BOOL (r_shadows, bool_cvars_func1, bool_cvars_func2, "Toggles sprites casting shadows."),
+    CVAR_BOOL (r_shakescreen, bool_cvars_func1, bool_cvars_func2, "Toggles shaking of the screen when the player is injured."),
+    CVAR_BOOL (r_translucency, bool_cvars_func1, bool_cvars_func2, "Toggles translucency in sprites and textures."),
+    CVAR_INT  (s_musicvolume, s_volume_cvars_func1, s_volume_cvars_func2, CF_PERCENT,  NOALIAS, "The music volume."),
+    CVAR_BOOL (s_randommusic, bool_cvars_func1, bool_cvars_func2, "Toggles the randomizing of music at the start of each map."),
+    CVAR_BOOL (s_randompitch, bool_cvars_func1, bool_cvars_func2, "Toggles randomizing the pitch of monster sound effects."),
+    CVAR_INT  (s_sfxvolume, s_volume_cvars_func1, s_volume_cvars_func2, CF_PERCENT, NOALIAS, "The sound effects volume."),
+    CVAR_STR  (s_timiditycfgpath, null_func1, str_cvars_func2, "The path of Timidity's configuration file."),
+    CVAR_INT  (skilllevel, int_cvars_func1, int_cvars_func2, CF_NONE, NOALIAS, "The currently selected skill level in the menu."),
+    CVAR_INT  (stillbob, null_func1, int_cvars_func2, CF_PERCENT, NOALIAS, "The amount the player bobs when still."),
+    CVAR_BOOL (vid_capfps, bool_cvars_func1, bool_cvars_func2, "Toggles capping of the framerate at 35 FPS."),
+    CVAR_INT  (vid_display, int_cvars_func1, vid_display_cvar_func2, CF_NONE, NOALIAS, "The display used to render the game."),
+#if !defined(WIN32)
+    CVAR_STR  (vid_driver, null_func1, str_cvars_func2, "The video driver used to render the game."),
 #endif
+    CVAR_BOOL (vid_fullscreen, bool_cvars_func1, vid_fullscreen_cvar_func2, "Toggles between fullscreen and a window."),
+    CVAR_STR  (vid_scaledriver, vid_scaledriver_cvar_func1, vid_scaledriver_cvar_func2, "The driver used to scale the display."),
+    CVAR_STR  (vid_scalefilter, vid_scalefilter_cvar_func1, vid_scalefilter_cvar_func2, "The filter used to scale the display."),
+    CVAR_SIZE (vid_screenresolution, null_func1, vid_screenresolution_cvar_func2, "The screen's resolution when fullscreen."),
+    CVAR_BOOL (vid_showfps, bool_cvars_func1, vid_showfps_cvar_func2, "Toggles the display of the average frames per second."),
+    CVAR_BOOL (vid_vsync, bool_cvars_func1, vid_vsync_cvar_func2, "Toggles vertical synchronization with display's refresh rate."),
+    CVAR_BOOL (vid_widescreen, bool_cvars_func1, vid_widescreen_cvar_func2, "Toggles widescreen mode."),
+    CVAR_POS  (vid_windowposition, null_func1, vid_windowposition_cvar_func2, "The position of the window on the desktop."),
+    CVAR_SIZE (vid_windowsize, null_func1, vid_windowsize_cvar_func2, "The size of the window on the desktop."),
 
-    {
-        /* name        */ "screenheight",
-        /* condition   */ C_IntegerCondition,
-        /* function    */ C_Integer,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &screenheight,
-        /* aliases     */ 5,
-        /* minimum     */ 0,
-        /* maximum     */ INT_MAX,
-        /* default     */ SCREENHEIGHT_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "screensize",
-        /* condition   */ C_IntegerCondition,
-        /* function    */ C_ScreenSize,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &screensize,
-        /* aliases     */ 0,
-        /* minimum     */ SCREENSIZE_MIN,
-        /* maximum     */ SCREENSIZE_MAX,
-        /* default     */ SCREENSIZE_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "screenwidth",
-        /* condition   */ C_IntegerCondition,
-        /* function    */ C_Integer,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &screenwidth,
-        /* aliases     */ 5,
-        /* minimum     */ 0,
-        /* maximum     */ INT_MAX,
-        /* default     */ SCREENWIDTH_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "sfxvolume",
-        /* condition   */ C_VolumeCondition,
-        /* function    */ C_Volume,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER_PERCENT,
-        /* variable    */ &sfxvolume_percent,
-        /* aliases     */ 0,
-        /* minimum     */ SFXVOLUME_MIN,
-        /* maximum     */ SFXVOLUME_MAX,
-        /* default     */ SFXVOLUME_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "shadows",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &shadows,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ SHADOWS_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "showfps",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_ShowFPS,
-        /* parameters  */ 1,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ &showfps,
-        /* aliases     */ 1,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "showfps [on|off]",
-        /* description */ "Show average FPS."
-    },
-
-    {
-        /* name        */ "skilllevel",
-        /* condition   */ C_IntegerCondition,
-        /* function    */ C_Integer,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &selectedskilllevel,
-        /* aliases     */ 1,
-        /* minimum     */ SKILLLEVEL_MIN,
-        /* maximum     */ SKILLLEVEL_MAX,
-        /* default     */ SKILLLEVEL_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "smoketrails",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &smoketrails,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ SMOKETRAILS_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "spawn",
-        /* condition   */ C_SpawnCondition,
-        /* function    */ C_Spawn,
-        /* parameters  */ 1,
-        /* type        */ CT_CMD,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ SPAWNCMDFORMAT,
-        /* description */ "Spawn a monster or object."
-    },
-
-    {
-        /* name        */ "timidity_cfg_path",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_String,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_STRING,
-        /* variable    */ &timidity_cfg_path,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "translucency",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &translucency,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ TRANSLUCENCY_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "videodriver",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_String,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_STRING,
-        /* variable    */ &videodriver,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-#if defined(SDL20)
-    {
-        /* name        */ "vsync",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &vsync,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ VSYNC_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-#endif
-
-    {
-        /* name        */ "widescreen",
-        /* condition   */ C_BooleanCondition,
-        /* function    */ C_Boolean,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_BOOLEAN,
-        /* variable    */ &widescreen,
-        /* aliases     */ 1,
-        /* minimum     */ false,
-        /* maximum     */ true,
-        /* default     */ TRANSLUCENCY_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "windowheight",
-        /* condition   */ C_IntegerCondition,
-        /* function    */ C_Integer,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &windowheight,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ INT_MAX,
-        /* default     */ WINDOWHEIGHT_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "windowposition",
-        /* condition   */ C_NoCondition,
-        /* function    */ C_String,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_STRING,
-        /* variable    */ &windowposition,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "windowwidth",
-        /* condition   */ C_IntegerCondition,
-        /* function    */ C_Integer,
-        /* parameters  */ 1,
-        /* type        */ CT_CVAR,
-        /* flags       */ CF_INTEGER,
-        /* variable    */ &windowwidth,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ INT_MAX,
-        /* default     */ WINDOWHEIGHT_DEFAULT,
-        /* format      */ "",
-        /* description */ ""
-    },
-
-    {
-        /* name        */ "",
-        /* condition   */ C_NoCondition,
-        /* function    */ NULL,
-        /* parameters  */ 0,
-        /* type        */ 0,
-        /* flags       */ CF_NONE,
-        /* variable    */ NULL,
-        /* aliases     */ 0,
-        /* minimum     */ 0,
-        /* maximum     */ 0,
-        /* default     */ 0,
-        /* format      */ "",
-        /* description */ ""
-    }
+    { "", null_func1, NULL, 0, 0, CF_NONE, NULL, 0, 0, 0, 0, "", "" }
 };
 
-//
-// Cheat cmds
-//
-boolean C_CheatCondition(char *cmd, char *parm1, char *parm2)
+static dboolean cheat_func1(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     if (gamestate != GS_LEVEL)
         return false;
-    if (!strcasecmp(cmd, "iddt") && !automapactive)
-        return false;
-    if (!strcasecmp(cmd, "idclip") && gamemode != commercial)
-        return false;
-    if (!strcasecmp(cmd, "idspispopd") && gamemode == commercial)
-        return false;
-    return true;
+    else if (M_StringCompare(cmd, cheat_god.sequence))
+        return (gameskill != sk_nightmare);
+    else if (M_StringCompare(cmd, cheat_ammonokey.sequence))
+        return (gameskill != sk_nightmare && players[0].health > 0);
+    else if (M_StringCompare(cmd, cheat_ammo.sequence))
+        return (gameskill != sk_nightmare && players[0].health > 0);
+    else if (M_StringCompare(cmd, cheat_mus.sequence))
+        return (!nomusic && musicVolume);
+    else if (M_StringCompare(cmd, cheat_noclip.sequence))
+        return (gamemode != commercial && gameskill != sk_nightmare);
+    else if (M_StringCompare(cmd, cheat_commercial_noclip.sequence))
+        return (gamemode == commercial && gameskill != sk_nightmare);
+    else if (M_StringCompare(cmd, cheat_powerup[0].sequence))
+        return (gameskill != sk_nightmare && players[0].health > 0);
+    else if (M_StringCompare(cmd, cheat_powerup[1].sequence))
+        return (gameskill != sk_nightmare && players[0].health > 0);
+    else if (M_StringCompare(cmd, cheat_powerup[2].sequence))
+        return (gameskill != sk_nightmare && players[0].health > 0);
+    else if (M_StringCompare(cmd, cheat_powerup[3].sequence))
+        return (gameskill != sk_nightmare && players[0].health > 0);
+    else if (M_StringCompare(cmd, cheat_powerup[4].sequence))
+        return (gameskill != sk_nightmare && players[0].health > 0);
+    else if (M_StringCompare(cmd, cheat_powerup[5].sequence))
+        return (gameskill != sk_nightmare && players[0].health > 0);
+    else if (M_StringCompare(cmd, cheat_powerup[6].sequence))
+        return (gameskill != sk_nightmare && players[0].health > 0);
+    else if (M_StringCompare(cmd, cheat_choppers.sequence))
+        return (gameskill != sk_nightmare && players[0].health > 0);
+    else if (M_StringCompare(cmd, cheat_mypos.sequence))
+        return true;
+    else if (M_StringCompare(cmd, cheat_clev.sequence))
+    {
+        char   lump[6];
+        int    map;
+
+        if (gamemode == commercial)
+        {
+            map = (parm1[0] - '0') * 10 + parm1[1] - '0';
+            M_snprintf(lump, sizeof(lump), "MAP%c%c", parm1[0], parm1[1]);
+        }
+        else
+        {
+            map = parm1[1] - '0';
+            M_snprintf(lump, sizeof(lump), "E%cM%c", parm1[0], parm1[1]);
+        }
+
+        return (W_CheckNumForName(lump) >= 0 && (gamemission != pack_nerve || map <= 9)
+            && (!BTSX || W_CheckMultipleLumps(lump) > 1));
+    }
+    else if (M_StringCompare(cmd, cheat_amap.sequence))
+        return (automapactive || mapwindow);
+    return false;
 }
 
-//
-// Cmd is only valid when game is running
-//
-boolean C_GameCondition(char *cmd, char *parm1, char *parm2)
+static dboolean game_func1(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     return (gamestate == GS_LEVEL);
 }
 
-//
-// Cmd is always valid
-//
-boolean C_NoCondition(char *cmd, char *parm1, char *parm2)
+static dboolean null_func1(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     return true;
 }
 
 //
-// ALWAYSRUN cvar
+// bind cmd
 //
-void C_AlwaysRun(char *cmd, char *parm1, char *parm2)
+static void C_DisplayBinds(char *action, int value, controltype_t type, int count)
 {
-    C_Boolean(cmd, parm1, "");
-    I_InitKeyboard();
-}
+    int i = 0;
+    int tabs[8] = { 40, 130, 0, 0, 0, 0, 0, 0 };
 
-//
-// BIND cmd
-//
-boolean C_BindCondition(char *cmd, char *parm1, char *parm2)
-{
-    return true;
-}
-
-void C_DisplayBinds(char *action, int value, controltype_t type, int count)
-{
-    int control = 0;
-
-    while (controls[control].type)
+    while (controls[i].type)
     {
-        if (controls[control].type == type && controls[control].value == value)
+        if (controls[i].type == type && controls[i].value == value)
         {
-            C_Output("%i\t%s\t%s", count, controls[control].control, action);
+            char *control = controls[i].control;
+
+            if (strlen(control) == 1)
+                C_TabbedOutput(tabs, "%i.\t\'%s\'\t%s", count, (control[0] == '=' ? "+" : control),
+                    action);
+            else
+                C_TabbedOutput(tabs, "%i.\t%s\t%s", count, control, action);
             break;
         }
-        ++control;
+        ++i;
     }
 }
 
-void C_Bind(char *cmd, char *parm1, char *parm2)
+static void C_UnbindDuplicates(int keep, controltype_t type, int value)
+{
+    int i = 0;
+
+    while (actions[i].action[0])
+    {
+        if (i != keep)
+        {
+            if (type == keyboardcontrol && actions[i].keyboard
+                && value == *(int *)actions[i].keyboard)
+                *(int *)actions[i].keyboard = 0;
+            else if (type == mousecontrol && actions[i].mouse && value == *(int *)actions[i].mouse)
+                *(int *)actions[i].mouse = -1;
+            else if (type == gamepadcontrol && actions[i].gamepad
+                && value == *(int *)actions[i].gamepad)
+                *(int *)actions[i].gamepad = 0;
+        }
+
+        ++i;
+    }
+    M_SaveCVARs();
+}
+
+void C_Bind(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     if (!parm1[0])
     {
@@ -1791,33 +734,30 @@ void C_Bind(char *cmd, char *parm1, char *parm2)
 
         while (actions[action].action[0])
         {
-            if (actions[action].keyboard1)
-                C_DisplayBinds(actions[action].action, *(int *)actions[action].keyboard1, keyboard,
-                    count++);
-            if (actions[action].keyboard2)
-                C_DisplayBinds(actions[action].action, *(int *)actions[action].keyboard2, keyboard,
-                    count++);
+            if (actions[action].keyboard)
+                C_DisplayBinds(actions[action].action, *(int *)actions[action].keyboard,
+                    keyboardcontrol, count++);
             if (actions[action].mouse)
-                C_DisplayBinds(actions[action].action, *(int *)actions[action].mouse, mouse,
+                C_DisplayBinds(actions[action].action, *(int *)actions[action].mouse, mousecontrol,
                     count++);
             if (actions[action].gamepad)
-                C_DisplayBinds(actions[action].action, *(int *)actions[action].gamepad, gamepad,
-                    count++);
+                C_DisplayBinds(actions[action].action, *(int *)actions[action].gamepad,
+                    gamepadcontrol, count++);
             ++action;
         }
     }
     else
     {
-        int     control = 0;
+        int     i = 0;
 
-        while (controls[control].type)
+        while (controls[i].type)
         {
-            if (!strcasecmp(parm1, controls[control].control))
+            if (M_StringCompare(parm1, controls[i].control))
                 break;
-            ++control;
+            ++i;
         }
 
-        if (controls[control].control[0])
+        if (controls[i].control[0])
         {
             int action = 0;
 
@@ -1825,531 +765,449 @@ void C_Bind(char *cmd, char *parm1, char *parm2)
             {
                 while (actions[action].action[0])
                 {
-                    if (controls[control].type == keyboard && actions[action].keyboard1
-                        && controls[control].value == *(int *)actions[action].keyboard1)
-                        C_Output("The %s key on the keyboard is bound to the %s action.",
-                            controls[control].control, actions[action].action);
-                    else if (controls[control].type == keyboard && actions[action].keyboard2
-                        && controls[control].value == *(int *)actions[action].keyboard2)
-                        C_Output("The %s key on the keyboard is bound to the %s action.",
-                            controls[control].control, actions[action].action);
-                    else if (controls[control].type == mouse && actions[action].mouse
-                        && controls[control].value == *(int *)actions[action].mouse)
-                        C_Output("The %s control on the mouse is bound to the %s action.",
-                            controls[control].control, actions[action].action);
-                    else if (controls[control].type == gamepad && actions[action].gamepad
-                        && controls[control].value == *(int *)actions[action].gamepad)
-                        C_Output("The %s control on the gamepad is bound to the %s action.",
-                            controls[control].control, actions[action].action);
+                    if (controls[i].type == keyboardcontrol && actions[action].keyboard
+                        && controls[i].value == *(int *)actions[action].keyboard)
+                        C_Output(actions[action].action);
+                    else if (controls[i].type == mousecontrol && actions[action].mouse
+                        && controls[i].value == *(int *)actions[action].mouse)
+                        C_Output(actions[action].action);
+                    else if (controls[i].type == gamepadcontrol && actions[action].gamepad
+                        && controls[i].value == *(int *)actions[action].gamepad)
+                        C_Output(actions[action].action);
+                    ++action;
+                }
+            }
+            else if (M_StringCompare(parm2, "none"))
+            {
+                while (actions[action].action[0])
+                {
+                    switch (controls[i].type)
+                    {
+                        case keyboardcontrol:
+                            if (actions[action].keyboard
+                                && controls[i].value == *(int *)actions[action].keyboard)
+                            {
+                                *(int *)actions[action].keyboard = 0;
+                                M_SaveCVARs();
+                            }
+                            break;
+                        case mousecontrol:
+                            if (actions[action].mouse
+                                && controls[i].value == *(int *)actions[action].mouse)
+                            {
+                                *(int *)actions[action].mouse = -1;
+                                M_SaveCVARs();
+                            }
+                            break;
+                        case gamepadcontrol:
+                            if (actions[action].gamepad
+                                && controls[i].value == *(int *)actions[action].gamepad)
+                            {
+                                *(int *)actions[action].gamepad = 0;
+                                M_SaveCVARs();
+                            }
+                            break;
+                    }
                     ++action;
                 }
             }
             else
             {
+                dboolean        bound = false;
+
                 while (actions[action].action[0])
                 {
-                    if (!strcasecmp(parm2, actions[action].action))
+                    if (M_StringCompare(parm2, actions[action].action))
                         break;
                     ++action;
                 }
 
                 if (actions[action].action[0])
                 {
-                    switch (controls[control].type)
+                    switch (controls[i].type)
                     {
-                        case keyboard:
-                            if (controls[control].value != *(int *)actions[action].keyboard1
-                                && controls[control].value != *(int *)actions[action].keyboard2)
+                        case keyboardcontrol:
+                            if (actions[action].keyboard)
                             {
-                                if (*(int *)actions[action].keyboard1)
-                                {
-                                    if (actions[action].keyboard2)
-                                    {
-                                        if (*(int *)actions[action].keyboard2)
-                                            *(int *)actions[action].keyboard1
-                                                = *(int *)actions[action].keyboard2;
-                                        *(int *)actions[action].keyboard2 = controls[control].value;
-                                    }
-                                    else
-                                        *(int *)actions[action].keyboard1 = controls[control].value;
-                                }
-                                else
-                                    *(int *)actions[action].keyboard1 = controls[control].value;
-                                C_Output("The %s key on the keyboard is now bound to the %s action.", parm1, parm2);
+                                *(int *)actions[action].keyboard = controls[i].value;
+                                bound = true;
+                                C_UnbindDuplicates(action, keyboardcontrol, controls[i].value);
                             }
                             break;
-                        case mouse:
-                            *(int *)actions[action].mouse = controls[control].value;
-                            C_Output("The %s control on the mouse is now bound to the %s action.", parm1, parm2);
+                        case mousecontrol:
+                            if (actions[action].mouse)
+                            {
+                                *(int *)actions[action].mouse = controls[i].value;
+                                bound = true;
+                                C_UnbindDuplicates(action, mousecontrol, controls[i].value);
+                            }
                             break;
-                        case gamepad:
-                            *(int *)actions[action].gamepad = controls[control].value;
-                            C_Output("The %s control on the gamepad is now bound to the %s action.", parm1, parm2);
+                        case gamepadcontrol:
+                            if (actions[action].gamepad)
+                            {
+                                *(int *)actions[action].gamepad = controls[i].value;
+                                bound = true;
+                                C_UnbindDuplicates(action, gamepadcontrol, controls[i].value);
+                            }
                             break;
                     }
-                    M_SaveDefaults();
+
+                    if (cmd[0])
+                        M_SaveCVARs();
                 }
+
+                if (!bound)
+                    C_Warning("The %s action can't be bound to %s.", parm2, controls[i].control);
             }
         }
     }
 }
 
 //
-// BLOODSPLATS cvar
-//
-void (*P_BloodSplatSpawner)(fixed_t, fixed_t, int, int);
-
-boolean C_BloodSplatsCondition(char *cmd, char *parm1, char *parm2)
-{
-    int value = 0;
-
-    return (!parm1[0] || C_LookupValueFromAlias(parm1, 2) >= 0 || sscanf(parm1, "%i", &value));
-}
-
-void C_BloodSplats(char *cmd, char *parm1, char *parm2)
-{
-    if (parm1[0])
-    {
-        int     value = C_LookupValueFromAlias(parm1, 2);
-
-        if (value < 0)
-            sscanf(parm1, "%i", &value);
-        if (value >= 0)
-        {
-            bloodsplats = value;
-            M_SaveDefaults();
-
-            if (!bloodsplats)
-            {
-                P_BloodSplatSpawner = P_NullBloodSplatSpawner;
-                C_Output("Blood splats are now off.");
-            }
-            if (bloodsplats == UNLIMITED)
-            {
-                P_BloodSplatSpawner = P_SpawnBloodSplat;
-                C_Output("There can now be an unlimited number of blood splats.");
-            }
-            else
-            {
-                P_BloodSplatSpawner = P_SpawnBloodSplat2;
-                C_Output("There can now be a maximum of %s blood splats.", commify(bloodsplats));
-            }
-        }
-    }
-    else
-    {
-        if (!bloodsplats)
-        {
-            P_BloodSplatSpawner = P_NullBloodSplatSpawner;
-            C_Output("Blood splats are off.");
-        }
-        if (bloodsplats == UNLIMITED)
-        {
-            P_BloodSplatSpawner = P_SpawnBloodSplat;
-            C_Output("There can be an unlimited number of blood splats.");
-        }
-        else
-        {
-            P_BloodSplatSpawner = P_SpawnBloodSplat2;
-            C_Output("There can be a maximum of %s blood splats.", commify(bloodsplats));
-        }
-    }
-}
-
-//
-// Boolean cvars
-//
-boolean C_BooleanCondition(char *cmd, char *parm1, char *parm2)
-{
-    return (!parm1[0] || C_LookupValueFromAlias(parm1, 1) >= 0);
-}
-
-void C_Boolean(char *cmd, char *parm1, char *parm2)
-{
-    int i = 0;
-
-    while (consolecmds[i].name[0])
-    {
-        if (!strcasecmp(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
-            && (consolecmds[i].flags & CF_BOOLEAN))
-        {
-            if (parm1[0] && !(consolecmds[i].flags & CF_READONLY))
-            {
-                int     value = C_LookupValueFromAlias(parm1, 1);
-
-                if (value == 0 || value == 1)
-                {
-                    *(boolean *)consolecmds[i].variable = !!value;
-                    if (!(consolecmds[i].flags & CF_NOTSAVED))
-                        M_SaveDefaults();
-                    C_Output("%s is now %s.", cmd, parm1);
-                }
-            }
-            else
-                C_Output("%s is %s.", cmd, (*(boolean *)consolecmds[i].variable ? "on" : "off"));
-        }
-        ++i;
-    }
-}
-
-//
-// CLEAR cmd
+// clear cmd
 //
 extern int      consolestrings;
 
-void C_Clear(char *cmd, char *parm1, char *parm2)
+static void clear_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     consolestrings = 0;
     C_Output("");
 }
 
 //
-// CMDLIST cmd
+// cmdlist cmd
 //
-void C_CmdList(char *cmd, char *parm1, char *parm2)
+static void cmdlist_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     int i = 0;
     int count = 1;
+    int tabs[8] = { 40, 192, 0, 0, 0, 0, 0, 0 };
 
     while (consolecmds[i].name[0])
     {
-        if (consolecmds[i].type == CT_CMD && (!parm1[0] || wildcard(consolecmds[i].name, parm1)))
-            C_Output("%i\t%s\t\t%s", count++, consolecmds[i].format, consolecmds[i].description);
+        if (consolecmds[i].type == CT_CMD && consolecmds[i].description[0]
+            && (!parm1[0] || wildcard(consolecmds[i].name, parm1)))
+            C_TabbedOutput(tabs, "%i.\t%s %s\t%s", count++, consolecmds[i].name,
+                consolecmds[i].format, consolecmds[i].description);
         ++i;
     }
 }
 
 //
-// CONBACK cvar
+// condump cmd
 //
-boolean C_ConBackCondition(char *cmd, char *parm1, char *parm2)
-{
-    return (!parm1[0] || R_CheckFlatNumForName(parm1) >= 0);
-}
-
-void C_ConBack(char *cmd, char *parm1, char *parm2)
-{
-    if (parm1[0])
-    {
-        conback = strdup(parm1);
-        consolebackground = W_CacheLumpName(parm1, PU_CACHE);
-        defaultconback = ((gamemode == commercial && !strcasecmp(conback, "GRNROCK"))
-            || (gamemode != commercial && !strcasecmp(conback, "FLOOR7_2")));
-        M_SaveDefaults();
-        C_Output("The console's background is now using the \"%s\" flat.", uppercase(conback));
-    }
-    else
-        C_Output("The console's background is using the %s flat.", uppercase(conback));
-}
-
-//
-// CONDUMP cmd
-//
-void C_ConDump(char *cmd, char *parm1, char *parm2)
+static void condump_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     if (consolestrings)
     {
-        FILE        *file = fopen((parm1[0] ? parm1 : "condump.txt"), "wt");
-        int         i;
+        char    filename[MAX_PATH];
+        FILE    *file;
+        char    *exefolder = M_GetExecutableFolder();
 
-        for (i = 1; i < consolestrings - 1; ++i)
-            fprintf(file, "%s\n", console[i].string);
-        fclose(file);
-        C_Output("Dumped the console to the %s.", (parm1[0] ? uppercase(parm1) : "CONDUMP.TXT"));
+        if (!parm1[0])
+        {
+            int count = 0;
+
+            M_snprintf(filename, sizeof(filename), "%s"DIR_SEPARATOR_S"condump.txt", exefolder);
+            while (M_FileExists(filename))
+                M_snprintf(filename, sizeof(filename), "%s"DIR_SEPARATOR_S"condump (%i).txt",
+                    exefolder, ++count);
+        }
+        else
+            M_snprintf(filename, sizeof(filename), "%s"DIR_SEPARATOR_S"%s", exefolder, parm1);
+
+        file = fopen(filename, "wt");
+
+        if (file)
+        {
+            int i;
+
+            for (i = 1; i < consolestrings - 1; ++i)
+                if (console[i].type == dividerstring)
+                    fprintf(file, "%s\n", DIVIDERSTRING);
+                else
+                {
+                    unsigned int        inpos;
+                    unsigned int        spaces;
+                    unsigned int        len = strlen(console[i].string);
+                    unsigned int        outpos = 0;
+                    int                 tabcount = 0;
+
+                    for (inpos = 0; inpos < len; ++inpos)
+                    {
+                        char    ch = console[i].string[inpos];
+
+                        if (ch != '\n')
+                            if (ch == '\t')
+                            {
+                                unsigned int    tabstop = console[i].tabs[tabcount] / 5;
+
+                                if (outpos < tabstop)
+                                {
+                                    for (spaces = 0; spaces < tabstop - outpos; ++spaces)
+                                        fputc(' ', file);
+                                    outpos = tabstop;
+                                    ++tabcount;
+                                }
+                                else
+                                {
+                                    fputc(' ', file);
+                                    ++outpos;
+                                }
+                            }
+                            else if (ch != '~')
+                            {
+                                fputc(ch, file);
+                                ++outpos;
+                            }
+                    }
+
+                    if (con_timestamps && console[i].timestamp[0])
+                    {
+                        for (spaces = 0; spaces < 91 - outpos; ++spaces)
+                            fputc(' ', file);
+                        fputs(console[i].timestamp, file);
+                    }
+
+                    fputc('\n', file);
+                }
+
+            fclose(file);
+
+            C_Output("Dumped the console to the file %s.", uppercase(filename));
+        }
     }
 }
 
 //
-// CVARLIST cmd
+// cvarlist cmd
 //
-void C_CvarList(char *cmd, char *parm1, char *parm2)
+static void cvarlist_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     int i = 0;
     int count = 1;
+    int tabs[8] = { 35, 179, 257, 0, 0, 0, 0, 0 };
 
     while (consolecmds[i].name[0])
     {
         if (consolecmds[i].type == CT_CVAR && (!parm1[0] || wildcard(consolecmds[i].name, parm1)))
         {
             if (consolecmds[i].flags & CF_BOOLEAN)
-                C_Output("%i\t%s\t\t%s", count++, consolecmds[i].name,
-                    C_LookupAliasFromValue(*(boolean *)consolecmds[i].variable,
-                    consolecmds[i].aliases));
+                C_TabbedOutput(tabs, "%i.\t%s\t%s\t%s", count++, consolecmds[i].name,
+                    C_LookupAliasFromValue(*(dboolean *)consolecmds[i].variable,
+                        consolecmds[i].aliases), consolecmds[i].description);
+            else if ((consolecmds[i].flags & CF_INTEGER) && (consolecmds[i].flags & CF_PERCENT))
+                C_TabbedOutput(tabs, "%i.\t%s\t%i%%\t%s", count++, consolecmds[i].name,
+                    *(int *)consolecmds[i].variable, consolecmds[i].description);
             else if (consolecmds[i].flags & CF_INTEGER)
-            {
-                char *alias = C_LookupAliasFromValue(*(int *)consolecmds[i].variable,
-                              consolecmds[i].aliases);
-
-                C_Output("%i\t%s\t\t%s", count++, consolecmds[i].name,
-                    (alias ? alias : commify(*(int *)consolecmds[i].variable)));
-            }
-            else if (consolecmds[i].flags & CF_INTEGER_PERCENT)
-                C_Output("%i\t%s\t\t%i%%", count++, consolecmds[i].name,
-                    *(int *)consolecmds[i].variable);
+                C_TabbedOutput(tabs, "%i.\t%s\t%s\t%s", count++, consolecmds[i].name,
+                    C_LookupAliasFromValue(*(int *)consolecmds[i].variable,
+                        consolecmds[i].aliases), consolecmds[i].description);
+            else if (consolecmds[i].flags & CF_FLOAT)
+                C_TabbedOutput(tabs, "%i.\t%s\t%s%s\t%s", count++, consolecmds[i].name,
+                    striptrailingzero(*(float *)consolecmds[i].variable,
+                        ((consolecmds[i].flags & CF_PERCENT) ? 1 : 2)),
+                    ((consolecmds[i].flags & CF_PERCENT) ? "%" : ""), consolecmds[i].description);
             else if (consolecmds[i].flags & CF_STRING)
-                C_Output("%i\t%s\t\t\"%s\"", count++, consolecmds[i].name,
-                    *(char **)consolecmds[i].variable);
-            else if (consolecmds[i].flags & CF_FLOAT_PERCENT)
-                C_Output("%i\t%s\t\t%s%%", count++, consolecmds[i].name,
-                    striptrailingzero(*(float *)consolecmds[i].variable));
+                C_TabbedOutput(tabs, "%i.\t%s\t\"%.8s%s\"\t%s", count++, consolecmds[i].name,
+                    *(char **)consolecmds[i].variable,
+                    (strlen(*(char **)consolecmds[i].variable) > 8 ? "..." : ""),
+                    consolecmds[i].description);
+            else if ((consolecmds[i].flags & CF_POSITION) || (consolecmds[i].flags & CF_SIZE))
+                C_TabbedOutput(tabs, "%i.\t%s\t%s\t%s", count++, consolecmds[i].name,
+                    *(char **)consolecmds[i].variable, consolecmds[i].description);
+            else if (consolecmds[i].flags & CF_TIME)
+            {
+                int tics = *(int *)consolecmds[i].variable / TICRATE;
+
+                C_TabbedOutput(tabs, "%i.\t%s\t%02i:%02i:%02i\t%s", count++, consolecmds[i].name,
+                    tics / 3600, (tics % 3600) / 60, (tics % 3600) % 60,
+                    consolecmds[i].description);
+            }
+
         }
         ++i;
     }
 }
 
 //
-// GAMEPAD_LEFTDEADZONE and GAMEPAD_RIGHTDEADZONE cvars
+// endgame cmd
 //
-boolean C_DeadZoneCondition(char *cmd, char *parm1, char *parm2)
-{
-    float value;
-
-    if (!parm1[0])
-        return true;
-    if (parm1[strlen(parm1) - 1] == '%')
-        parm1[strlen(parm1) - 1] = 0;
-    return sscanf(parm1, "%f", &value);
-}
-
-void C_DeadZone(char *cmd, char *parm1, char *parm2)
-{
-    if (parm1[0])
-    {
-        float   value = 0;
-
-        if (parm1[strlen(parm1) - 1] == '%')
-            parm1[strlen(parm1) - 1] = 0;
-        sscanf(parm1, "%f", &value);
-
-        if (value >= 0.0f && value <= 100.0f)
-        {
-            if (!strcasecmp(cmd, "gamepad_leftdeadzone"))
-            {
-                gamepadleftdeadzone_percent = value;
-                gamepadleftdeadzone = (int)(BETWEENF(GAMEPADLEFTDEADZONE_MIN,
-                    gamepadleftdeadzone_percent,
-                    GAMEPADLEFTDEADZONE_MAX) * (float)SHRT_MAX / 100.0f);
-                C_Output("The dead zone of the gamepad's left thumbstick is now %s%%.",
-                    striptrailingzero(value));
-            }
-            else
-            {
-                gamepadrightdeadzone_percent = value;
-                gamepadrightdeadzone = (int)(BETWEENF(GAMEPADRIGHTDEADZONE_MIN,
-                    gamepadrightdeadzone_percent,
-                    GAMEPADRIGHTDEADZONE_MAX) * (float)SHRT_MAX / 100.0f);
-                C_Output("The dead zone of the gamepad's right thumbstick is now %s%%.",
-                    striptrailingzero(value));
-            }
-
-            M_SaveDefaults();
-        }
-    }
-    else
-    {
-        float   value = 0;
-
-        if (!strcasecmp(cmd, "gamepad_leftdeadzone"))
-            C_Output("The dead zone of the gamepad's left thumbstick is %s%%.",
-                striptrailingzero(gamepadleftdeadzone_percent));
-        else
-            C_Output("The dead zone of the gamepad's right thumbstick is %s%%.",
-                striptrailingzero(gamepadrightdeadzone_percent));
-    }
-}
-
-//
-// ENDGAME cmd
-//
-void C_EndGame(char *cmd, char *parm1, char *parm2)
+static void endgame_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     M_EndingGame();
+    C_HideConsoleFast();
 }
 
 //
-// GAMMACORRECTIONLEVEL cvar
+// exitmap cmd
 //
-extern int      st_palette;
-
-boolean C_GammaCondition(char *cmd, char *parm1, char *parm2)
+static void exitmap_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
-    return (!parm1[0] || C_LookupValueFromAlias(parm1, 4) >= 0);
+    G_ExitLevel();
+    C_HideConsoleFast();
 }
 
-void C_Gamma(char *cmd, char *parm1, char *parm2)
+//
+// give cmd
+//
+extern int      cardsfound;
+
+static dboolean give_cmd_func1(char *cmd, char *parm1, char *parm2, char *parm3)
 {
-    if (parm1[0])
-    {
-        int value = C_LookupValueFromAlias(parm1, 4);
+    char        *parm = M_StringJoin(parm1, parm2, parm3, NULL);
+    int         i;
 
-        if (value != -1)
-        {
-            gammaindex = value;
+    if (gamestate != GS_LEVEL)
+        return false;
 
-            I_SetPalette((byte *)W_CacheLumpName("PLAYPAL", PU_CACHE) + st_palette * 768);
+    if (!parm[0])
+        return true;
 
-            M_SaveDefaults();
+    if (M_StringCompare(parm, "all") || M_StringCompare(parm, "health") || M_StringCompare(parm, "weapons")
+        || M_StringCompare(parm, "ammo") || M_StringCompare(parm, "armor") || M_StringCompare(parm, "armour")
+        || M_StringCompare(parm, "keys"))
+        return true;
 
-            if (gammaindex == 10)
-                C_Output("Gamma correction is now off.");
-            else
-                C_Output("The gamma correction level is now %.2f.", gammalevels[gammaindex]);
-        }
-    }
+    for (i = 0; i < NUMMOBJTYPES; i++)
+        if ((mobjinfo[i].flags & MF_SPECIAL) && (M_StringCompare(parm, removespaces(mobjinfo[i].name1))
+            || (mobjinfo[i].name2[0] && M_StringCompare(parm, removespaces(mobjinfo[i].name2)))))
+            return true;
+
+    return false;
+}
+
+static void give_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    char        *parm = M_StringJoin(parm1, parm2, parm3, NULL);
+
+    if (!parm[0])
+        C_Output("%s %s", cmd, GIVECMDLONGFORMAT);
     else
     {
-        if (gammaindex == 10)
-            C_Output("Gamma correction is off.");
+        player_t    *player = &players[0];
+
+        if (M_StringCompare(parm, "all"))
+        {
+            P_GiveBackpack(player, false);
+            P_GiveMegaHealth(player);
+            P_GiveAllWeapons(player);
+            P_GiveFullAmmo(player);
+            P_GiveArmor(player, blue_armor_class);
+            P_GiveAllCards(player);
+            C_HideConsole();
+        }
+        else if (M_StringCompare(parm, "health"))
+        {
+            P_GiveMegaHealth(player);
+            C_HideConsole();
+        }
+        else if (M_StringCompare(parm, "weapons"))
+        {
+            P_GiveAllWeapons(player);
+            C_HideConsole();
+        }
+        else if (M_StringCompare(parm, "ammo"))
+        {
+            P_GiveFullAmmo(player);
+            C_HideConsole();
+        }
+        else if (M_StringCompare(parm, "armor") || M_StringCompare(parm, "armour"))
+        {
+            P_GiveArmor(player, blue_armor_class);
+            C_HideConsole();
+        }
+        else if (M_StringCompare(parm, "keys"))
+        {
+            P_GiveAllCards(player);
+            C_HideConsole();
+        }
         else
-            C_Output("The gamma correction level is %.2f.", gammalevels[gammaindex]);
+        {
+            int i;
+
+            for (i = 0; i < NUMMOBJTYPES; i++)
+                if ((mobjinfo[i].flags & MF_SPECIAL)
+                    && (M_StringCompare(parm, removespaces(mobjinfo[i].name1))
+                        || (mobjinfo[i].name2[0]
+                            && M_StringCompare(parm, removespaces(mobjinfo[i].name2)))))
+                {
+                    mobj_t *thing = P_SpawnMobj(player->mo->x, player->mo->y, player->mo->z, i);
+
+                    P_TouchSpecialThing(thing, player->mo);
+                    C_HideConsole();
+                    break;
+                }
+        }
     }
 }
 
 //
-// GOD cmd
+// god cmd
 //
-boolean C_GodCondition(char *cmd, char *parm1, char *parm2)
+static dboolean god_cmd_func1(char *cmd, char *parm1, char *parm2, char *parm3)
 {
-    return (gamestate == GS_LEVEL && players[displayplayer].playerstate == PST_LIVE);
+    return (gamestate == GS_LEVEL && players[0].playerstate == PST_LIVE);
 }
 
-void C_God(char *cmd, char *parm1, char *parm2)
+static void god_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
-    player_t      *player = &players[displayplayer];
+    player_t    *player = &players[0];
 
-    player->cheats ^= CF_GODMODE;
+    if (parm1[0])
+    {
+        int     value = C_LookupValueFromAlias(parm1, BOOLALIAS);
+
+        if (value == 0)
+            player->cheats &= ~CF_GODMODE;
+        else if (value == 1)
+            player->cheats |= CF_GODMODE;
+    }
+    else
+        player->cheats ^= CF_GODMODE;
+
     C_Output((player->cheats & CF_GODMODE) ? s_STSTR_GODON : s_STSTR_GODOFF);
 }
 
 //
-// GRAPHICDETAIL cvar
+// help cmd
 //
-boolean C_GraphicDetailCondition(char *cmd, char *parm1, char *parm2)
+static void help_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
-    return (!parm1[0] || C_LookupValueFromAlias(parm1, 3) >= 0);
-}
-
-void C_GraphicDetail(char *cmd, char *parm1, char *parm2)
-{
-    if (parm1[0])
-    {
-        int value = C_LookupValueFromAlias(parm1, 3);
-
-        if (value == 0 || value == 1)
-        {
-            graphicdetail = !!value;
-            M_SaveDefaults();
-            C_Output("The graphic detail is now %s.", parm1);
-        }
-    }
-    else
-        C_Output("The graphic detail is %s.", C_LookupAliasFromValue(graphicdetail, 3));
-}
-
-//
-// HELP cmd
-//
-void C_Help(char *cmd, char *parm1, char *parm2)
-{
-    C_HideConsole();
+    C_HideConsoleFast();
     M_ShowHelp();
 }
 
 //
-// HUD cvar
-//
-void C_Hud(char *cmd, char *parm1, char *parm2)
-{
-    if (widescreen || screensize == 8)
-        C_Boolean(cmd, parm1, "");
-}
-
-//
-// Integer cvars
-//
-boolean C_IntegerCondition(char *cmd, char *parm1, char *parm2)
-{
-    int i = 0;
-
-    if (!parm1[0])
-        return true;
-
-    while (consolecmds[i].name[0])
-    {
-        if (!strcasecmp(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
-            && (consolecmds[i].flags & CF_INTEGER))
-        {
-            int value = -1;
-            
-            sscanf(parm1, "%i", &value);
-
-            return (value >= consolecmds[i].minimumvalue && value <= consolecmds[i].maximumvalue);
-        }
-        ++i;
-    }
-    return false;
-}
-
-void C_Integer(char *cmd, char *parm1, char *parm2)
-{
-    int i = 0;
-
-    while (consolecmds[i].name[0])
-    {
-        if (!strcasecmp(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
-            && (consolecmds[i].flags & CF_INTEGER))
-        {
-            if (parm1[0] && !(consolecmds[i].flags & CF_READONLY))
-            {
-                int     value = C_LookupValueFromAlias(parm1, 1);
-
-                if (value < 0)
-                    sscanf(parm1, "%i", &value);
-
-                if (value >= 0)
-                {
-                    *(int *)consolecmds[i].variable = value;
-                    if (!(consolecmds[i].flags & CF_NOTSAVED))
-                        M_SaveDefaults();
-                    C_Output("%s is now %s.", cmd, parm1);
-                }
-            }
-            else
-            {
-                char    *alias = C_LookupAliasFromValue(*(int *)consolecmds[i].variable,
-                                 consolecmds[i].aliases);
-
-                C_Output("%s is %s.", cmd,
-                    (alias ? alias : commify(*(int *)consolecmds[i].variable)));
-            }
-        }
-        ++i;
-    }
-}
-
-//
-// KILL cmd
+// kill cmd
 //
 static int      killcmdtype = NUMMOBJTYPES;
 
-void A_Fall(mobj_t *actor);
-
-boolean C_KillCondition(char *cmd, char *parm1, char *parm2)
+static dboolean kill_cmd_func1(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     if (gamestate == GS_LEVEL)
     {
-        int i;
+        char    *parm = M_StringJoin(parm1, parm2, parm3, NULL);
+        int     i;
 
-        if (!parm1[0] || !strcasecmp(parm1, "all") || !strcasecmp(parm1, "monsters"))
+        if (!parm[0])
+            return true;
+
+        if (M_StringCompare(parm, "player") || M_StringCompare(parm, "me")
+            || (playername[0] && M_StringCompare(parm, playername)))
+            return !!players[0].mo->health;
+
+        if (M_StringCompare(parm, "monsters") || M_StringCompare(parm, "all"))
             return true;
 
         for (i = 0; i < NUMMOBJTYPES; i++)
-            if (!strcasecmp(parm1, mobjinfo[i].name1)
-                || !strcasecmp(parm1, mobjinfo[i].plural1)
-                || (mobjinfo[i].name2[0] && !strcasecmp(parm1, mobjinfo[i].name2))
-                || (mobjinfo[i].plural2[0] && !strcasecmp(parm1, mobjinfo[i].plural2)))
+            if (M_StringCompare(parm, removespaces(mobjinfo[i].name1))
+                || M_StringCompare(parm, removespaces(mobjinfo[i].plural1))
+                || (mobjinfo[i].name2[0] && M_StringCompare(parm, removespaces(mobjinfo[i].name2)))
+                || (mobjinfo[i].plural2[0] &&
+                    M_StringCompare(parm, removespaces(mobjinfo[i].plural2))))
             {
-                boolean     kill = true;
+                dboolean    kill = true;
 
                 killcmdtype = mobjinfo[i].doomednum;
                 if (gamemode != commercial)
@@ -2381,19 +1239,34 @@ boolean C_KillCondition(char *cmd, char *parm1, char *parm2)
     return false;
 }
 
-void C_Kill(char *cmd, char *parm1, char *parm2)
+void A_Fall(mobj_t *actor, player_t *player, pspdef_t *psp);
+
+static void kill_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
-    if (!parm1[0])
+    char        *parm = M_StringJoin(parm1, parm2, parm3, NULL);
+    static char buffer[1024];
+
+    if (!parm[0])
+        C_Output("%s %s", cmd, KILLCMDFORMAT);
+    else if (M_StringCompare(parm, "player") || M_StringCompare(parm, "me")
+        || (playername[0] && M_StringCompare(parm, playername)))
     {
-        P_KillMobj(NULL, players[displayplayer].mo);
-        C_Output("Player killed.");
+        players[0].health = 0;
+        P_KillMobj(players[0].mo, players[0].mo);
+        M_snprintf(buffer, sizeof(buffer), "%s killed %s", playername,
+            (M_StringCompare(playername, "you") ? "yourself" : "themselves"));
+        buffer[0] = toupper(buffer[0]);
+        C_Output("%s.", buffer);
+        players[0].message = buffer;
+        message_dontfuckwithme = true;
+        C_HideConsole();
     }
     else
     {
-        int             i, j;
-        int             kills = 0;
+        int     i;
+        int     kills = 0;
 
-        if (!strcasecmp(parm1, "all") || !strcasecmp(parm1, "monsters"))
+        if (M_StringCompare(parm, "all") || M_StringCompare(parm, "monsters"))
         {
             for (i = 0; i < numsectors; ++i)
             {
@@ -2403,74 +1276,129 @@ void C_Kill(char *cmd, char *parm1, char *parm2)
                 {
                     if (thing->health > 0)
                     {
-                        if (thing->type == MT_PAIN)
+                        mobjtype_t      type = thing->type;
+
+                        if (type == MT_PAIN)
                         {
-                            A_Fall(thing);
+                            A_Fall(thing, NULL, NULL);
                             P_SetMobjState(thing, S_PAIN_DIE6);
+                            players[0].killcount++;
+                            stat_monsterskilled = SafeAdd(stat_monsterskilled, 1);
                             kills++;
                         }
-                        else if (thing->flags & MF_COUNTKILL)
+                        else if ((thing->flags & MF_SHOOTABLE) && type != MT_PLAYER
+                            && type != MT_BARREL && type != MT_BOSSBRAIN)
                         {
                             P_DamageMobj(thing, NULL, NULL, thing->health);
+                            if (!(thing->flags & MF_NOBLOOD))
+                            {
+                                thing->momx += FRACUNIT * M_RandomInt(-1, 1);
+                                thing->momy += FRACUNIT * M_RandomInt(-1, 1);
+                            }
                             kills++;
                         }
                     }
                     thing = thing->snext;
                 }
             }
+
+            if (kills)
+            {
+                M_snprintf(buffer, sizeof(buffer), "%s monster%s killed", commify(kills),
+                    (kills == 1 ? "" : "s"));
+                C_Output("%s.", buffer);
+                players[0].message = buffer;
+                message_dontfuckwithme = true;
+                C_HideConsole();
+            }
+            else
+                C_Output("No monsters %s kill.", (!totalkills ? "to" : "left to"));
         }
         else
         {
-            int type = P_FindDoomedNum(killcmdtype);
+            mobjtype_t  type = P_FindDoomedNum(killcmdtype);
+            int         dead = 0;
 
-            for (j = 0; j < numsectors; ++j)
+            for (i = 0; i < numsectors; ++i)
             {
-                mobj_t      *thing = sectors[j].thinglist;
+                mobj_t      *thing = sectors[i].thinglist;
 
                 while (thing)
                 {
-                    if (thing->health > 0)
-                    {
-                        if (type == thing->type)
-                            if (type == MT_PAIN)
+                    if (type == thing->type)
+                        if (type == MT_PAIN)
+                        {
+                            if (thing->health > 0)
                             {
-                                A_Fall(thing);
+                                A_Fall(thing, NULL, NULL);
                                 P_SetMobjState(thing, S_PAIN_DIE6);
+                                players[0].killcount++;
+                                stat_monsterskilled = SafeAdd(stat_monsterskilled, 1);
                                 kills++;
                             }
-                            else if (thing->flags & MF_COUNTKILL)
-                            {
-                                P_DamageMobj(thing, NULL, NULL, thing->health);
-                                kills++;
-                            }
-                    }
-                    thing = thing->snext;
+                            else
+                                dead++;
+                        }
+                        else if ((thing->flags & MF_SHOOTABLE) && thing->health > 0)
+                        {
+                            P_DamageMobj(thing, NULL, NULL, thing->health);
+                            thing->momx += FRACUNIT * M_RandomInt(-1, 1);
+                            thing->momy += FRACUNIT * M_RandomInt(-1, 1);
+                            kills++;
+                        }
+                        else if (thing->flags & MF_CORPSE)
+                            dead++;
+                        thing = thing->snext;
                 }
             }
+
+            if (kills)
+            {
+                M_snprintf(buffer, sizeof(buffer), "%s %s %s", commify(kills),
+                    (kills == 1 ? mobjinfo[type].name1 : mobjinfo[type].plural1),
+                    (type == MT_BARREL ? "exploded" : "killed"));
+                C_Output("%s.", buffer);
+                players[0].message = buffer;
+                message_dontfuckwithme = true;
+                C_HideConsole();
+            }
+            else
+                C_Output("No %s %s %s.", mobjinfo[type].plural1, (dead ? "left to" : "to"),
+                    (type == MT_BARREL ? "explode" : "kill"));
         }
-        if (!kills)
-            C_Output("No monsters killed.");
-        else
-            C_Output("%i monster%s killed.", kills, (kills == 1 ? "" : "s"));
     }
 }
 
 //
-// MAP cmd
+// load cmd
+//
+static dboolean load_cmd_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    return (parm1[0] != '\0');
+}
+
+static void load_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    G_LoadGame(M_StringJoin(savegamefolder, parm1,
+        (M_StringEndsWith(parm1, ".save") ? "" : ".save"), NULL));
+}
+
+//
+// map cmd
 //
 static int      mapcmdepisode;
 static int      mapcmdmap;
 
-extern boolean  samelevel;
-extern int      selectedepisode;
-extern int      selectedskilllevel;
+extern dboolean samelevel;
 extern menu_t   EpiDef;
+extern int      idclevtics;
 
-boolean C_MapCondition(char *cmd, char *parm1, char *parm2)
+static dboolean map_cmd_func1(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     if (!parm1[0])
         return true;
 
+    parm1 = uppercase(parm1);
     mapcmdepisode = 0;
     mapcmdmap = 0;
 
@@ -2478,214 +1406,733 @@ boolean C_MapCondition(char *cmd, char *parm1, char *parm2)
     {
         if (BTSX)
         {
-            sscanf(uppercase(parm1), "E%iM0%i", &mapcmdepisode, &mapcmdmap);
-            if (!mapcmdmap)
-                sscanf(uppercase(parm1), "E%iM0%i", &mapcmdepisode, &mapcmdmap);
-            if (mapcmdmap && ((mapcmdepisode == 1 && BTSXE1) || (mapcmdepisode == 2 && BTSXE2)))
+            if (sscanf(parm1, "MAP%02iC", &mapcmdmap) == 1)
+                return (W_CheckNumForName(parm1) >= 0);
+            else
             {
-                M_snprintf(parm1, sizeof(parm1), "MAP%02i", mapcmdmap);
-                return (W_CheckMultipleLumps(parm1) == 2);
+                if (sscanf(parm1, "E%1iM0%1i", &mapcmdepisode, &mapcmdmap) != 2)
+                    sscanf(parm1, "E%1iM%2i", &mapcmdepisode, &mapcmdmap);
+                if (mapcmdmap && ((mapcmdepisode == 1 && BTSXE1) || (mapcmdepisode == 2 && BTSXE2)
+                    || (mapcmdepisode == 3 && BTSXE3)))
+                {
+                    static char     lump[6];
+
+                    M_snprintf(lump, sizeof(lump), "MAP%02i", mapcmdmap);
+                    return (W_CheckMultipleLumps(lump) == 2);
+                }
             }
         }
-        sscanf(uppercase(parm1), "MAP0%i", &mapcmdmap);
-        if (!mapcmdmap)
-            sscanf(uppercase(parm1), "MAP%i", &mapcmdmap);
-        if (!mapcmdmap)
+        if (sscanf(parm1, "MAP0%1i", &mapcmdmap) != 1)
+            if (sscanf(parm1, "MAP%2i", &mapcmdmap) != 1)
+                return false;
+        if (BTSX && W_CheckMultipleLumps(parm1) == 1)
             return false;
-        if (BTSX && (W_CheckMultipleLumps(parm1) == 1))
-            return false;
+        mapcmdepisode = 1;
         if (gamestate != GS_LEVEL && gamemission == pack_nerve)
             gamemission = doom2;
     }
-    else
-    {
-        sscanf(uppercase(parm1), "E%iM%i", &mapcmdepisode, &mapcmdmap);
-        if (!mapcmdepisode || !mapcmdmap)
-            return false;
-    }
+    else if (sscanf(parm1, "E%1iM%1i", &mapcmdepisode, &mapcmdmap) != 2)
+        return false;
 
     return (W_CheckNumForName(parm1) >= 0);
 }
 
-void C_Map(char *cmd, char *parm1, char *parm2)
+static void map_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
+    static char buffer[1024];
+
     if (!parm1[0])
     {
-        C_Output(MAPCMDFORMAT);
+        C_Output("%s %s", cmd, MAPCMDFORMAT);
         return;
     }
     samelevel = (gameepisode == mapcmdepisode && gamemap == mapcmdmap);
     gameepisode = mapcmdepisode;
     if (gamemission == doom && gameepisode <= 4)
     {
-        selectedepisode = gameepisode - 1;
-        EpiDef.lastOn = selectedepisode;
+        episode = gameepisode - 1;
+        EpiDef.lastOn = episode;
     }
     gamemap = mapcmdmap;
-    C_Output("Warping to %s...", uppercase(parm1));
+    M_snprintf(buffer, sizeof(buffer), (samelevel ? "Restarting %s..." : "Warping to %s..."),
+        uppercase(parm1));
+    C_Output(buffer);
+    players[0].message = buffer;
+    message_dontfuckwithme = true;
     if (gamestate == GS_LEVEL)
-        G_DeferredLoadLevel((gamestate == GS_LEVEL ? gameskill : selectedskilllevel), gameepisode,
-            gamemap);
-    else
-        G_DeferredInitNew((gamestate == GS_LEVEL ? gameskill : selectedskilllevel), gameepisode,
-            gamemap);
-}
-
-//
-// MUSICVOLUME and SFXVOLUME cvars
-//
-boolean C_VolumeCondition(char *cmd, char *parm1, char *parm2)
-{
-    int value = -1;
-
-    if (!parm1[0])
-        return true;
-    if (parm1[strlen(parm1) - 1] == '%')
-        parm1[strlen(parm1) - 1] = 0;
-
-    sscanf(parm1, "%i", &value);
-
-    return ((!strcasecmp(cmd, "musicvolume") && value >= MUSICVOLUME_MIN && value <= MUSICVOLUME_MAX)
-        || (!strcasecmp(cmd, "sfxvolume") && value >= SFXVOLUME_MIN && value <= SFXVOLUME_MAX));
-}
-
-void C_Volume(char *cmd, char *parm1, char *parm2)
-{
-    int value = 0;
-
-    if (parm1[0])
     {
-        if (parm1[strlen(parm1) - 1] == '%')
-            parm1[strlen(parm1) - 1] = 0;
-        sscanf(parm1, "%i", &value);
-
-        if (!strcasecmp(cmd, "musicvolume"))
-        {
-            musicvolume_percent = value;
-            musicVolume = (BETWEEN(MUSICVOLUME_MIN, musicvolume_percent,
-                MUSICVOLUME_MAX) * 15 + 50) / 100;
-            S_SetMusicVolume((int)(musicVolume * (127.0f / 15.0f)));
-            C_Output("The music volume is now %i%%.", value);
-        }
-        else
-        {
-            sfxvolume_percent = value;
-            sfxVolume = (BETWEEN(SFXVOLUME_MIN, sfxvolume_percent, SFXVOLUME_MAX) * 15 + 50) / 100;
-            S_SetSfxVolume((int)(sfxVolume * (127.0f / 15.0f)));
-            C_Output("The SFX volume is now %i%%.", value);
-        }
-
-        M_SaveDefaults();
+        idclevtics = MAPCHANGETICS;
+        C_HideConsole();
     }
     else
     {
-        if (!strcasecmp(cmd, "musicvolume"))
-            C_Output("The music volume is %i%%.", musicvolume_percent);
-        else
-            C_Output("The music volume is %i%%.", sfxvolume_percent);
+        G_DeferredInitNew(skilllevel, gameepisode, gamemap);
+        C_HideConsoleFast();
     }
 }
 
 //
-// NOCLIP cmd
+// maplist cmd
 //
-void C_NoClip(char *cmd, char *parm1, char *parm2)
-{
-    M_StringCopy(consolecheat, (gamemode == commercial ? "idclip" : "idspispopd"),
-        sizeof(consolecheat));
-}
+extern int      dehcount;
+extern char     **mapnames[];
+extern char     **mapnames2[];
+extern char     **mapnames2_bfg[];
+extern char     **mapnamesp[];
+extern char     **mapnamest[];
+extern char     **mapnamesn[];
 
-//
-// NOTARGET cmd
-//
-void C_NoTarget(char *cmd, char *parm1, char *parm2)
+static void maplist_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
-    players[displayplayer].cheats ^= CF_NOTARGET;
-    C_Output((players[displayplayer].cheats & CF_NOTARGET) ? s_STSTR_NTON : s_STSTR_NTOFF);
-}
+    int         i, j;
+    int         count = 0;
+    int         tabs[8] = { 40, 90, 350, 0, 0, 0, 0, 0 };
+    char        **maplist;
 
-//
-// QUIT cmd
-//
-void C_Quit(char *cmd, char *parm1, char *parm2)
-{
-    I_Quit(true);
-}
+    // initialize map list
+    maplist = malloc(numlumps * sizeof(char *));
+    for (i = 0; i < numlumps; ++i)
+        maplist[i] = malloc(256 * sizeof(char));
 
-//
-// SCREENSIZE cvar
-//
-void C_ScreenSize(char *cmd, char *parm1, char *parm2)
-{
-    if (parm1[0])
+    // search through lumps for maps
+    for (i = 0; i < numlumps; ++i)
     {
-        int     value = -1;
+        int             ep = 0;
+        int             map = 0;
+        char            lump[8];
+        char            wad[MAX_PATH];
+        dboolean        replaced;
+        dboolean        pwad;
 
-        sscanf(parm1, "%i", &value);
+        M_StringCopy(lump, uppercase(lumpinfo[i]->name), 8);
 
-        if (value >= SCREENSIZE_MIN && value <= SCREENSIZE_MAX)
+        if (gamemode == commercial)
         {
-            if (widescreen || (returntowidescreen && gamestate != GS_LEVEL))
-            {
-                if (value == SCREENSIZE_MAX)
-                    --value;
-                else if (value <= SCREENSIZE_MAX - 1)
-                {
-                    hud = true;
-                    ToggleWidescreen(false);
-                }
-            }
-            else
-            {
-                if (value >= SCREENSIZE_MAX - 1)
-                {
-                    if (gamestate != GS_LEVEL)
+            ep = 1;
+            sscanf(lump, "MAP0%1i", &map);
+            if (!map)
+                sscanf(lump, "MAP%2i", &map);
+        }
+        else
+            sscanf(lump, "E%1iM%1i", &ep, &map);
+
+        if (!ep-- || !map--)
+            continue;
+
+        M_StringCopy(wad, uppercase(leafname(lumpinfo[i]->wad_file->path)), MAX_PATH);
+        replaced = (W_CheckMultipleLumps(lump) > 1 && !chex && !FREEDOOM);
+        pwad = (lumpinfo[i]->wad_file->type == PWAD);
+
+        switch (gamemission)
+        {
+            case doom:
+                if (!replaced || pwad)
+                    M_snprintf(maplist[count++], 256, "%s\t%s\t%s", lump,
+                        (replaced && dehcount == 1 ? "-" : titlecase(*mapnames[ep * 9 + map])),
+                        (modifiedgame ? wad : ""));
+                break;
+            case doom2:
+                if (!M_StringCompare(wad, "nerve.wad") && (!replaced || pwad || nerve)
+                    && (pwad || !BTSX))
+                    if (BTSX)
                     {
-                        returntowidescreen = true;
-                        hud = true;
+                        if (strchr(*mapnames2[map], ':'))
+                            M_snprintf(maplist[count++], 256, "%s",
+                                M_StringReplace(*mapnames2[map], ": ", "\t"));
                     }
                     else
-                    {
-                        ToggleWidescreen(true);
-                        if (widescreen)
-                            value = SCREENSIZE_MAX - 1;
-                    }
-                }
-            }
-            screensize = value;
-            M_SaveDefaults();
-            R_SetViewSize(screensize);
-            C_Output("The screen size is now %i.", screensize);
+                        M_snprintf(maplist[count++], 256, "%s\t%s\t%s", lump, (replaced
+                            && dehcount == 1 && !nerve ? "-" : titlecase(bfgedition ?
+                                *mapnames2_bfg[map] : *mapnames2[map])), (modifiedgame && !nerve ?
+                                    wad : ""));
+                break;
+            case pack_nerve:
+                if (M_StringCompare(wad, "nerve.wad"))
+                    M_snprintf(maplist[count++], 256, "%s\t%s", lump, titlecase(*mapnamesn[map]));
+                break;
+            case pack_plut:
+                if (!replaced || pwad)
+                    M_snprintf(maplist[count++], 256, "%s\t%s\t%s", lump,
+                        (replaced && dehcount == 1 ? "-" : titlecase(*mapnamesp[map])),
+                        (modifiedgame ? wad : ""));
+                break;
+            case pack_tnt:
+                if (!replaced || pwad)
+                    M_snprintf(maplist[count++], 256, "%s\t%s\t%s", lump,
+                        (replaced && dehcount == 1 ? "-" : titlecase(*mapnamest[map])),
+                        (modifiedgame ? wad : ""));
+                break;
         }
     }
-    else
-        C_Output("The screen size is %i.", screensize);
+
+    // sort the map list
+    for (i = 0; i < count; i++)
+        for (j = i + 1; j < count; j++)
+        {
+            if (strcmp(maplist[i], maplist[j]) > 0)
+            {
+                char    temp[256];
+
+                strcpy(temp, maplist[i]);
+                strcpy(maplist[i], maplist[j]);
+                strcpy(maplist[j], temp);
+            }
+        }
+
+    // display the map list
+    for (i = 0; i < count; ++i)
+        C_TabbedOutput(tabs, "%i.\t%s", i + 1, maplist[i]);
+
+    free(maplist);
 }
 
 //
-// SHOWFPS cmd
+// mapstats cmd
 //
-void C_ShowFPS(char *cmd, char *parm1, char *parm2)
+#define AA      "Andre Arsenault"
+#define AD      "Andrew Dowswell"
+#define AM      "American McGee"
+#define BK      "Brian Kidby"
+#define CB      "Christopher Buteau"
+#define DC      "Dario Casali"
+#define DJ      "Dean Johnson"
+#define DO      "Drake O'Brien"
+#define JA      "John Anderson"
+#define JD      "Jim Dethlefsen"
+#define JL      "Jim Lowell"
+#define JM      "Jim Mentzer"
+#define JM2     "John Minadeo"
+#define JR      "John Romero"
+#define JS      "Jimmy Sieben"
+#define JW      "John Wakelin"
+#define MB      "Michael Bukowski"
+#define MC      "Milo Casali"
+#define MS      "Mark Snell"
+#define PT      "Paul Turnbull"
+#define RH      "Richard Heath"
+#define RM      "Russell Meakim"
+#define RP      "Robin Patenall"
+#define SG      "Shawn Green"
+#define SP      "Sandy Petersen"
+#define TH      "Tom Hall"
+#define TH2     "Ty Halderman"
+#define TM      "Tom Mustaine"
+#define TW      "Tim Willits"
+#define WW      "William D. Whitaker"
+#define AMSP    AM" and "SP
+#define BKTH2   BK" and "TH2
+#define DCMC    DC" and "MC
+#define DCTH2   DC" and "TH2
+#define JRTH    JR" and "TH
+#define JSTH2   JS" and "TH2
+#define MSJL    MS" and "JL
+#define RPJM2   RP" and "JM2
+#define SPTH    SP" and "TH
+
+char *authors[][6] =
+{
+    /* xy      doom   doom2  tnt    plut   nerve */
+    /* 00 */{ "",    "",    "",    DCMC,  "" },
+    /* 01 */{ "",    SP,    TM,    DCMC,  RM },
+    /* 02 */{ "",    AM,    JW,    DCMC,  RH },
+    /* 03 */{ "",    AM,    RPJM2, DCMC,  RM },
+    /* 04 */{ "",    AM,    TH2,   DCMC,  RM },
+    /* 05 */{ "",    AM,    JD,    DCMC,  RH },
+    /* 06 */{ "",    AM,    JSTH2, DCMC,  RH },
+    /* 07 */{ "",    AMSP,  AD,    DCMC,  RH },
+    /* 08 */{ "",    SP,    JM2,   DCMC,  RH },
+    /* 09 */{ "",    SP,    JSTH2, DCMC,  RM },
+    /* 10 */{ "",    SPTH,  TM,    DCMC,  "" },
+    /* 11 */{ JR,    JR,    DJ,    DCMC,  "" },
+    /* 12 */{ JR,    SP,    JL,    DCMC,  "" },
+    /* 13 */{ JR,    SP,    BKTH2, DCMC,  "" },
+    /* 14 */{ JRTH,  AM,    RP,    DCMC,  "" },
+    /* 15 */{ JR,    JR,    WW,    DCMC,  "" },
+    /* 16 */{ JR,    SP,    AA,    DCMC,  "" },
+    /* 17 */{ JR,    JR,    TM,    DCMC,  "" },
+    /* 18 */{ SPTH,  SP,    DCTH2, DCMC,  "" },
+    /* 19 */{ JR,    SP,    TH2,   DCMC,  "" },
+    /* 20 */{ "",    JR,    DO,    DCMC,  "" },
+    /* 21 */{ SPTH,  SP,    DO,    DCMC,  "" },
+    /* 22 */{ SPTH,  AM,    CB,    DCMC,  "" },
+    /* 23 */{ SPTH,  SP,    PT,    DCMC,  "" },
+    /* 24 */{ SPTH,  SP,    DJ,    DCMC,  "" },
+    /* 25 */{ SP,    SG,    JM,    DCMC,  "" },
+    /* 26 */{ SP,    JR,    MSJL,  DCMC,  "" },
+    /* 27 */{ SPTH,  SP,    DO,    DCMC,  "" },
+    /* 28 */{ SP,    SP,    MC,    DCMC,  "" },
+    /* 29 */{ SP,    JR,    JS,    DCMC,  "" },
+    /* 30 */{ "",    SP,    JS,    DCMC,  "" },
+    /* 31 */{ "",    SP,    DC,    DCMC,  "" },
+    /* 32 */{ "",    SP,    DC,    DCMC,  "" },
+    /* 33 */{ SPTH,  MB,    "",    "",    "" },
+    /* 34 */{ "",    "",    "",    "",    "" },
+    /* 35 */{ "",    "",    "",    "",    "" },
+    /* 36 */{ "",    "",    "",    "",    "" },
+    /* 37 */{ "",    "",    "",    "",    "" },
+    /* 38 */{ "",    "",    "",    "",    "" },
+    /* 39 */{ "",    "",    "",    "",    "" },
+    /* 40 */{ "",    "",    "",    "",    "" },
+    /* 41 */{ AM,    "",    "",    "",    "" },
+    /* 42 */{ JR,    "",    "",    "",    "" },
+    /* 43 */{ SG,    "",    "",    "",    "" },
+    /* 44 */{ AM,    "",    "",    "",    "" },
+    /* 45 */{ TW,    "",    "",    "",    "" },
+    /* 46 */{ JR,    "",    "",    "",    "" },
+    /* 47 */{ JA,    "",    "",    "",    "" },
+    /* 48 */{ SG,    "",    "",    "",    "" },
+    /* 49 */{ TW,    "",    "",    "",    "" }
+};
+
+static void mapstats_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    int tabs[8] = { 120, 240, 0, 0, 0, 0, 0, 0 };
+
+    C_TabbedOutput(tabs, "Title\t%s", mapnumandtitle);
+
+    {
+        int     i = (gamemission == doom ? gameepisode * 10 : 0) + gamemap;
+        char    *author = P_GetMapAuthor(i);
+
+        if (author[0])
+            C_TabbedOutput(tabs, "Author\t%s", author);
+        else if (canmodify && authors[i][gamemission][0])
+            C_TabbedOutput(tabs, "Author\t%s", authors[i][gamemission]);
+    }
+
+    {
+        static char     lumpname[6];
+        int             i;
+
+        if (gamemode == commercial)
+            M_snprintf(lumpname, sizeof(lumpname), "MAP%02i", startmap);
+        else
+            M_snprintf(lumpname, sizeof(lumpname), "E%iM%i", startepisode, startmap);
+        i = W_CheckNumForName(lumpname);
+        C_TabbedOutput(tabs, "%s\t%s", (lumpinfo[i]->wad_file->type == IWAD ? "IWAD" : "PWAD"),
+            uppercase(leafname(lumpinfo[i]->wad_file->path)));
+    }
+
+    C_TabbedOutput(tabs, "Things\t%s\t%s", commify(numthings), convertsize(sizethings));
+
+    C_TabbedOutput(tabs, "Lines\t%s\t%s", commify(numlines), convertsize(sizelines));
+
+    C_TabbedOutput(tabs, "Line specials\t%s-compatible",
+        (boomlinespecials ? "~BOOM~" : "Vanilla"));
+
+    C_TabbedOutput(tabs, "Sides\t%s\t%s", commify(numsides), convertsize(sizesides));
+
+    C_TabbedOutput(tabs, "Vertices\t%s\t%s", commify(numvertexes), convertsize(sizevertexes));
+
+    C_TabbedOutput(tabs, "Segments\t%s\t%s", commify(numsegs), convertsize(sizesegs));
+
+    C_TabbedOutput(tabs, "Subsectors\t%s\t%s", commify(numsubsectors),
+        convertsize(sizesubsectors));
+
+    C_TabbedOutput(tabs, "Nodes\t%s\t%s", commify(numnodes), convertsize(sizenodes));
+
+    C_TabbedOutput(tabs, "Node format\t%s", (mapformat == DOOMBSP ? "Regular nodes" :
+        (mapformat == DEEPBSP ? "DeePBSP v4 extended nodes" :
+            "ZDoom uncompressed extended nodes")));
+
+    C_TabbedOutput(tabs, "Sectors\t%s\t%s", commify(numsectors), convertsize(sizesectors));
+
+    if (blockmaprecreated)
+        C_TabbedOutput(tabs, "Blockmap\tRecreated");
+
+    {
+        int     i;
+        int     min_x = INT_MAX;
+        int     max_x = INT_MIN;
+        int     min_y = INT_MAX;
+        int     max_y = INT_MIN;
+
+        for (i = 0; i < numvertexes; ++i)
+        {
+            fixed_t     x = vertexes[i].x;
+            fixed_t     y = vertexes[i].y;
+
+            if (x < min_x)
+                min_x = x;
+            else if (x > max_x)
+                max_x = x;
+            if (y < min_y)
+                min_y = y;
+            else if (y > max_y)
+                max_y = y;
+        }
+        C_TabbedOutput(tabs, "Dimensions\t%sx%s",
+            commify((max_x - min_x) >> FRACBITS), commify((max_y - min_y) >> FRACBITS));
+    }
+
+    if (mus_playing && !nomusic)
+    {
+        int     lumps = W_CheckMultipleLumps(mus_playing->name);
+
+        if (((gamemode == commercial || gameepisode > 1) && lumps == 1)
+            || (gamemode != commercial && gameepisode == 1 && lumps == 2))
+            C_TabbedOutput(tabs, "Music title\t%s", mus_playing->title);
+    }
+}
+
+//
+// noclip cmd
+//
+static void noclip_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    player_t    *player = &players[0];
+
+    if (parm1[0])
+    {
+        int     value = C_LookupValueFromAlias(parm1, 1);
+
+        if (value == 0)
+            player->cheats &= ~CF_NOCLIP;
+        else if (value == 1)
+            player->cheats |= CF_NOCLIP;
+    }
+    else
+        player->cheats ^= CF_NOCLIP;
+
+    HU_PlayerMessage(((player->cheats & CF_NOCLIP) ? s_STSTR_NCON : s_STSTR_NCOFF), false);
+}
+
+//
+// nomonsters cmd
+//
+static void nomonsters_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     if (parm1[0])
     {
         int     value = C_LookupValueFromAlias(parm1, 1);
 
-        if (value == 0 || value == 1)
-            showfps = !!value;
+        if (value == 0)
+            nomonsters = false;
+        else if (value == 1)
+            nomonsters = true;
     }
     else
-        showfps = !showfps;
+        nomonsters = !nomonsters;
+
+    HU_PlayerMessage((nomonsters ? s_STSTR_NMON : s_STSTR_NMOFF), false);
 }
 
 //
-// SPAWN cmd
+// notarget cmd
+//
+static void notarget_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    player_t    *player = &players[0];
+
+    if (parm1[0])
+    {
+        int     value = C_LookupValueFromAlias(parm1, 1);
+
+        if (value == 0)
+            player->cheats &= ~CF_NOTARGET;
+        else if (value == 1)
+            player->cheats |= CF_NOTARGET;
+    }
+    else
+        player->cheats ^= CF_NOTARGET;
+
+    if (player->cheats & CF_NOTARGET)
+    {
+        int     i;
+
+        for (i = 0; i < numsectors; ++i)
+        {
+            mobj_t   *mo = sectors[i].thinglist;
+
+            while (mo)
+            {
+                if (mo->target && mo->target->player)
+                    P_SetTarget(&mo->target, NULL);
+                if (mo->tracer && mo->tracer->player)
+                    P_SetTarget(&mo->tracer, NULL);
+                if (mo->lastenemy && mo->lastenemy->player)
+                    P_SetTarget(&mo->lastenemy, NULL);
+                mo = mo->snext;
+            }
+
+            P_SetTarget(&sectors[i].soundtarget, NULL);
+        }
+        HU_PlayerMessage(s_STSTR_NTON, false);
+    }
+    else
+        HU_PlayerMessage(s_STSTR_NTOFF, false);
+}
+
+static void C_PlayerStats_Game(void)
+{
+    int         tabs[8] = { 160, 270, 0, 0, 0, 0, 0, 0 };
+    int         time1 = leveltime / TICRATE;
+    int         time2 = stat_time / TICRATE;
+    player_t    *player = &players[0];
+
+    C_TabbedOutput(tabs, "\t~Current Map~\t~Total~");
+
+    if ((players[0].cheats & CF_ALLMAP) || (players[0].cheats & CF_ALLMAP_THINGS))
+        C_TabbedOutput(tabs, "Map revealed\t100%%\t-");
+    else
+    {
+        int     i = 0;
+        int     totallines = numlines;
+        int     totallinesmapped = 0;
+
+        while (i < numlines)
+            totallines -= !!(lines[i++].flags & ML_DONTDRAW);
+        i = 0;
+        while (i < totallines)
+            totallinesmapped += !!(lines[i++].flags & ML_MAPPED);
+        C_TabbedOutput(tabs, "Map revealed\t%s%%\t-",
+            striptrailingzero(totallinesmapped * 100.0f / totallines, 1));
+    }
+
+    C_TabbedOutput(tabs, "Monsters killed\t%s of %s (%i%%)\t%s",
+        commify(player->killcount), commify(totalkills),
+        (totalkills ? player->killcount * 100 / totalkills : 0), commify(stat_monsterskilled));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_BABY].plural1),
+            commify(player->mobjcount[MT_BABY]), commify(stat_monsterskilled_arachnotrons));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_VILE].plural1),
+            commify(player->mobjcount[MT_VILE]), commify(stat_monsterskilled_archviles));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_BRUISER].plural1),
+        commify(player->mobjcount[MT_BRUISER]), commify(stat_monsterskilled_baronsofhell));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_HEAD].plural1),
+        commify(player->mobjcount[MT_HEAD]), commify(stat_monsterskilled_cacodemons));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_CYBORG].plural1),
+        commify(player->mobjcount[MT_CYBORG]), commify(stat_monsterskilled_cyberdemons));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_SERGEANT].plural1),
+        commify(player->mobjcount[MT_SERGEANT]), commify(stat_monsterskilled_demons));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_CHAINGUY].plural1),
+            commify(player->mobjcount[MT_CHAINGUY]),
+            commify(stat_monsterskilled_heavyweapondudes));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_KNIGHT].plural1),
+            commify(player->mobjcount[MT_KNIGHT]), commify(stat_monsterskilled_hellknights));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_TROOP].plural1),
+        commify(player->mobjcount[MT_TROOP]), commify(stat_monsterskilled_imps));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_SKULL].plural1),
+        commify(player->mobjcount[MT_SKULL]), commify(stat_monsterskilled_lostsouls));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_FATSO].plural1),
+            commify(player->mobjcount[MT_FATSO]), commify(stat_monsterskilled_mancubi));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_PAIN].plural1),
+            commify(player->mobjcount[MT_PAIN]), commify(stat_monsterskilled_painelementals));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_UNDEAD].plural1),
+        commify(player->mobjcount[MT_UNDEAD]), commify(stat_monsterskilled_revenants));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_SHOTGUY].plural1),
+        commify(player->mobjcount[MT_SHOTGUY]), commify(stat_monsterskilled_shotgunguys));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_SHADOWS].plural1),
+        commify(player->mobjcount[MT_SHADOWS]), commify(stat_monsterskilled_spectres));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_SPIDER].plural1),
+        commify(player->mobjcount[MT_SPIDER]), commify(stat_monsterskilled_spidermasterminds));
+
+    C_TabbedOutput(tabs, "   %s\t%s\t%s", titlecase(mobjinfo[MT_POSSESSED].plural1),
+        commify(player->mobjcount[MT_POSSESSED]), commify(stat_monsterskilled_zombiemen));
+
+    C_TabbedOutput(tabs, "Items picked up\t%s of %s (%i%%)\t%s",
+        commify(player->itemcount), commify(totalitems),
+        (totalitems ? player->itemcount * 100 / totalitems : 0), commify(stat_itemspickedup));
+
+    C_TabbedOutput(tabs, "Secrets revealed\t%s of %s (%i%%)\t%s",
+        commify(player->secretcount), commify(totalsecret),
+        (totalsecret ? player->secretcount * 100 / totalsecret : 0),
+        commify(stat_secretsrevealed));
+
+    C_TabbedOutput(tabs, "Time\t%02i:%02i:%02i\t%02i:%02i:%02i",
+        time1 / 3600, (time1 % 3600) / 60, (time1 % 3600) % 60,
+        time2 / 3600, (time2 % 3600) / 60, (time2 % 3600) % 60);
+
+    C_TabbedOutput(tabs, "Damage inflicted\t%s\t%s",
+        commify(player->damageinflicted), commify(stat_damageinflicted));
+
+    C_TabbedOutput(tabs, "Damage received\t%s\t%s",
+        commify(player->damagereceived), commify(stat_damagereceived));
+
+    C_TabbedOutput(tabs, "Deaths\t%s\t%s", commify(player->deaths), commify(stat_deaths));
+
+    C_TabbedOutput(tabs, "Cheated\t%s\t%s",
+        commify(player->cheated), commify(stat_cheated));
+
+    C_TabbedOutput(tabs, "Shots fired\t%s\t%s",
+        commify(player->shotsfired), commify(stat_shotsfired));
+
+    C_TabbedOutput(tabs, "Shots hit\t%s\t%s",
+        commify(player->shotshit), commify(stat_shotshit));
+
+    C_TabbedOutput(tabs, "Weapon accuracy\t%s%%\t%s%%",
+        (player->shotsfired ? striptrailingzero(player->shotshit * 100.0f / player->shotsfired,
+        1) : "0"), (stat_shotsfired ? striptrailingzero(stat_shotshit * 100.0f / stat_shotsfired,
+        1) : "0"));
+}
+
+static void C_PlayerStats_NoGame(void)
+{
+    int tabs[8] = { 160, 0, 0, 0, 0, 0, 0, 0 };
+    int time2 = stat_time / TICRATE;
+
+    C_TabbedOutput(tabs, "\t~Total~");
+
+    C_TabbedOutput(tabs, "Monsters killed\t%s", commify(stat_monsterskilled));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_BABY].plural1),
+            commify(stat_monsterskilled_arachnotrons));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_VILE].plural1),
+            commify(stat_monsterskilled_archviles));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_BRUISER].plural1),
+        commify(stat_monsterskilled_baronsofhell));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_HEAD].plural1),
+        commify(stat_monsterskilled_cacodemons));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_CYBORG].plural1),
+        commify(stat_monsterskilled_cyberdemons));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_SERGEANT].plural1),
+        commify(stat_monsterskilled_demons));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_CHAINGUY].plural1),
+            commify(stat_monsterskilled_heavyweapondudes));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_KNIGHT].plural1),
+            commify(stat_monsterskilled_hellknights));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_TROOP].plural1),
+        commify(stat_monsterskilled_imps));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_SKULL].plural1),
+        commify(stat_monsterskilled_lostsouls));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_FATSO].plural1),
+            commify(stat_monsterskilled_mancubi));
+
+    if (gamemode == commercial)
+        C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_PAIN].plural1),
+            commify(stat_monsterskilled_painelementals));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_UNDEAD].plural1),
+        commify(stat_monsterskilled_revenants));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_SHOTGUY].plural1),
+        commify(stat_monsterskilled_shotgunguys));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_SHADOWS].plural1),
+        commify(stat_monsterskilled_spectres));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_SPIDER].plural1),
+        commify(stat_monsterskilled_spidermasterminds));
+
+    C_TabbedOutput(tabs, "   %s\t%s", titlecase(mobjinfo[MT_POSSESSED].plural1),
+        commify(stat_monsterskilled_zombiemen));
+
+    C_TabbedOutput(tabs, "Items picked up\t%s", commify(stat_itemspickedup));
+
+    C_TabbedOutput(tabs, "Secrets revealed\t%s", commify(stat_secretsrevealed));
+
+    C_TabbedOutput(tabs, "Time\t%02i:%02i:%02i",
+        time2 / 3600, (time2 % 3600) / 60, (time2 % 3600) % 60);
+
+    C_TabbedOutput(tabs, "Damage inflicted\t%s", commify(stat_damageinflicted));
+
+    C_TabbedOutput(tabs, "Damage received\t%s", commify(stat_damagereceived));
+
+    C_TabbedOutput(tabs, "Deaths\t%s", commify(stat_deaths));
+
+    C_TabbedOutput(tabs, "Cheated\t%s", commify(stat_cheated));
+
+    C_TabbedOutput(tabs, "Shots fired\t%s", commify(stat_shotsfired));
+
+    C_TabbedOutput(tabs, "Shots hit\t%s", commify(stat_shotshit));
+
+    C_TabbedOutput(tabs, "Weapon accuracy\t%s%%",
+        (stat_shotsfired ? striptrailingzero(stat_shotshit * 100.0f / stat_shotsfired, 1) : "0"));
+}
+
+//
+// playerstats cmd
+//
+static void playerstats_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (gamestate == GS_LEVEL)
+        C_PlayerStats_Game();
+    else
+        C_PlayerStats_NoGame();
+}
+
+//
+// quit cmd
+//
+static void quit_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    I_Quit(true);
+}
+
+//
+// resurrect cmd
+//
+static dboolean resurrect_cmd_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    return (gamestate == GS_LEVEL && players[0].playerstate == PST_DEAD);
+}
+
+static void resurrect_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    P_ResurrectPlayer(&players[0]);
+    C_HideConsole();
+}
+
+//
+// save cmd
+//
+static dboolean save_cmd_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    return (parm1[0] != '\0' && gamestate == GS_LEVEL && players[0].playerstate == PST_LIVE);
+}
+
+static void save_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    G_SaveGame(-1, "", M_StringJoin(savegamefolder, parm1,
+        (M_StringEndsWith(parm1, ".save") ? "" : ".save"), NULL));
+}
+
+//
+// spawn cmd
 //
 static int      spawntype = NUMMOBJTYPES;
 
-boolean C_SpawnCondition(char *cmd, char *parm1, char *parm2)
+static dboolean spawn_cmd_func1(char *cmd, char *parm1, char *parm2, char *parm3)
 {
-    if (!parm1[0])
+    char        *parm = M_StringJoin(parm1, parm2, parm3, NULL);
+
+    if (!parm[0])
         return true;
 
     if (gamestate == GS_LEVEL)
@@ -2693,10 +2140,10 @@ boolean C_SpawnCondition(char *cmd, char *parm1, char *parm2)
         int i;
 
         for (i = 0; i < NUMMOBJTYPES; i++)
-            if (!strcasecmp(parm1, mobjinfo[i].name1)
-                || (mobjinfo[i].name2[0] && !strcasecmp(parm1, mobjinfo[i].name2)))
+            if (M_StringCompare(parm, removespaces(mobjinfo[i].name1))
+                || (mobjinfo[i].name2[0] && M_StringCompare(parm, removespaces(mobjinfo[i].name2))))
             {
-                boolean     spawn = true;
+                dboolean    spawn = true;
 
                 spawntype = mobjinfo[i].doomednum;
                 if (gamemode != commercial)
@@ -2725,47 +2172,851 @@ boolean C_SpawnCondition(char *cmd, char *parm1, char *parm2)
     return false;
 }
 
-void C_Spawn(char *cmd, char *parm1, char *parm2)
+static void spawn_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
-    if (!parm1[0])
+    char        *parm = M_StringJoin(parm1, parm2, parm3, NULL);
+
+    if (!parm[0])
     {
-        C_Output(SPAWNCMDFORMAT);
+        C_Output("%s %s", cmd, SPAWNCMDFORMAT);
         return;
     }
     else
     {
-        mobj_t      *player = players[displayplayer].mo;
+        mobj_t      *player = players[0].mo;
         fixed_t     x = player->x;
         fixed_t     y = player->y;
         angle_t     angle = player->angle >> ANGLETOFINESHIFT;
         mobj_t      *thing = P_SpawnMobj(x + 100 * finecosine[angle], y + 100 * finesine[angle],
             ONFLOORZ, P_FindDoomedNum(spawntype));
+        int         flags = thing->flags;
 
         thing->angle = R_PointToAngle2(thing->x, thing->y, x, y);
+
+        if (flags & MF_COUNTKILL)
+            ++totalkills;
+        else if (flags & MF_COUNTITEM)
+            ++totalitems;
     }
 }
 
 //
-// String cvars
+// thinglist cmd
 //
-void C_String(char *cmd, char *parm1, char *parm2)
+static void thinglist_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    thinker_t   *th;
+    int         count = 0;
+    int         tabs[8] = { 45, 250, 0, 0, 0, 0, 0, 0 };
+
+    for (th = thinkerclasscap[th_mobj].cnext; th != &thinkerclasscap[th_mobj]; th = th->cnext)
+    {
+        mobj_t      *mobj = (mobj_t *)th;
+
+        C_TabbedOutput(tabs, "%i.\t%s\t(%i,%i,%i)", ++count, mobjinfo[mobj->type].name1,
+            mobj->x >> FRACBITS, mobj->y >> FRACBITS, mobj->z >> FRACBITS);
+    }
+}
+
+//
+// unbind cmd
+//
+static void unbind_cmd_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    C_Bind(cmd, parm1, "none", "");
+}
+
+//
+// bool cvars
+//
+static dboolean bool_cvars_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    return (!parm1[0] || C_LookupValueFromAlias(parm1, BOOLALIAS) >= 0);
+}
+
+static void bool_cvars_func2(char *cmd, char *parm1, char *parm2, char *parm3)
 {
     int i = 0;
 
     while (consolecmds[i].name[0])
     {
-        if (!strcasecmp(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
-            && (consolecmds[i].flags & CF_STRING))
+        if (M_StringCompare(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
+            && (consolecmds[i].flags & CF_BOOLEAN))
         {
             if (parm1[0] && !(consolecmds[i].flags & CF_READONLY))
             {
-                *(char **)consolecmds[i].variable = strdup(parm1);
-                M_SaveDefaults();
-                C_Output("%s is now \"%s\".", cmd, parm1);
+                int     value = C_LookupValueFromAlias(parm1, BOOLALIAS);
+
+                if (value == 0 || value == 1)
+                {
+                    *(dboolean *)consolecmds[i].variable = !!value;
+                    M_SaveCVARs();
+                }
             }
             else
-                C_Output("%s is \"%s\".", cmd, *(char **)consolecmds[i].variable);
+                C_Output(C_LookupAliasFromValue(*(dboolean *)consolecmds[i].variable, BOOLALIAS));
         }
         ++i;
     }
+}
+
+//
+// float cvars
+//
+static dboolean float_cvars_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    int i = 0;
+
+    if (!parm1[0])
+        return true;
+
+    while (consolecmds[i].name[0])
+    {
+        if (M_StringCompare(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
+            && (consolecmds[i].flags & CF_FLOAT))
+        {
+            float       value = -1.0f;
+
+            sscanf(parm1, "%10f", &value);
+
+            return (value >= 0.0f);
+        }
+        ++i;
+    }
+    return false;
+}
+
+static void float_cvars_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    int i = 0;
+
+    while (consolecmds[i].name[0])
+    {
+        if (M_StringCompare(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
+            && (consolecmds[i].flags & CF_FLOAT))
+        {
+            if (parm1[0] && !(consolecmds[i].flags & CF_READONLY))
+            {
+                float     value = -1.0f;
+
+                sscanf(parm1, "%10f", &value);
+
+                if (value >= 0.0f)
+                {
+                    *(float *)consolecmds[i].variable = value;
+                    M_SaveCVARs();
+                }
+            }
+            else
+                C_Output(striptrailingzero(*(float *)consolecmds[i].variable, 2));
+        }
+        ++i;
+    }
+}
+
+//
+// int cvars
+//
+static dboolean int_cvars_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    int i = 0;
+
+    if (!parm1[0])
+        return true;
+
+    while (consolecmds[i].name[0])
+    {
+        if (M_StringCompare(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
+            && (consolecmds[i].flags & CF_INTEGER))
+        {
+            int value = -1;
+
+            sscanf(parm1, "%10i", &value);
+
+            return (value >= consolecmds[i].minimumvalue && value <= consolecmds[i].maximumvalue);
+        }
+        ++i;
+    }
+    return false;
+}
+
+static void int_cvars_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    int i = 0;
+
+    while (consolecmds[i].name[0])
+    {
+        if (M_StringCompare(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
+            && (consolecmds[i].flags & CF_INTEGER))
+        {
+            if (parm1[0] && !(consolecmds[i].flags & CF_READONLY))
+            {
+                int     value = C_LookupValueFromAlias(parm1, consolecmds[i].aliases);
+
+                if (value < 0)
+                    sscanf(parm1, "%10i", &value);
+
+                if (value >= 0)
+                {
+                    *(int *)consolecmds[i].variable = value;
+                    M_SaveCVARs();
+                }
+            }
+            else if (consolecmds[i].flags & CF_PERCENT)
+                C_Output("%i%%", *(int *)consolecmds[i].variable);
+            else
+                C_Output(C_LookupAliasFromValue(*(int *)consolecmds[i].variable,
+                    consolecmds[i].aliases));
+        }
+        ++i;
+    }
+}
+
+//
+// str cvars
+//
+static void str_cvars_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    int i = 0;
+
+    while (consolecmds[i].name[0])
+    {
+        if (M_StringCompare(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
+            && (consolecmds[i].flags & CF_STRING))
+        {
+            if (M_StringCompare(parm1, EMPTYVALUE))
+            {
+                *(char **)consolecmds[i].variable = "";
+                M_SaveCVARs();
+            }
+            else if (parm1[0])
+            {
+                *(char **)consolecmds[i].variable = strdup(parm1);
+                M_SaveCVARs();
+            }
+            else
+                C_Output("\"%s\"", *(char **)consolecmds[i].variable);
+            break;
+        }
+        ++i;
+    }
+}
+
+//
+// time cvars
+//
+static void time_cvars_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    int i = 0;
+
+    while (consolecmds[i].name[0])
+    {
+        if (M_StringCompare(cmd, consolecmds[i].name) && consolecmds[i].type == CT_CVAR
+            && (consolecmds[i].flags & CF_TIME))
+        {
+            int tics = *(int *)consolecmds[i].variable / TICRATE;
+
+            C_Output("%02i:%02i:%02i", tics / 3600, (tics % 3600) / 60, (tics % 3600) % 60);
+        }
+        ++i;
+    }
+}
+
+//
+// alwaysrun cvar
+//
+static void alwaysrun_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    bool_cvars_func2(cmd, parm1, "", "");
+    I_InitKeyboard();
+}
+
+//
+// am_external cvar
+//
+static void am_external_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    dboolean    am_external_old = am_external;
+
+    bool_cvars_func2(cmd, parm1, "", "");
+    if (am_external != am_external_old)
+    {
+        if (am_external)
+        {
+            I_CreateExternalAutomap(false);
+            if (gamestate == GS_LEVEL)
+                AM_Start(false);
+        }
+        else
+        {
+            I_DestroyExternalAutomap();
+            if (gamestate == GS_LEVEL)
+                AM_Stop();
+        }
+    }
+}
+
+//
+// gp_deadzone_left and gp_deadzone_right cvars
+//
+static dboolean gp_deadzone_cvars_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    float value;
+
+    if (!parm1[0])
+        return true;
+    if (parm1[strlen(parm1) - 1] == '%')
+        parm1[strlen(parm1) - 1] = 0;
+    return sscanf(parm1, "%10f", &value);
+}
+
+static void gp_deadzone_cvars_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        float   value = 0;
+
+        if (parm1[strlen(parm1) - 1] == '%')
+            parm1[strlen(parm1) - 1] = 0;
+        sscanf(parm1, "%10f", &value);
+
+        if (M_StringCompare(cmd, stringize(gp_deadzone_left)))
+        {
+            gp_deadzone_left = BETWEENF(gp_deadzone_left_min, value, gp_deadzone_left_max);
+            gamepadleftdeadzone = (int)(gp_deadzone_left * (float)SHRT_MAX / 100.0f);
+        }
+        else
+        {
+            gp_deadzone_right = BETWEENF(gp_deadzone_right_min, value, gp_deadzone_right_max);
+            gamepadrightdeadzone = (int)(gp_deadzone_right * (float)SHRT_MAX / 100.0f);
+        }
+        M_SaveCVARs();
+    }
+    else
+        C_Output("%s%%", striptrailingzero((M_StringCompare(cmd, stringize(gp_deadzone_left)) ?
+            gp_deadzone_left : gp_deadzone_right), 1));
+}
+
+//
+// playername cvar
+//
+static void playername_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        if (!M_StringCompare(parm1, EMPTYVALUE))
+        {
+            playername = strdup(parm1);
+            M_SaveCVARs();
+        }
+    }
+    else
+        C_Output("\"%s\"", playername);
+}
+
+//
+// r_blood cvar
+//
+static dboolean r_blood_cvar_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    return (!parm1[0] || C_LookupValueFromAlias(parm1, BLOODALIAS) >= 0);
+}
+
+void (*P_BloodSplatSpawner)(fixed_t, fixed_t, int, int, mobj_t *);
+
+static void r_blood_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        int     value = C_LookupValueFromAlias(parm1, BLOODALIAS);
+
+        if (value >= 0)
+        {
+            r_blood = value;
+            P_BloodSplatSpawner = (r_blood == noblood ? P_NullBloodSplatSpawner :
+                (r_bloodsplats_max == r_bloodsplats_max_max ? P_SpawnBloodSplat :
+                P_SpawnBloodSplat2));
+            M_SaveCVARs();
+        }
+    }
+    else
+        C_Output(C_LookupAliasFromValue(r_blood, BLOODALIAS));
+}
+
+//
+// r_bloodsplats_max cvar
+//
+static dboolean r_bloodsplats_max_cvar_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    int value = 0;
+
+    return (!parm1[0] || C_LookupValueFromAlias(parm1, SPLATALIAS) >= 0
+        || sscanf(parm1, "%10i", &value));
+}
+
+static void r_bloodsplats_max_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        int     value = C_LookupValueFromAlias(parm1, SPLATALIAS);
+
+        if (value < 0)
+            sscanf(parm1, "%10i", &value);
+        if (value >= 0)
+        {
+            r_bloodsplats_max = value;
+            M_SaveCVARs();
+
+            if (!r_bloodsplats_max)
+                P_BloodSplatSpawner = P_NullBloodSplatSpawner;
+            else if (r_bloodsplats_max == r_bloodsplats_max_max)
+                P_BloodSplatSpawner = P_SpawnBloodSplat;
+            else
+                P_BloodSplatSpawner = P_SpawnBloodSplat2;
+        }
+    }
+    else
+        C_Output(C_LookupAliasFromValue(r_bloodsplats_max, SPLATALIAS));
+}
+
+//
+// r_detail cvar
+//
+static dboolean r_detail_cvar_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    return (!parm1[0] || C_LookupValueFromAlias(parm1, DETAILALIAS) >= 0);
+}
+
+static void r_detail_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        int value = C_LookupValueFromAlias(parm1, DETAILALIAS);
+
+        if (value == 0 || value == 1)
+        {
+            r_detail = !!value;
+            M_SaveCVARs();
+        }
+    }
+    else
+        C_Output(C_LookupAliasFromValue(r_detail, DETAILALIAS));
+}
+
+//
+// r_gamma cvar
+//
+extern int      st_palette;
+
+static dboolean r_gamma_cvar_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    float       value = -1.0f;
+
+    if (!parm1[0] || M_StringCompare(parm1, "off"))
+        return true;
+
+    sscanf(parm1, "%10f", &value);
+
+    return (value >= 0.0f);
+}
+
+static void r_gamma_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        float   value = -1.0f;
+
+        if (M_StringCompare(parm1, "off"))
+            r_gamma = 1.0f;
+        else
+            sscanf(parm1, "%10f", &value);
+
+        if (value >= 0.0f)
+        {
+            r_gamma = BETWEENF(r_gamma_min, value, r_gamma_max);
+            gammaindex = 0;
+            while (gammaindex < GAMMALEVELS)
+                if (gammalevels[gammaindex++] == r_gamma)
+                    break;
+            if (gammaindex == GAMMALEVELS)
+            {
+                gammaindex = 0;
+                while (gammalevels[gammaindex++] != r_gamma_default);
+            }
+            --gammaindex;
+
+            I_SetPalette((byte *)W_CacheLumpName("PLAYPAL", PU_CACHE) + st_palette * 768);
+            M_SaveCVARs();
+        }
+    }
+    else
+        C_Output(r_gamma == 1.0f ? "off" : striptrailingzero(r_gamma, 2));
+}
+
+//
+// r_hud cvar
+//
+static void r_hud_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (vid_widescreen || r_screensize == r_screensize_max)
+        bool_cvars_func2(cmd, parm1, "", "");
+}
+
+//
+// r_lowpixelsiz cvar
+//
+static void r_lowpixelsize_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        r_lowpixelsize = strdup(parm1);
+
+        GetPixelSize();
+
+        if (!M_StringCompare(r_lowpixelsize, parm1))
+            M_SaveCVARs();
+    }
+    else
+        C_Output(r_lowpixelsize);
+}
+
+//
+// r_screensize cvar
+//
+static void r_screensize_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        int     value = -1;
+
+        sscanf(parm1, "%10i", &value);
+
+        if (value >= r_screensize_min && value <= r_screensize_max)
+        {
+            if (vid_widescreen || (returntowidescreen && gamestate != GS_LEVEL))
+            {
+                if (value == r_screensize_max)
+                    --value;
+                else if (value <= r_screensize_max - 1)
+                {
+                    r_hud = true;
+                    I_ToggleWidescreen(false);
+                }
+            }
+            else
+            {
+                if (value >= r_screensize_max - 1)
+                {
+                    if (gamestate != GS_LEVEL)
+                    {
+                        returntowidescreen = true;
+                        r_hud = true;
+                    }
+                    else
+                    {
+                        I_ToggleWidescreen(true);
+                        if (vid_widescreen)
+                            value = r_screensize_max - 1;
+                    }
+                }
+            }
+            r_screensize = value;
+            M_SaveCVARs();
+            R_SetViewSize(r_screensize);
+        }
+    }
+    else
+        C_Output("%i", r_screensize);
+}
+
+//
+// s_musicvolume and s_sfxvolume cvars
+//
+static dboolean s_volume_cvars_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    int value = -1;
+
+    if (!parm1[0])
+        return true;
+    if (parm1[strlen(parm1) - 1] == '%')
+        parm1[strlen(parm1) - 1] = 0;
+
+    sscanf(parm1, "%10i", &value);
+
+    return ((M_StringCompare(cmd, stringize(s_musicvolume)) && value >= s_musicvolume_min
+        && value <= s_musicvolume_max) || (M_StringCompare(cmd, stringize(s_sfxvolume))
+        && value >= s_sfxvolume_min && value <= s_sfxvolume_max));
+}
+
+static void s_volume_cvars_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        int value = 0;
+
+        if (parm1[strlen(parm1) - 1] == '%')
+            parm1[strlen(parm1) - 1] = 0;
+        sscanf(parm1, "%10i", &value);
+
+        if (M_StringCompare(cmd, stringize(s_musicvolume)))
+        {
+            s_musicvolume = value;
+            musicVolume = (BETWEEN(s_musicvolume_min, s_musicvolume,
+                s_musicvolume_max) * 15 + 50) / 100;
+            S_SetMusicVolume((int)(musicVolume * (127.0f / 15.0f)));
+        }
+        else
+        {
+            s_sfxvolume = value;
+            sfxVolume = (BETWEEN(s_sfxvolume_min, s_sfxvolume, s_sfxvolume_max) * 15 + 50) / 100;
+            S_SetSfxVolume((int)(sfxVolume * (127.0f / 15.0f)));
+        }
+
+        M_SaveCVARs();
+    }
+    else
+        C_Output("%i%%", (M_StringCompare(cmd, stringize(s_musicvolume)) ? s_musicvolume :
+            s_sfxvolume));
+}
+
+//
+// vid_display cvar
+//
+static void vid_display_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        int     value = -1;
+
+        sscanf(parm1, "%10i", &value);
+
+        if (value >= vid_display_min && value <= vid_display_max && value != vid_display)
+        {
+            vid_display = value;
+            M_SaveCVARs();
+            I_RestartGraphics();
+        }
+    }
+    else
+        C_Output("%i", vid_display);
+}
+
+//
+// vid_fullscreen cvar
+//
+static void vid_fullscreen_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        int     value = C_LookupValueFromAlias(parm1, BOOLALIAS);
+
+        if ((value == 0 || value == 1) && value != vid_fullscreen)
+            I_ToggleFullscreen();
+    }
+    else
+        C_Output(C_LookupAliasFromValue(vid_fullscreen, BOOLALIAS));
+}
+
+//
+// vid_scaledriver cvar
+//
+static dboolean vid_scaledriver_cvar_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    return (!parm1[0] || M_StringCompare(parm1, EMPTYVALUE)
+        || M_StringCompare(parm1, vid_scaledriver_direct3d)
+        || M_StringCompare(parm1, vid_scaledriver_opengl)
+        || M_StringCompare(parm1, vid_scaledriver_software));
+}
+
+static void vid_scaledriver_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        if (M_StringCompare(parm1, EMPTYVALUE))
+        {
+            vid_scaledriver = "";
+            M_SaveCVARs();
+            I_RestartGraphics();
+        }
+        else if (!M_StringCompare(parm1, vid_scaledriver))
+        {
+            vid_scaledriver = strdup(parm1);
+            M_SaveCVARs();
+            I_RestartGraphics();
+        }
+    }
+    else
+        C_Output("\"%s\"", vid_scaledriver);
+}
+
+//
+// vid_scalefilter cvar
+//
+static dboolean vid_scalefilter_cvar_func1(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    return (!parm1[0] || M_StringCompare(parm1, vid_scalefilter_nearest)
+        || M_StringCompare(parm1, vid_scalefilter_linear)
+        || M_StringCompare(parm1, vid_scalefilter_nearest_linear));
+}
+
+static void vid_scalefilter_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        if (!M_StringCompare(parm1, vid_scalefilter))
+        {
+            vid_scalefilter = strdup(parm1);
+            M_SaveCVARs();
+            I_RestartGraphics();
+        }
+    }
+    else
+        C_Output("\"%s\"", vid_scalefilter);
+}
+
+//
+// vid_screenresolution cvar
+//
+static void vid_screenresolution_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        vid_screenresolution = strdup(parm1);
+
+        GetScreenResolution();
+
+        if (!M_StringCompare(vid_screenresolution, parm1))
+        {
+            M_SaveCVARs();
+
+            if (vid_fullscreen)
+                I_RestartGraphics();
+        }
+    }
+    else
+        C_Output(vid_screenresolution);
+}
+
+//
+// vid_showfps cvar
+//
+static void vid_showfps_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        int     value = C_LookupValueFromAlias(parm1, BOOLALIAS);
+
+        if ((value == 0 || value == 1) && value != vid_showfps)
+        {
+            vid_showfps = !!value;
+            I_UpdateBlitFunc();
+        }
+    }
+    else
+        C_Output(C_LookupAliasFromValue(vid_showfps, BOOLALIAS));
+}
+
+//
+// vid_vsync cvar
+//
+static void vid_vsync_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        int     value = C_LookupValueFromAlias(parm1, BOOLALIAS);
+
+        if ((value == 0 || value == 1) && value != vid_vsync)
+        {
+            vid_vsync = !!value;
+            M_SaveCVARs();
+            I_RestartGraphics();
+        }
+    }
+    else
+        C_Output(C_LookupAliasFromValue(vid_vsync, BOOLALIAS));
+}
+
+//
+// vid_widescreen cvar
+//
+static void vid_widescreen_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        int     value = C_LookupValueFromAlias(parm1, BOOLALIAS);
+
+        if ((value == 0 || value == 1) && value != vid_widescreen)
+        {
+            vid_widescreen = !!value;
+            if (vid_widescreen)
+            {
+                if (gamestate == GS_LEVEL)
+                {
+                    I_ToggleWidescreen(true);
+                    if (vid_widescreen)
+                        S_StartSound(NULL, sfx_stnmov);
+                }
+                else
+                {
+                    returntowidescreen = true;
+                    r_hud = true;
+                }
+            }
+            else
+            {
+                I_ToggleWidescreen(false);
+                if (!vid_widescreen)
+                    S_StartSound(NULL, sfx_stnmov);
+            }
+            M_SaveCVARs();
+        }
+    }
+    else
+        C_Output(C_LookupAliasFromValue(vid_widescreen, BOOLALIAS));
+}
+
+//
+// vid_windowposition cvar
+//
+static void vid_windowposition_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        vid_windowposition = strdup(parm1);
+
+        GetWindowPosition();
+
+        if (!M_StringCompare(vid_windowposition, parm1))
+        {
+            M_SaveCVARs();
+
+            if (!vid_fullscreen)
+                SDL_SetWindowPosition(window, windowx, windowy);
+        }
+    }
+    else
+        C_Output("%s", vid_windowposition);
+}
+
+//
+// vid_windowsize cvar
+//
+static void vid_windowsize_cvar_func2(char *cmd, char *parm1, char *parm2, char *parm3)
+{
+    if (parm1[0])
+    {
+        vid_windowsize = strdup(parm1);
+
+        GetWindowSize();
+
+        if (!M_StringCompare(vid_windowsize, parm1))
+        {
+            M_SaveCVARs();
+
+            if (!vid_fullscreen)
+                SDL_SetWindowSize(window, windowwidth, windowheight);
+        }
+    }
+    else
+        C_Output(vid_windowsize);
 }

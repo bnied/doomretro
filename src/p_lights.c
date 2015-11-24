@@ -1,44 +1,45 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
 
-#include "z_zone.h"
 #include "m_random.h"
 #include "p_local.h"
+#include "p_tick.h"
+#include "z_zone.h"
 
 //
 // FIRELIGHT FLICKER
@@ -62,15 +63,15 @@ void T_FireFlicker(fireflicker_t *flick)
 //
 void P_SpawnFireFlicker(sector_t *sector)
 {
-    fireflicker_t       *flick = (fireflicker_t *)Z_Malloc(sizeof(*flick), PU_LEVSPEC, 0);
+    fireflicker_t       *flick = Z_Malloc(sizeof(*flick), PU_LEVSPEC, 0);
 
     // Note that we are resetting sector attributes.
     // Nothing special about it during gameplay.
-    sector->special = 0;
+    sector->special &= ~31;     // jff 3/14/98 clear non-generalized sector type
 
     P_AddThinker(&flick->thinker);
 
-    flick->thinker.function.acp1 = (actionf_p1)T_FireFlicker;
+    flick->thinker.function = T_FireFlicker;
     flick->sector = sector;
     flick->maxlight = sector->lightlevel;
     flick->minlight = P_FindMinSurroundingLight(sector, sector->lightlevel) + 16;
@@ -109,14 +110,14 @@ void T_LightFlash(lightflash_t *flash)
 //
 void P_SpawnLightFlash(sector_t *sector)
 {
-    lightflash_t        *flash = (lightflash_t *)Z_Malloc(sizeof(*flash), PU_LEVSPEC, 0);
+    lightflash_t        *flash = Z_Malloc(sizeof(*flash), PU_LEVSPEC, 0);
 
     // nothing special about it during gameplay
-    sector->special = 0;
+    sector->special &= ~31;     // jff 3/14/98 clear non-generalized sector type
 
     P_AddThinker(&flash->thinker);
 
-    flash->thinker.function.acp1 = (actionf_p1)T_LightFlash;
+    flash->thinker.function = T_LightFlash;
     flash->sector = sector;
     flash->maxlight = sector->lightlevel;
 
@@ -157,14 +158,14 @@ void T_StrobeFlash(strobe_t *flash)
 //
 void P_SpawnStrobeFlash(sector_t *sector, int fastOrSlow, int inSync)
 {
-    strobe_t    *flash = (strobe_t *)Z_Malloc(sizeof(*flash), PU_LEVSPEC, 0);
+    strobe_t    *flash = Z_Malloc(sizeof(*flash), PU_LEVSPEC, 0);
 
     P_AddThinker(&flash->thinker);
 
     flash->sector = sector;
     flash->darktime = fastOrSlow;
     flash->brighttime = STROBEBRIGHT;
-    flash->thinker.function.acp1 = (actionf_p1)T_StrobeFlash;
+    flash->thinker.function = T_StrobeFlash;
     flash->maxlight = sector->lightlevel;
     flash->minlight = P_FindMinSurroundingLight(sector, sector->lightlevel);
 
@@ -172,7 +173,7 @@ void P_SpawnStrobeFlash(sector_t *sector, int fastOrSlow, int inSync)
         flash->minlight = 0;
 
     // nothing special about it during gameplay
-    sector->special = 0;
+    sector->special &= ~31;     // jff 3/14/98 clear non-generalized sector type
 
     flash->count = (inSync ? 1 : (P_Random() & 7) + 1);
 }
@@ -183,12 +184,12 @@ void P_SpawnStrobeFlash(sector_t *sector, int fastOrSlow, int inSync)
 int EV_StartLightStrobing(line_t *line)
 {
     int         secnum = -1;
-    sector_t    *sec;
 
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)
     {
-        sec = &sectors[secnum];
-        if (sec->specialdata)
+        sector_t        *sec = &sectors[secnum];
+
+        if (P_SectorActive(lighting_special, sec))
             continue;
 
         P_SpawnStrobeFlash(sec, SLOWDARK, 0);
@@ -236,14 +237,17 @@ int EV_LightTurnOn(line_t *line, int bright)
     {
         sector_t        *temp;
         sector_t        *sector = sectors + i;
-        int             j;
         int             tbright = bright;       // jff 5/17/98 search for maximum PER sector
 
         // bright = 0 means to search for highest light level surrounding sector
         if (!bright)
+        {
+            int j;
+
             for (j = 0; j < sector->linecount; j++)
                 if ((temp = getNextSector(sector->lines[j], sector)) && temp->lightlevel > tbright)
                     tbright = temp->lightlevel;
+        }
         sector->lightlevel = tbright;
     }
     return 1;
@@ -280,15 +284,72 @@ void T_Glow(glow_t *g)
 
 void P_SpawnGlowingLight(sector_t *sector)
 {
-    glow_t *glow = (glow_t *)Z_Malloc(sizeof(*glow), PU_LEVSPEC, 0);
+    glow_t *glow = Z_Malloc(sizeof(*glow), PU_LEVSPEC, 0);
 
     P_AddThinker(&glow->thinker);
 
     glow->sector = sector;
     glow->minlight = P_FindMinSurroundingLight(sector, sector->lightlevel);
     glow->maxlight = sector->lightlevel;
-    glow->thinker.function.acp1 = (actionf_p1)T_Glow;
+    glow->thinker.function = T_Glow;
     glow->direction = -1;
 
-    sector->special = 0;
+    sector->special &= ~31;     // jff 3/14/98 clear non-generalized sector type
+}
+
+// killough 10/98:
+//
+// EV_LightTurnOnPartway()
+//
+// Turn sectors tagged to line lights on to specified or max neighbor level
+//
+// Passed the activating line, and a light level fraction between 0 and 1.
+// Sets the light to min on 0, max on 1, and interpolates in-between.
+// Used for doors with gradual lighting effects.
+//
+void EV_LightTurnOnPartway(line_t *line, fixed_t level)
+{
+    int i;
+
+    level = BETWEEN(0, level, FRACUNIT);        // clip at extremes
+
+    // search all sectors for ones with same tag as activating line
+    for (i = -1; (i = P_FindSectorFromLineTag(line, i)) >= 0;)
+    {
+        sector_t        *temp, *sector = sectors + i;
+        int             j, bright = 0, min = sector->lightlevel;
+
+        for (j = 0; j < sector->linecount; j++)
+            if ((temp = getNextSector(sector->lines[j], sector)))
+            {
+                if (temp->lightlevel > bright)
+                    bright = temp->lightlevel;
+                if (temp->lightlevel < min)
+                    min = temp->lightlevel;
+            }
+
+        // Set level in-between extremes
+        sector->lightlevel = (level * bright + (FRACUNIT - level) * min) >> FRACBITS;
+    }
+}
+
+// [BH] similar to EV_LightTurnOnPartway(), but instead of using a line tag, looks at adjacent
+//  sectors of the sector itself.
+void EV_LightByAdjacentSectors(sector_t *sector, fixed_t level)
+{
+    sector_t    *temp;
+    int         i, bright = 0, min = MAX(0, sector->lightlevel - 4);
+
+    level = BETWEEN(0, level, FRACUNIT);        // clip at extremes
+
+    for (i = 0; i < sector->linecount; i++)
+        if ((temp = getNextSector(sector->lines[i], sector)))
+        {
+            if (temp->lightlevel > bright)
+                bright = temp->lightlevel;
+            if (temp->lightlevel < min)
+                min = temp->lightlevel;
+        }
+
+    sector->lightlevel = (level * bright + (FRACUNIT - level) * min) >> FRACBITS;
 }

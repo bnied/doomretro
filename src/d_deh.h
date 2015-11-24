@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -44,24 +44,23 @@
 typedef enum
 {
     p_GOTARMOR = 17, p_GOTMEGA, p_GOTHTHBONUS, p_GOTARMBONUS, p_GOTSTIM, p_GOTMEDINEED,
-    p_GOTMEDIKIT, p_GOTSUPER, p_GOTBLUECARD, p_GOTYELWCARD, p_GOTREDCARD, p_GOTBLUESKUL,
-    p_GOTYELWSKUL, p_GOTREDSKULL, p_GOTINVUL, p_GOTBERSERK, p_GOTINVIS, p_GOTSUIT, p_GOTMAP,
-    p_GOTVISOR, p_GOTCLIP, p_GOTCLIPX2, p_GOTHALFCLIP, p_GOTCLIPBOX, p_GOTROCKET, p_GOTROCKETX2,
-    p_GOTROCKBOX, p_GOTCELL, p_GOTCELLX2, p_GOTCELLBOX, p_GOTSHELLS, p_GOTSHELLSX2, p_GOTSHELLBOX,
-    p_GOTBACKPACK, p_GOTBFG9000, p_GOTCHAINGUN, p_GOTCHAINSAW, p_GOTLAUNCHER, p_GOTMSPHERE,
-    p_GOTPLASMA, p_GOTSHOTGUN, p_GOTSHOTGUN2, p_PD_BLUEO, p_PD_BLUEO2, p_PD_REDO, p_PD_REDO2,
-    p_PD_YELLOWO, p_PD_YELLOWO2, p_PD_BLUEK, p_PD_BLUEK2, p_PD_REDK, p_PD_REDK2, p_PD_YELLOWK,
-    p_PD_YELLOWK2
+    p_GOTMEDINEED2, p_GOTMEDIKIT, p_GOTSUPER, p_GOTBLUECARD, p_GOTYELWCARD, p_GOTREDCARD,
+    p_GOTBLUESKUL, p_GOTYELWSKUL, p_GOTREDSKULL, p_GOTINVUL, p_GOTBERSERK, p_GOTINVIS, p_GOTSUIT,
+    p_GOTMAP, p_GOTVISOR, p_GOTCLIP, p_GOTCLIPX2, p_GOTHALFCLIP, p_GOTCLIPBOX, p_GOTROCKET,
+    p_GOTROCKETX2, p_GOTROCKBOX, p_GOTCELL, p_GOTCELLX2, p_GOTCELLBOX, p_GOTSHELLS, p_GOTSHELLSX2,
+    p_GOTSHELLBOX, p_GOTBACKPACK, p_GOTBFG9000, p_GOTCHAINGUN, p_GOTCHAINSAW, p_GOTLAUNCHER,
+    p_GOTMSPHERE, p_GOTPLASMA, p_GOTSHOTGUN, p_GOTSHOTGUN2, p_PD_BLUEO, p_PD_REDO, p_PD_YELLOWO,
+    p_PD_BLUEK, p_PD_REDK, p_PD_YELLOWK
 } pickupmessage_t;
 
 typedef struct
 {
     char        **ppstr;        // doubly indirect pointer to string
     char        *lookup;        // pointer to lookup string name
-    boolean     assigned;       // [BH] flag indicating string has been assigned
+    dboolean    assigned;       // [BH] flag indicating string has been assigned
 } deh_strs;
 
-extern boolean  dehacked;
+extern dboolean dehacked;
 extern deh_strs deh_strlookup[];
 
 extern char     *s_PRESSKEY;
@@ -76,6 +75,8 @@ extern char     *s_MSGON;
 extern char     *s_ENDGAME;
 extern char     *s_DOSY;
 extern char     *s_DOSA;
+extern char     *s_OTHERY;
+extern char     *s_OTHERA;
 extern char     *s_DETAILHI;
 extern char     *s_DETAILLO;
 extern char     *s_GAMMALVL;
@@ -88,6 +89,7 @@ extern char     *s_GOTHTHBONUS;
 extern char     *s_GOTARMBONUS;
 extern char     *s_GOTSTIM;
 extern char     *s_GOTMEDINEED;
+extern char     *s_GOTMEDINEED2;
 extern char     *s_GOTMEDIKIT;
 extern char     *s_GOTSUPER;
 
@@ -130,17 +132,20 @@ extern char     *s_GOTSHOTGUN;
 extern char     *s_GOTSHOTGUN2;
 
 extern char     *s_PD_BLUEO;
-extern char     *s_PD_BLUEO2;
 extern char     *s_PD_REDO;
-extern char     *s_PD_REDO2;
 extern char     *s_PD_YELLOWO;
-extern char     *s_PD_YELLOWO2;
 extern char     *s_PD_BLUEK;
-extern char     *s_PD_BLUEK2;
 extern char     *s_PD_REDK;
-extern char     *s_PD_REDK2;
 extern char     *s_PD_YELLOWK;
-extern char     *s_PD_YELLOWK2;
+extern char     *s_PD_BLUEC;
+extern char     *s_PD_REDC;
+extern char     *s_PD_YELLOWC;
+extern char     *s_PD_BLUES;
+extern char     *s_PD_REDS;
+extern char     *s_PD_YELLOWS;
+extern char     *s_PD_ANY;
+extern char     *s_PD_ALL3;
+extern char     *s_PD_ALL6;
 
 extern char     *s_GGSAVED;
 extern char     *s_GGLOADED;
@@ -312,6 +317,7 @@ extern char     *s_STSTR_FAADDED;
 extern char     *s_STSTR_NCON;
 extern char     *s_STSTR_NCOFF;
 extern char     *s_STSTR_BEHOLD;
+extern char     *s_STSTR_BEHOLDX;
 extern char     *s_STSTR_BEHOLDON;
 extern char     *s_STSTR_BEHOLDOFF;
 extern char     *s_STSTR_CHOPPERS;
@@ -322,6 +328,8 @@ extern char     *s_STSTR_NTON;
 extern char     *s_STSTR_NTOFF;
 extern char     *s_STSTR_GODON;
 extern char     *s_STSTR_GODOFF;
+extern char     *s_STSTR_NMON;
+extern char     *s_STSTR_NMOFF;
 
 extern char     *s_E1TEXT;
 extern char     *s_E2TEXT;
@@ -431,6 +439,7 @@ extern char     *s_CAPTION_FREEDOOM2;
 extern char     *s_CAPTION_FREEDM;
 extern char     *s_CAPTION_BTSXE1;
 extern char     *s_CAPTION_BTSXE2;
+extern char     *s_CAPTION_BTSXE3;
 
 extern char     *bgflatE1;
 extern char     *bgflatE2;
@@ -443,5 +452,11 @@ extern char     *bgflat30;
 extern char     *bgflat15;
 extern char     *bgflat31;
 extern char     *bgcastcall;
+
+extern char     *startup1;
+extern char     *startup2;
+extern char     *startup3;
+extern char     *startup4;
+extern char     *startup5;
 
 #endif

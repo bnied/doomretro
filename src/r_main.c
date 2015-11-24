@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -40,8 +40,10 @@
 
 #include <math.h>
 
-#include "d_net.h"
+#include "c_console.h"
+#include "d_loop.h"
 #include "doomstat.h"
+#include "i_timer.h"
 #include "m_config.h"
 #include "m_menu.h"
 #include "p_local.h"
@@ -77,6 +79,10 @@ fixed_t                 viewsin;
 
 player_t                *viewplayer;
 
+// [AM] Fractional part of the current tic, in the half-open
+//      range of [0.0, 1.0). Used for interpolation.
+fixed_t                 fractionaltic;
+
 //
 // precalculated math tables
 //
@@ -95,21 +101,30 @@ angle_t                 xtoviewangle[SCREENWIDTH + 1];
 
 fixed_t                 *finecosine = &finesine[FINEANGLES / 4];
 
-lighttable_t            *scalelight[LIGHTLEVELS][MAXLIGHTSCALE];
-lighttable_t            *psprscalelight[LIGHTLEVELS][MAXLIGHTSCALE];
-lighttable_t            *scalelightfixed[MAXLIGHTSCALE];
-lighttable_t            *zlight[LIGHTLEVELS][MAXLIGHTZ];
+// killough 3/20/98: Support dynamic colormaps, e.g. deep water
+// killough 4/4/98: support dynamic number of them as well
+int                     numcolormaps = 1;
+lighttable_t            *(*c_scalelight)[LIGHTLEVELS][MAXLIGHTSCALE];
+lighttable_t            *(*c_zlight)[LIGHTLEVELS][MAXLIGHTZ];
+lighttable_t            *(*c_psprscalelight)[OLDLIGHTLEVELS][OLDMAXLIGHTSCALE];
+lighttable_t            *(*scalelight)[MAXLIGHTSCALE];
+lighttable_t            *(*psprscalelight)[OLDMAXLIGHTSCALE];
+lighttable_t            *(*zlight)[MAXLIGHTZ];
+lighttable_t            *fullcolormap;
+lighttable_t            **colormaps;
 
 // bumped light from gun blasts
 int                     extralight;
 
-boolean                 translucency = TRANSLUCENCY_DEFAULT;
+dboolean                r_translucency = r_translucency_default;
 
-boolean                 homindicator = HOMINDICATOR_DEFAULT;
+dboolean                r_homindicator = r_homindicator_default;
+
+int                     r_frame_count;
 
 extern int              viewheight2;
 extern int              gametic;
-extern boolean          canmodify;
+extern dboolean         canmodify;
 
 void (*colfunc)(void);
 void (*wallcolfunc)(void);
@@ -121,22 +136,23 @@ void (*tl50colfunc)(void);
 void (*tl33colfunc)(void);
 void (*tlgreencolfunc)(void);
 void (*tlredcolfunc)(void);
-void (*tlredwhitecolfunc)(void);
+void (*tlredwhitecolfunc1)(void);
+void (*tlredwhitecolfunc2)(void);
 void (*tlredwhite50colfunc)(void);
 void (*tlbluecolfunc)(void);
-void (*tlgreen50colfunc)(void);
-void (*tlred50colfunc)(void);
-void (*tlblue50colfunc)(void);
+void (*tlgreen33colfunc)(void);
+void (*tlred33colfunc)(void);
+void (*tlblue33colfunc)(void);
 void (*redtobluecolfunc)(void);
 void (*transcolfunc)(void);
 void (*spanfunc)(void);
-void (*fbspanfunc)(void);
 void (*skycolfunc)(void);
 void (*redtogreencolfunc)(void);
 void (*tlredtoblue33colfunc)(void);
 void (*tlredtogreen33colfunc)(void);
 void (*psprcolfunc)(void);
 void (*bloodsplatcolfunc)(void);
+void (*megaspherecolfunc)(void);
 
 //
 // R_PointOnSide
@@ -157,18 +173,18 @@ int R_PointOnSegSide(fixed_t x, fixed_t y, seg_t *line)
 
 int SlopeDiv(unsigned int num, unsigned int den)
 {
-    unsigned int        ans;
+    uint64_t    ans;
 
     if (den < 512)
         return SLOPERANGE;
 
-    ans = (num << 3) / (den >> 8);
-    return (ans <= SLOPERANGE ? ans : SLOPERANGE);
+    ans = ((uint64_t)num << 3) / (den >> 8);
+    return (ans <= SLOPERANGE ? (int)ans : SLOPERANGE);
 }
 
 //
 // R_PointToAngle
-// To get a global angle from cartesian coordinates,
+// To get a global angle from Cartesian coordinates,
 // the coordinates are flipped until they are in the first octant of
 // the coordinate system, then the y (<=x) is scaled and divided by x
 // to get a tangent (slope) value which is looked up in the
@@ -272,45 +288,68 @@ fixed_t R_PointToDist(fixed_t x, fixed_t y)
         + ANG90) >> ANGLETOFINESHIFT]) : 0);
 }
 
+// [AM] Interpolate between two angles.
+angle_t R_InterpolateAngle(angle_t oangle, angle_t nangle, fixed_t scale)
+{
+    if (nangle == oangle)
+        return nangle;
+    else if (nangle > oangle)
+    {
+        if (nangle - oangle < ANG270)
+            return (oangle + (angle_t)((nangle - oangle) * FIXED2DOUBLE(scale)));
+        else    // Wrapped around
+            return (oangle - (angle_t)((oangle - nangle) * FIXED2DOUBLE(scale)));
+    }
+    else        // nangle < oangle
+    {
+        if (oangle - nangle < ANG270)
+            return (oangle - (angle_t)((oangle - nangle) * FIXED2DOUBLE(scale)));
+        else    // Wrapped around
+            return (oangle + (angle_t)((nangle - oangle) * FIXED2DOUBLE(scale)));
+    }
+}
+
 //
 // R_InitTables
 //
 static void R_InitTables(void)
 {
-    int                 i;
-    const double        pimul = M_PI * 2 / FINEANGLES;
+    int i;
 
     // viewangle tangent table
-    finetangent[0] = (fixed_t)(FRACUNIT * tan((0.5 - FINEANGLES / 4) * pimul) + 0.5);
-    for (i = 1; i < FINEANGLES / 2; i++)
-        finetangent[i] = (fixed_t)(FRACUNIT * tan((i - FINEANGLES / 4) * pimul) + 0.5);
+    for (i = 0; i < FINEANGLES / 2; i++)
+        finetangent[i] = (int)(FRACUNIT * tanf((i - FINEANGLES / 4 + 0.5f) * (float)M_PI * 2
+            / FINEANGLES));
 
     // finesine table
-    for (i = 0; i < FINEANGLES / 4; i++)
-        finesine[i] = (fixed_t)(FRACUNIT * sin(i * pimul));
-    for (i = 0; i < FINEANGLES / 4; i++)
-        finesine[i + FINEANGLES / 4] = finesine[FINEANGLES / 4 - 1 - i];
-    for (i = 0; i < FINEANGLES / 2; i++)
-        finesine[i + FINEANGLES / 2] = -finesine[i];
-    finesine[FINEANGLES / 4] = FRACUNIT;
-    finesine[FINEANGLES * 3 / 4] = -FRACUNIT;
-    memcpy(&finesine[FINEANGLES], &finesine[0], sizeof(angle_t) * FINEANGLES / 4);
+    for (i = 0; i < 5 * FINEANGLES / 4; i++)
+        finesine[i] = (int)(FRACUNIT * sinf((i + 0.5f) * (float)M_PI * 2 / FINEANGLES));
 }
 
 static void R_InitPointToAngle(void)
 {
     int         i;
-    long        t;
-    float       f;
 
     // slope (tangent) to angle lookup
     for (i = 0; i <= SLOPERANGE; i++)
     {
+        float   f = atanf((float)i / SLOPERANGE) / ((float)M_PI * 2);
+        long    t = (long)(0xFFFFFFFF * f);
+
         // this used to have PI (as defined above) written out longhand
-        f = atanf((float)i / SLOPERANGE) / ((float)M_PI * 2);
-        t = (long)(0xffffffff * f);
         tantoangle[i] = t;
     }
+}
+
+// e6y: caching
+angle_t R_GetVertexViewAngle(vertex_t *v)
+{
+    if (v->angletime != r_frame_count)
+    {
+        v->angletime = r_frame_count;
+        v->viewangle = R_PointToAngle(v->x, v->y);
+    }
+    return v->viewangle;
 }
 
 //
@@ -383,6 +422,11 @@ void R_InitLightTables(void)
 {
     int i;
 
+    // killough 4/4/98: dynamic colormaps
+    c_zlight = malloc(sizeof(*c_zlight) * numcolormaps);
+    c_scalelight = malloc(sizeof(*c_scalelight) * numcolormaps);
+    c_psprscalelight = malloc(sizeof(*c_psprscalelight) * numcolormaps);
+
     // Calculate the light levels to use
     //  for each level / distance combination.
     for (i = 0; i < LIGHTLEVELS; i++)
@@ -392,9 +436,12 @@ void R_InitLightTables(void)
         for (j = 0; j < MAXLIGHTZ; j++)
         {
             int scale = FixedDiv(SCREENWIDTH / 2 * FRACUNIT, (j + 1) << LIGHTZSHIFT);
+            int t, level = BETWEEN(0, startmap - (scale >>= LIGHTSCALESHIFT) / DISTMAP,
+                NUMCOLORMAPS - 1) * 256;
 
-            zlight[i][j] = colormaps + BETWEEN(0,
-                startmap - (scale >> LIGHTSCALESHIFT) / DISTMAP, NUMCOLORMAPS - 1) * 256;
+            // killough 3/20/98: Initialize multiple colormaps
+            for (t = 0; t < numcolormaps; t++)
+                c_zlight[t][i][j] = colormaps[t] + level;
         }
     }
 }
@@ -405,8 +452,8 @@ void R_InitLightTables(void)
 //  because it might be in the middle of a refresh.
 // The change will take effect next refresh.
 //
-boolean setsizeneeded;
-int     setblocks;
+dboolean        setsizeneeded;
+int             setblocks;
 
 void R_SetViewSize(int blocks)
 {
@@ -419,10 +466,8 @@ void R_SetViewSize(int blocks)
 //
 void R_ExecuteSetViewSize(void)
 {
-    fixed_t     cosadj;
-    fixed_t     dy;
-    int         i;
-    int         j;
+    int i;
+    int j;
 
     setsizeneeded = false;
 
@@ -447,7 +492,8 @@ void R_ExecuteSetViewSize(void)
     centerxfrac = centerx << FRACBITS;
     centeryfrac = centery << FRACBITS;
     projection = centerxfrac;
-    projectiony = ((SCREENHEIGHT * centerx * ORIGINALWIDTH) / ORIGINALHEIGHT) / SCREENWIDTH * FRACUNIT;
+    projectiony = ((SCREENHEIGHT * centerx * ORIGINALWIDTH) / ORIGINALHEIGHT) / SCREENWIDTH
+        * FRACUNIT;
 
     R_InitBuffer(scaledviewwidth, viewheight);
 
@@ -465,13 +511,15 @@ void R_ExecuteSetViewSize(void)
     // planes
     for (i = 0; i < viewheight; i++)
     {
-        dy = ABS(((i - viewheight / 2) << FRACBITS) + FRACUNIT / 2);
+        fixed_t dy = ABS(((i - viewheight / 2) << FRACBITS) + FRACUNIT / 2);
+
         yslope[i] = FixedDiv(projectiony, dy);
     }
 
     for (i = 0; i < viewwidth; i++)
     {
-        cosadj = ABS(finecosine[xtoviewangle[i] >> ANGLETOFINESHIFT]);
+        fixed_t cosadj = ABS(finecosine[xtoviewangle[i] >> ANGLETOFINESHIFT]);
+
         distscale[i] = FixedDiv(FRACUNIT, cosadj);
     }
 
@@ -479,16 +527,31 @@ void R_ExecuteSetViewSize(void)
     //  for each level / scale combination.
     for (i = 0; i < LIGHTLEVELS; i++)
     {
-        int startmap = ((LIGHTLEVELS - LIGHTBRIGHT - i) * 2) * NUMCOLORMAPS / LIGHTLEVELS;
+        int     startmap = ((LIGHTLEVELS - LIGHTBRIGHT - i) * 2) * NUMCOLORMAPS / LIGHTLEVELS;
 
         for (j = 0; j < MAXLIGHTSCALE; j++)
         {
-            scalelight[i][j] = colormaps + 
-                BETWEEN(0, startmap - j * SCREENWIDTH / (viewwidth * DISTMAP), NUMCOLORMAPS - 1) * 256;
+            int t, level = BETWEEN(0, startmap - j * SCREENWIDTH / (viewwidth * DISTMAP),
+                NUMCOLORMAPS - 1) * 256;
 
-            // [BH] calculate separate light levels to use when drawing
-            //  player's weapon, so it stays consistent regardless of view size
-            psprscalelight[i][j] = colormaps + BETWEEN(0, startmap - j / DISTMAP, NUMCOLORMAPS - 1) * 256;
+            // killough 3/20/98: initialize multiple colormaps
+            for (t = 0; t < numcolormaps; t++)     // killough 4/4/98
+                c_scalelight[t][i][j] = colormaps[t] + level;
+        }
+    }
+
+    // [BH] calculate separate light levels to use when drawing
+    //  player's weapon, so it stays consistent regardless of view size
+    for (i = 0; i < OLDLIGHTLEVELS; i++)
+    {
+        int     startmap = ((OLDLIGHTLEVELS - OLDLIGHTBRIGHT - i) * 2) * NUMCOLORMAPS / OLDLIGHTLEVELS;
+
+        for (j = 0; j < OLDMAXLIGHTSCALE; j++)
+        {
+            int t, level = BETWEEN(0, startmap - j / DISTMAP, NUMCOLORMAPS - 1) * 256;
+
+            for (t = 0; t < numcolormaps; t++)
+                c_psprscalelight[t][i][j] = colormaps[t] + level;
         }
     }
 }
@@ -501,22 +564,24 @@ void R_InitColumnFunctions(void)
     fuzzcolfunc = R_DrawFuzzColumn;
     transcolfunc = R_DrawTranslatedColumn;
 
-    if (translucency)
+    if (r_translucency)
     {
         tlcolfunc = R_DrawTranslucentColumn;
         tl50colfunc = R_DrawTranslucent50Column;
         tl33colfunc = R_DrawTranslucent33Column;
         tlgreencolfunc = R_DrawTranslucentGreenColumn;
         tlredcolfunc = R_DrawTranslucentRedColumn;
-        tlredwhitecolfunc = R_DrawTranslucentRedWhiteColumn;
+        tlredwhitecolfunc1 = R_DrawTranslucentRedWhiteColumn1;
+        tlredwhitecolfunc2 = R_DrawTranslucentRedWhiteColumn2;
         tlredwhite50colfunc = R_DrawTranslucentRedWhite50Column;
         tlbluecolfunc = R_DrawTranslucentBlueColumn;
-        tlgreen50colfunc = R_DrawTranslucentGreen50Column;
-        tlred50colfunc = R_DrawTranslucentRed50Column;
-        tlblue50colfunc = R_DrawTranslucentBlue50Column;
+        tlgreen33colfunc = R_DrawTranslucentGreen33Column;
+        tlred33colfunc = R_DrawTranslucentRed33Column;
+        tlblue33colfunc = R_DrawTranslucentBlue33Column;
         tlredtoblue33colfunc = R_DrawTranslucentRedToBlue33Column;
         tlredtogreen33colfunc = R_DrawTranslucentRedToGreen33Column;
         bloodsplatcolfunc = R_DrawBloodSplatColumn;
+        megaspherecolfunc = R_DrawMegaSphereColumn;
     }
     else
     {
@@ -525,19 +590,20 @@ void R_InitColumnFunctions(void)
         tl33colfunc = R_DrawColumn;
         tlgreencolfunc = R_DrawColumn;
         tlredcolfunc = R_DrawColumn;
-        tlredwhitecolfunc = R_DrawColumn;
+        tlredwhitecolfunc1 = R_DrawColumn;
+        tlredwhitecolfunc2 = R_DrawColumn;
         tlredwhite50colfunc = R_DrawColumn;
         tlbluecolfunc = R_DrawColumn;
-        tlgreen50colfunc = R_DrawColumn;
-        tlred50colfunc = R_DrawColumn;
-        tlblue50colfunc = R_DrawColumn;
+        tlgreen33colfunc = R_DrawColumn;
+        tlred33colfunc = R_DrawColumn;
+        tlblue33colfunc = R_DrawColumn;
         tlredtoblue33colfunc = R_DrawRedToBlueColumn;
         tlredtogreen33colfunc = R_DrawRedToGreenColumn;
         bloodsplatcolfunc = R_DrawSolidBloodSplatColumn;
+        megaspherecolfunc = R_DrawSolidMegaSphereColumn;
     }
 
     spanfunc = R_DrawSpan;
-    fbspanfunc = R_DrawFullbrightSpan;
     redtobluecolfunc = R_DrawRedToBlueColumn;
     redtogreencolfunc = R_DrawRedToGreenColumn;
     wallcolfunc = R_DrawWallColumn;
@@ -552,7 +618,7 @@ void R_InitColumnFunctions(void)
         if (flags2 & MF2_TRANSLUCENT)
             info->colfunc = tlcolfunc;
         else if (info->doomednum == MegaSphere && !hacx)
-            info->colfunc = R_DrawSolidMegaSphereColumn;
+            info->colfunc = megaspherecolfunc;
         else if (info->flags & MF_FUZZ)
             info->colfunc = fuzzcolfunc;
         else if (flags2 & MF2_TRANSLUCENT_REDONLY)
@@ -563,14 +629,16 @@ void R_InitColumnFunctions(void)
             info->colfunc = tlbluecolfunc;
         else if (flags2 & MF2_TRANSLUCENT_33)
             info->colfunc = tl33colfunc;
-        else if (flags2 & MF2_TRANSLUCENT_50)
+        else if ((info->flags & MF_TRANSLUCENT) || (flags2 & MF2_TRANSLUCENT_50))
             info->colfunc = tl50colfunc;
         else if (flags2 & MF2_TRANSLUCENT_REDWHITEONLY)
-            info->colfunc = tlredwhitecolfunc;
+            info->colfunc = tlredwhitecolfunc1;
         else if (flags2 & MF2_TRANSLUCENT_REDTOGREEN_33)
             info->colfunc = tlredtogreen33colfunc;
         else if (flags2 & MF2_TRANSLUCENT_REDTOBLUE_33)
             info->colfunc = tlredtoblue33colfunc;
+        else if (flags2 & MF2_TRANSLUCENT_BLUE_33)
+            info->colfunc = tlblue33colfunc;
         else if (flags2 & MF2_REDTOGREEN)
             info->colfunc = redtogreencolfunc;
         else if (flags2 & MF2_REDTOBLUE)
@@ -592,7 +660,7 @@ void R_Init(void)
     R_InitPointToAngle();
     R_InitTables();
 
-    R_SetViewSize(screensize);
+    R_SetViewSize(r_screensize);
     R_InitLightTables();
     R_InitSkyMap();
     R_InitTranslationTables();
@@ -604,7 +672,13 @@ void R_Init(void)
 //
 subsector_t *R_PointInSubsector(fixed_t x, fixed_t y)
 {
-    int nodenum = numnodes - 1;
+    int nodenum;
+
+    // single subsector is a special case
+    if (!numnodes)
+        return subsectors;
+
+    nodenum = numnodes - 1;
 
     while (!(nodenum & NF_SUBSECTOR))
         nodenum = nodes[nodenum].children[R_PointOnSide(x, y, nodes + nodenum)];
@@ -617,58 +691,110 @@ subsector_t *R_PointInSubsector(fixed_t x, fixed_t y)
 //
 void R_SetupFrame(player_t *player)
 {
-    viewplayer = player;
-    viewx = player->mo->x;
-    viewy = player->mo->y;
-    viewangle = player->mo->angle;
-    extralight = player->extralight << 1;
+    int         cm = 0;
+    mobj_t      *mo = player->mo;
 
-    viewz = player->viewz;
+    viewplayer = player;
+
+    // [AM] Interpolate the player camera if the feature is enabled.
+
+    // Figure out how far into the current tic we're in as a fixed_t
+    if (!vid_capfps)
+        fractionaltic = I_GetTimeMS() * TICRATE % 1000 * FRACUNIT / 1000;
+
+    if (!vid_capfps
+        // Don't interpolate on the first tic of a level, otherwise
+        // oldviewz might be garbage.
+        && leveltime > 1
+        // Don't interpolate if the player did something
+        // that would necessitate turning it off for a tic.
+        && mo->interp
+        // Don't interpolate during a paused state
+        && !paused && !menuactive && !consoleactive)
+    {
+        // Interpolate player camera from their old position to their current one.
+        viewx = mo->oldx + FixedMul(mo->x - mo->oldx, fractionaltic);
+        viewy = mo->oldy + FixedMul(mo->y - mo->oldy, fractionaltic);
+        viewz = player->oldviewz + FixedMul(player->viewz - player->oldviewz, fractionaltic);
+        viewangle = R_InterpolateAngle(mo->oldangle, mo->angle, fractionaltic);
+    }
+    else
+    {
+        viewx = mo->x;
+        viewy = mo->y;
+        viewz = player->viewz;
+        viewangle = mo->angle;
+    }
+
+    extralight = player->extralight << 1;
 
     viewsin = finesine[viewangle >> ANGLETOFINESHIFT];
     viewcos = finecosine[viewangle >> ANGLETOFINESHIFT];
 
+    // killough 3/20/98, 4/4/98: select colormap based on player status
+    if (mo->subsector->sector->heightsec != -1)
+    {
+        const sector_t  *s = mo->subsector->sector->heightsec + sectors;
+
+        cm = (viewz < s->interpfloorheight ? s->bottommap : (viewz > s->interpceilingheight ?
+            s->topmap : s->midmap));
+        if (cm < 0 || cm > numcolormaps)
+            cm = 0;
+    }
+
+    fullcolormap = colormaps[cm];
+    zlight = c_zlight[cm];
+    scalelight = c_scalelight[cm];
+    psprscalelight = c_psprscalelight[cm];
+
     if (player->fixedcolormap)
     {
-        int     i;
+        // killough 3/20/98: localize scalelightfixed (readability/optimization)
+        static lighttable_t     *scalelightfixed[MAXLIGHTSCALE];
+        int                     i;
 
-        fixedcolormap = colormaps + player->fixedcolormap * 256 * sizeof(lighttable_t);
+        // killough 3/20/98: use fullcolormap
+        fixedcolormap = fullcolormap + player->fixedcolormap * 256 * sizeof(lighttable_t);
 
         walllights = scalelightfixed;
 
-        for (i = 0; i < MAXLIGHTSCALE; i++)
+        for (i = 0; i < MAXLIGHTSCALE; ++i)
             scalelightfixed[i] = fixedcolormap;
     }
     else
         fixedcolormap = 0;
 
-    validcount++;
+    ++validcount;
 }
 
 //
-// R_RenderView
+// R_RenderPlayerView
 //
 void R_RenderPlayerView(player_t *player)
 {
+    ++r_frame_count;
+
     R_SetupFrame(player);
 
     // Clear buffers.
     R_ClearClipSegs();
     R_ClearDrawSegs();
+    R_ClearPlanes();
+    R_ClearSprites();
 
     if (automapactive)
     {
-        // The head node is the last node output.
         R_RenderBSPNode(numnodes - 1);
+        if (r_playersprites)
+            R_DrawPlayerSprites();
     }
     else
     {
-        // Clear buffers.
-        R_ClearPlanes();
-        R_ClearSprites();
-
-        V_FillRect(0, viewwindowx, viewwindowy, viewwidth, viewheight,
-            homindicator && (gametic % 20) < 9 && !(player->cheats & CF_NOCLIP) ? 176 : 0);
+        if (player->cheats & CF_NOCLIP)
+            V_FillRect(0, viewwindowx, viewwindowy, viewwidth, viewheight, 0);
+        else if (r_homindicator)
+            V_FillRect(0, viewwindowx, viewwindowy, viewwidth, viewheight,
+                ((gametic % 20) < 9 && !consoleactive && !menuactive && !paused ? 176 : 0));
 
         // The head node is the last node output.
         R_RenderBSPNode(numnodes - 1);

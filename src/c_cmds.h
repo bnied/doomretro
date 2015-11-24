@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -43,10 +43,10 @@
 
 typedef enum
 {
-    keyboard = 1,
-    mouse    = 2,
-    gamepad  = 3,
-    invalid  = 4
+    keyboardcontrol = 1,
+    mousecontrol    = 2,
+    gamepadcontrol  = 3,
+    invalidcontrol  = 4
 } controltype_t;
 
 typedef struct
@@ -56,27 +56,13 @@ typedef struct
     int                 value;
 } control_t;
 
-extern control_t     controls[];
-
 typedef struct
 {
     char                *action;
-    void                *keyboard1;
-    void                *keyboard2;
+    void                *keyboard;
     void                *mouse;
     void                *gamepad;
 } action_t;
-
-extern action_t         actions[];
-
-typedef struct
-{
-    char                *text;
-    int                 value;
-    int                 set;
-} alias_t;
-
-extern alias_t          aliases[];
 
 typedef enum
 {
@@ -89,23 +75,24 @@ typedef enum
 {
     CF_NONE            =   0,
     CF_BOOLEAN         =   1,
-    CF_INTEGER         =   2,
-    CF_INTEGER_PERCENT =   4,
-    CF_STRING          =   8,
-    CF_FLOAT           =  16,
-    CF_FLOAT_PERCENT   =  32,
-    CF_READONLY        =  64,
-    CF_NOTSAVED        = 128
+    CF_FLOAT           =   2,
+    CF_INTEGER         =   4,
+    CF_PERCENT         =   8,
+    CF_POSITION        =  16,
+    CF_READONLY        =  32,
+    CF_SIZE            =  64,
+    CF_STRING          = 128,
+    CF_TIME            = 256,
 } cmdflags_t;
 
 typedef struct
 {
     char                *name;
-    boolean             (*condition)(char *cmd, char *parm1, char *parm2);
-    void                (*function)(char *cmd, char *parm1, char *parm2);
+    dboolean            (*func1)(char *cmd, char *parm1, char *parm2, char *parm3);
+    void                (*func2)(char *cmd, char *parm1, char *parm2, char *parm3);
     int                 parameters;
     cmdtype_t           type;
-    cmdflags_t          flags;
+    int                 flags;
     void                *variable;
     int                 aliases;
     int                 minimumvalue;
@@ -115,6 +102,9 @@ typedef struct
     char                *description;
 } consolecmd_t;
 
+extern action_t         actions[];
+extern control_t        controls[];
 extern consolecmd_t     consolecmds[];
+extern int              numconsolecmds;
 
 #endif

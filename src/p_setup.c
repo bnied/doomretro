@@ -1,81 +1,125 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
 
 #include <math.h>
+#include <time.h>
 
+#include "c_console.h"
 #include "doomstat.h"
 #include "g_game.h"
 #include "i_swap.h"
 #include "i_system.h"
+#include "m_argv.h"
 #include "m_bbox.h"
 #include "m_misc.h"
+#include "m_random.h"
 #include "p_fix.h"
 #include "p_local.h"
+#include "p_setup.h"
+#include "p_tick.h"
 #include "s_sound.h"
+#include "sc_man.h"
 #include "w_wad.h"
 #include "z_zone.h"
 
-void P_SpawnMapThing(mapthing_t *mthing);
+#define MAPINFO_SCRIPT_NAME     "MAPINFO"
+
+#define MCMD_AUTHOR             1
+#define MCMD_MUSIC              2
+#define MCMD_NEXT               3
+#define MCMD_PAR                4
+#define MCMD_SECRETNEXT         5
+#define MCMD_SKY1               6
+#define MCMD_TITLEPATCH         7
+
+typedef struct mapinfo_s mapinfo_t;
+
+struct mapinfo_s
+{
+    char        author[128];
+    int         music;
+    char        name[128];
+    int         next;
+    int         par;
+    int         secretnext;
+    int         sky1texture;
+    int         sky1scrolldelta;
+    int         titlepatch;
+};
+
+void P_SpawnMapThing(mapthing_t *mthing, int index);
 
 //
 // MAP related Lookup tables.
 // Store VERTEXES, LINEDEFS, SIDEDEFS, etc.
 //
+int             mapcount;
+
 int             numvertexes;
+int             sizevertexes;
 vertex_t        *vertexes;
 
 int             numsegs;
+int             sizesegs;
 seg_t           *segs;
 
 int             numsectors;
+int             sizesectors;
 sector_t        *sectors;
 
 int             numsubsectors;
+int             sizesubsectors;
 subsector_t     *subsectors;
 
 int             numnodes;
+int             sizenodes;
 node_t          *nodes;
 
 int             numlines;
+int             sizelines;
 line_t          *lines;
 
 int             numsides;
+int             sizesides;
 side_t          *sides;
+
+int             numthings;
+int             sizethings;
 
 // BLOCKMAP
 // Created from axis aligned bounding box
@@ -89,10 +133,10 @@ int             bmapwidth;
 int             bmapheight;
 
 // for large maps, wad is 16bit
-uint32_t        *blockmapindex;
+int             *blockmap;
 
 // offsets in blockmap are from here
-uint32_t        *blockmaphead;
+int             *blockmaplump;
 
 // origin of block map
 fixed_t         bmaporgx;
@@ -108,23 +152,62 @@ mobj_t          **blocklinks;
 // Without special effect, this could be
 //  used as a PVS lookup as well.
 //
-byte            *rejectmatrix;
-int             rejectmatrixsize;
+static int      rejectlump = -1;        // cph - store reject lump num if cached
+const byte      *rejectmatrix;          // cph - const*
 
-// Maintain single and multi player starting spots.
-#define MAX_DEATHMATCH_STARTS   10
+static mapinfo_t mapinfo[99];
 
-mapthing_t      deathmatchstarts[MAX_DEATHMATCH_STARTS];
-mapthing_t      *deathmatch_p;
-mapthing_t      playerstarts[MAXPLAYERS];
+static char *mapcmdnames[] =
+{
+    "AUTHOR",
+    "MUSIC",
+    "NEXT",
+    "PAR",
+    "SECRETNEXT",
+    "SKY1",
+    "TITLEPATCH",
+    NULL
+};
 
-boolean         canmodify;
+static int mapcmdids[] =
+{
+    MCMD_AUTHOR,
+    MCMD_MUSIC,
+    MCMD_NEXT,
+    MCMD_PAR,
+    MCMD_SECRETNEXT,
+    MCMD_SKY1,
+    MCMD_TITLEPATCH
+};
 
-boolean         mapfixes = MAPFIXES_DEFAULT;
+dboolean        canmodify;
+dboolean        transferredsky;
+dboolean        MAPINFO;
+
+dboolean        r_fixmaperrors = r_fixmaperrors_default;
 
 static int      current_episode = -1;
 static int      current_map = -1;
-static int      samelevel = false;
+static int      samelevel;
+
+mapformat_t     mapformat;
+
+dboolean        boomlinespecials;
+dboolean        blockmaprecreated;
+
+extern fixed_t  animatedliquiddiff;
+extern fixed_t  animatedliquidxdir;
+extern fixed_t  animatedliquidydir;
+extern fixed_t  animatedliquidxoffs;
+extern fixed_t  animatedliquidyoffs;
+
+static fixed_t GetOffset(vertex_t *v1, vertex_t *v2)
+{
+    fixed_t     dx = (v1->x - v2->x) >> FRACBITS;
+    fixed_t     dy = (v1->y - v2->y) >> FRACBITS;
+
+    return ((fixed_t)(sqrt(dx * dx + dy * dy)) << FRACBITS);
+}
 
 // e6y: Smart malloc
 // Used by P_SetupLevel() for smart data loading
@@ -150,8 +233,6 @@ static void *calloc_IfSameLevel(void *p, size_t n1, size_t n2)
     }
 }
 
-#define DEFAULT 0x7fff
-
 //
 // P_LoadVertexes
 //
@@ -162,13 +243,17 @@ void P_LoadVertexes(int lump)
 
     // Determine number of lumps:
     //  total lump length / vertex record length.
-    numvertexes = W_LumpLength(lump) / sizeof(mapvertex_t);
+    sizevertexes = W_LumpLength(lump);
+    numvertexes = sizevertexes / sizeof(mapvertex_t);
 
     // Allocate zone memory for buffer.
     vertexes = calloc_IfSameLevel(vertexes, numvertexes, sizeof(vertex_t));
 
     // Load data into cache.
     data = (const mapvertex_t *)W_CacheLumpNum(lump, PU_STATIC);
+
+    if (!data || !numvertexes)
+        I_Error("There are no vertices in this map.");
 
     // Copy and convert vertex coordinates,
     // internal representation as fixed.
@@ -178,7 +263,7 @@ void P_LoadVertexes(int lump)
         vertexes[i].y = SHORT(data[i].y) << FRACBITS;
 
         // Apply any map-specific fixes.
-        if (canmodify && mapfixes)
+        if (canmodify && r_fixmaperrors)
         {
             int j = 0;
 
@@ -212,10 +297,15 @@ void P_LoadSegs(int lump)
     const mapseg_t      *data;
     int                 i;
 
-    numsegs = W_LumpLength(lump) / sizeof(mapseg_t);
+    sizesegs = W_LumpLength(lump);
+    numsegs = sizesegs / sizeof(mapseg_t);
     segs = calloc_IfSameLevel(segs, numsegs, sizeof(seg_t));
-    memset(segs, 0, numsegs * sizeof(seg_t));
     data = (const mapseg_t *)W_CacheLumpNum(lump, PU_STATIC);
+
+    if (!data || !numsegs)
+        I_Error("There are no segs in this map.");
+
+    boomlinespecials = false;
 
     for (i = 0; i < numsegs; i++)
     {
@@ -227,21 +317,28 @@ void P_LoadSegs(int lump)
 
         v1 = (unsigned short)SHORT(ml->v1);
         v2 = (unsigned short)SHORT(ml->v2);
-
-        li->angle = SHORT(ml->angle) << 16;
+        li->angle = SHORT(ml->angle) << FRACBITS;
         linedef = (unsigned short)SHORT(ml->linedef);
 
         if (linedef < 0 || linedef >= numlines)
-            I_Error("P_LoadSegs: invalid linedef %d", linedef);
+            I_Error("Seg %s references an invalid linedef of %s.", commify(i), commify(linedef));
 
         ldef = &lines[linedef];
         li->linedef = ldef;
-
         side = SHORT(ml->side);
 
         // e6y: fix wrong side index
         if (side != 0 && side != 1)
+        {
+            C_Warning("Seg %s has a wrong side index of %s. It has been replaced with 1.",
+                commify(i), commify(side));
             side = 1;
+        }
+
+        // e6y: check for wrong indexes
+        if ((unsigned int)ldef->sidenum[side] >= (unsigned int)numsides)
+            I_Error("Linedef %s for seg %s references an invalid sidedef of %s.",
+                commify(linedef), commify(i), commify(ldef->sidenum[side]));
 
         li->sidedef = &sides[ldef->sidenum[side]];
 
@@ -251,24 +348,19 @@ void P_LoadSegs(int lump)
         if (ldef->sidenum[side] != NO_INDEX)
             li->frontsector = sides[ldef->sidenum[side]].sector;
         else
-            li->frontsector = 0;
-
-        if (ldef-> flags & ML_TWOSIDED)
         {
-            int sidenum = ldef->sidenum[side ^ 1];
-
-            // If the sidenum is out of range, this may be a "glass hack"
-            // impassible window.  Point at side #0 (this may not be
-            // the correct Vanilla behavior; however, it seems to work for
-            // OTTAWAU.WAD, which is the one place I've seen this trick
-            // used).
-            if (sidenum < 0 || sidenum >= numsides)
-                sidenum = 0;
-
-            li->backsector = sides[sidenum].sector;
+            C_Warning("The front of seg %s has no sidedef.", commify(i));
+            li->frontsector = NULL;
         }
+
+        // killough 5/3/98: ignore 2s flag if second sidedef missing:
+        if ((ldef->flags & ML_TWOSIDED) && ldef->sidenum[side ^ 1] != NO_INDEX)
+            li->backsector = sides[ldef->sidenum[side ^ 1]].sector;
         else
-            li->backsector = 0;
+        {
+            li->backsector = NULL;
+            ldef->flags &= ~ML_TWOSIDED;
+        }
 
         // e6y
         // check and fix wrong references to non-existent vertexes
@@ -276,6 +368,12 @@ void P_LoadSegs(int lump)
         // http://www.doomworld.com/idgames/index.php?id=12647
         if (v1 >= numvertexes || v2 >= numvertexes)
         {
+            char buffer[] = "Seg %s references an invalid vertex of %s.";
+
+            if (v1 >= numvertexes)
+                C_Warning(buffer, commify(i), commify(v1));
+            if (v2 >= numvertexes)
+                C_Warning(buffer, commify(i), commify(v2));
 
             if (li->sidedef == &sides[li->linedef->sidenum[0]])
             {
@@ -294,22 +392,13 @@ void P_LoadSegs(int lump)
             li->v2 = &vertexes[v2];
         }
 
-        // From Odamex:
-        {
-            // Recalculate seg offsets. Values in wads are untrustworthy.
-            vertex_t *from = (side == 0)
-                ? ldef->v1         // right side: offset is from start of linedef
-                : ldef->v2;        // left side: offset is from end of linedef
-            vertex_t *to = li->v1; // end point is start of seg, in both cases
+        li->offset = GetOffset(li->v1, (ml->side ? ldef->v2 : ldef->v1));
 
-            float dx = (float)(to->x - from->x);
-            float dy = (float)(to->y - from->y);
-
-            li->offset = (fixed_t)sqrt(dx * dx + dy * dy);
-        }
+        if (li->linedef->special >= BOOMLINESPECIALS)
+            boomlinespecials = true;
 
         // Apply any map-specific fixes.
-        if (canmodify && mapfixes)
+        if (canmodify && r_fixmaperrors)
         {
             int j = 0;
 
@@ -357,24 +446,160 @@ void P_LoadSegs(int lump)
     W_ReleaseLumpNum(lump);
 }
 
+static void P_LoadSegs_V4(int lump)
+{
+    const mapseg_v4_t   *data;
+    int                 i;
+
+    sizesegs = W_LumpLength(lump);
+    numsegs = sizesegs / sizeof(mapseg_v4_t);
+    segs = calloc_IfSameLevel(segs, numsegs, sizeof(seg_t));
+    data = (const mapseg_v4_t *)W_CacheLumpNum(lump, PU_STATIC);
+
+    if (!data || !numsegs)
+        I_Error("This map has no segs.");
+
+    boomlinespecials = false;
+
+    for (i = 0; i < numsegs; i++)
+    {
+        seg_t                   *li = segs + i;
+        const mapseg_v4_t       *ml = data + i;
+        int                     v1, v2;
+        int                     side, linedef;
+        line_t                  *ldef;
+
+        v1 = ml->v1;
+        v2 = ml->v2;
+
+        li->angle = SHORT(ml->angle) << FRACBITS;
+        li->offset = SHORT(ml->offset) << FRACBITS;
+        linedef = (unsigned short)SHORT(ml->linedef);
+
+        //e6y: check for wrong indexes
+        if (linedef < 0 || linedef >= numlines)
+            I_Error("Seg %s references an invalid linedef of %s.", commify(i), commify(linedef));
+
+        ldef = &lines[linedef];
+        li->linedef = ldef;
+        side = SHORT(ml->side);
+
+        // e6y: fix wrong side index
+        if (side != 0 && side != 1)
+        {
+            C_Warning("Seg %s has a wrong side index of %s. It has been replaced with 1.",
+                commify(i), commify(side));
+            side = 1;
+        }
+
+        // e6y: check for wrong indexes
+        if ((unsigned int)ldef->sidenum[side] >= (unsigned int)numsides)
+            I_Error("Linedef %s for seg %s references an invalid sidedef of %s.",
+                commify(linedef), commify(i), commify(ldef->sidenum[side]));
+
+        li->sidedef = &sides[ldef->sidenum[side]];
+
+        // cph 2006/09/30 - our frontsector can be the second side of the
+        // linedef, so must check for NO_INDEX in case we are incorrectly
+        // referencing the back of a 1S line
+        if (ldef->sidenum[side] != NO_INDEX)
+            li->frontsector = sides[ldef->sidenum[side]].sector;
+        else
+        {
+            C_Warning("The front of seg %s has no sidedef.", commify(i));
+            li->frontsector = NULL;
+        }
+
+        // killough 5/3/98: ignore 2s flag if second sidedef missing:
+        if ((ldef->flags & ML_TWOSIDED) && ldef->sidenum[side ^ 1] != -1)
+            li->backsector = sides[ldef->sidenum[side ^ 1]].sector;
+        else
+        {
+            li->backsector = NULL;
+            ldef->flags &= ~ML_TWOSIDED;
+        }
+
+        // e6y
+        // check and fix wrong references to non-existent vertexes
+        // see e1m9 @ NIVELES.WAD
+        // http://www.doomworld.com/idgames/index.php?id=12647
+        if (v1 >= numvertexes || v2 >= numvertexes)
+        {
+            char buffer[] = "Seg %s references an invalid vertex of %s.";
+
+            if (v1 >= numvertexes)
+                C_Warning(buffer, commify(i), commify(v1));
+            if (v2 >= numvertexes)
+                C_Warning(buffer, commify(i), commify(v2));
+
+            if (li->sidedef == &sides[li->linedef->sidenum[0]])
+            {
+                li->v1 = lines[ml->linedef].v1;
+                li->v2 = lines[ml->linedef].v2;
+            }
+            else
+            {
+                li->v1 = lines[ml->linedef].v2;
+                li->v2 = lines[ml->linedef].v1;
+            }
+        }
+        else
+        {
+            li->v1 = &vertexes[v1];
+            li->v2 = &vertexes[v2];
+        }
+
+        li->offset = GetOffset(li->v1, (ml->side ? ldef->v2 : ldef->v1));
+
+        if (li->linedef->special >= BOOMLINESPECIALS)
+            boomlinespecials = true;
+    }
+
+    W_ReleaseLumpNum(lump);
+}
+
 //
 // P_LoadSubsectors
 //
 void P_LoadSubsectors(int lump)
 {
-    const mapsubsector_t *data;
-    int                  i;
+    const mapsubsector_t        *data;
+    int                         i;
 
-    numsubsectors = W_LumpLength(lump) / sizeof(mapsubsector_t);
+    sizesubsectors = W_LumpLength(lump);
+    numsubsectors = sizesubsectors / sizeof(mapsubsector_t);
     subsectors = calloc_IfSameLevel(subsectors, numsubsectors, sizeof(subsector_t));
     data = (const mapsubsector_t *)W_CacheLumpNum(lump, PU_STATIC);
 
-    memset(subsectors, 0, numsubsectors * sizeof(subsector_t));
+    if (!data || !numsubsectors)
+        I_Error("This map has no subsectors.");
 
     for (i = 0; i < numsubsectors; i++)
     {
         subsectors[i].numlines = (unsigned short)SHORT(data[i].numsegs);
         subsectors[i].firstline = (unsigned short)SHORT(data[i].firstseg);
+    }
+
+    W_ReleaseLumpNum(lump);
+}
+
+static void P_LoadSubsectors_V4(int lump)
+{
+    const mapsubsector_v4_t     *data;
+    int                         i;
+
+    sizesubsectors = W_LumpLength(lump);
+    numsubsectors = sizesubsectors / sizeof(mapsubsector_v4_t);
+    subsectors = calloc_IfSameLevel(subsectors, numsubsectors, sizeof(subsector_t));
+    data = (const mapsubsector_v4_t *)W_CacheLumpNum(lump, PU_STATIC);
+
+    if (!data || !numsubsectors)
+        I_Error("This map has no subsectors.");
+
+    for (i = 0; i < numsubsectors; i++)
+    {
+        subsectors[i].numlines = (int)data[i].numsegs;
+        subsectors[i].firstline = (int)data[i].firstseg;
     }
 
     W_ReleaseLumpNum(lump);
@@ -388,9 +613,9 @@ void P_LoadSectors(int lump)
     const byte  *data;
     int         i;
 
-    numsectors = W_LumpLength(lump) / sizeof(mapsector_t);
+    sizesectors = W_LumpLength(lump);
+    numsectors = sizesectors / sizeof(mapsector_t);
     sectors = calloc_IfSameLevel(sectors, numsectors, sizeof(sector_t));
-    memset(sectors, 0, numsectors * sizeof(sector_t));
     data = (byte *)W_CacheLumpNum(lump, PU_STATIC);
 
     for (i = 0; i < numsectors; i++)
@@ -406,8 +631,14 @@ void P_LoadSectors(int lump)
         ss->special = SHORT(ms->special);
         ss->tag = SHORT(ms->tag);
 
+        ss->nextsec = -1;       // jff 2/26/98 add fields to support locking out
+        ss->prevsec = -1;       // stair retriggering until build completes
+        ss->heightsec = -1;     // sector used to get floor and ceiling height
+        ss->floorlightsec = -1; // sector used to get floor lighting
+        ss->ceilinglightsec = -1;
+
         // Apply any level-specific fixes.
-        if (canmodify && mapfixes)
+        if (canmodify && r_fixmaperrors)
         {
             int j = 0;
 
@@ -435,6 +666,14 @@ void P_LoadSectors(int lump)
                 j++;
             }
         }
+
+        // [AM] Sector interpolation. Even if we're
+        //      not running uncapped, the renderer still
+        //      uses this data.
+        ss->oldfloorheight = ss->floorheight;
+        ss->interpfloorheight = ss->floorheight;
+        ss->oldceilingheight = ss->ceilingheight;
+        ss->interpceilingheight = ss->ceilingheight;
     }
 
     W_ReleaseLumpNum(lump);
@@ -448,20 +687,16 @@ void P_LoadNodes(int lump)
     const byte  *data;
     int         i;
 
-    numnodes = W_LumpLength(lump) / sizeof(mapnode_t);
+    sizenodes = W_LumpLength(lump);
+    numnodes = sizenodes / sizeof(mapnode_t);
     nodes = malloc_IfSameLevel(nodes, numnodes * sizeof(node_t));
     data = (byte *)W_CacheLumpNum(lump, PU_STATIC);
 
-    // [crispy] warn about unsupported nodes
     if (!data || !numnodes)
-    {
-        if (numsubsectors > 1)
-            I_Error("P_LoadNodes: No nodes in map");
-    }
-    else if (!memcmp(data, "xNd4\0\0\0\0", 8))
-        I_Error("P_LoadNodes: DeePBSP nodes are not supported");
-    else if (!memcmp(data, "XNOD", 4) ||!memcmp(data, "ZNOD", 4))
-        I_Error("P_LoadNodes: ZDBSP nodes are not supported");
+        if (numsubsectors == 1)
+            C_Warning("This map has no nodes and only one subsector.");
+        else
+            I_Error("This map has no nodes.");
 
     for (i = 0; i < numnodes; i++)
     {
@@ -489,7 +724,11 @@ void P_LoadNodes(int lump)
 
                 // haleyjd 11/06/10: check for invalid subsector reference
                 if (no->children[j] >= numsubsectors)
+                {
+                    C_Warning("Node %s references an invalid subsector of %s.",
+                        commify(i), commify(no->children[j]));
                     no->children[j] = 0;
+                }
 
                 no->children[j] |= NF_SUBSECTOR;
             }
@@ -502,22 +741,267 @@ void P_LoadNodes(int lump)
     W_ReleaseLumpNum(lump);
 }
 
+static void P_LoadNodes_V4(int lump)
+{
+    const byte  *data;
+    int         i;
+
+    sizenodes = W_LumpLength(lump);
+    numnodes = (sizenodes - 8) / sizeof(mapnode_v4_t);
+    nodes = malloc_IfSameLevel(nodes, numnodes * sizeof(node_t));
+    data = W_CacheLumpNum(lump, PU_STATIC);
+
+    // skip header
+    data = data + 8;
+
+    if (!data || !numnodes)
+        if (numsubsectors == 1)
+            C_Warning("This map has no nodes and only one subsector.");
+        else
+            I_Error("This map has no nodes.");
+
+    for (i = 0; i < numnodes; i++)
+    {
+        node_t                  *no = nodes + i;
+        const mapnode_v4_t      *mn = (const mapnode_v4_t *)data + i;
+        int                     j;
+
+        no->x = SHORT(mn->x) << FRACBITS;
+        no->y = SHORT(mn->y) << FRACBITS;
+        no->dx = SHORT(mn->dx) << FRACBITS;
+        no->dy = SHORT(mn->dy) << FRACBITS;
+
+        for (j = 0; j < 2; j++)
+        {
+            int k;
+            no->children[j] = (unsigned int)(mn->children[j]);
+
+            for (k = 0; k<4; k++)
+                no->bbox[j][k] = SHORT(mn->bbox[j][k]) << FRACBITS;
+        }
+    }
+
+    W_ReleaseLumpNum(lump);
+}
+
+static void P_LoadZSegs(const byte *data)
+{
+    int i;
+
+    boomlinespecials = false;
+
+    for (i = 0; i < numsegs; i++)
+    {
+        line_t                  *ldef;
+        unsigned int            v1, v2;
+        unsigned int            linedef;
+        unsigned char           side;
+        seg_t                   *li = segs + i;
+        const mapseg_znod_t     *ml = (const mapseg_znod_t *)data + i;
+
+        v1 = ml->v1;
+        v2 = ml->v2;
+
+        linedef = (unsigned short)SHORT(ml->linedef);
+
+        // e6y: check for wrong indexes
+        if (linedef >= (unsigned int)numlines)
+            I_Error("Seg %s references an invalid linedef of %s.", commify(i), commify(linedef));
+
+        ldef = &lines[linedef];
+        li->linedef = ldef;
+        side = ml->side;
+
+        // e6y: fix wrong side index
+        if (side != 0 && side != 1)
+        {
+            C_Warning("Seg %s has a wrong side index of %s. It has been replaced with 1.",
+                commify(i), commify(side));
+            side = 1;
+        }
+
+        // e6y: check for wrong indexes
+        if ((unsigned int)ldef->sidenum[side] >= (unsigned int)numsides)
+            C_Warning("Linedef %s for seg %s references an invalid sidedef of %s.",
+                commify(linedef), commify(i), commify(ldef->sidenum[side]));
+
+        li->sidedef = &sides[ldef->sidenum[side]];
+
+        // cph 2006/09/30 - our frontsector can be the second side of the
+        // linedef, so must check for NO_INDEX in case we are incorrectly
+        // referencing the back of a 1S line
+        if (ldef->sidenum[side] != NO_INDEX)
+            li->frontsector = sides[ldef->sidenum[side]].sector;
+        else
+        {
+            C_Warning("The front of seg %s has no sidedef.", commify(i));
+            li->frontsector = NULL;
+        }
+
+        if ((ldef->flags & ML_TWOSIDED) && (ldef->sidenum[side ^ 1] != NO_INDEX))
+            li->backsector = sides[ldef->sidenum[side ^ 1]].sector;
+        else
+        {
+            li->backsector = NULL;
+            ldef->flags &= ~ML_TWOSIDED;
+        }
+
+        li->v1 = &vertexes[v1];
+        li->v2 = &vertexes[v2];
+
+        li->offset = GetOffset(li->v1, (side ? ldef->v2 : ldef->v1));
+        li->angle = R_PointToAngle2(segs[i].v1->x, segs[i].v1->y, segs[i].v2->x, segs[i].v2->y);
+
+        if (li->linedef->special >= BOOMLINESPECIALS)
+            boomlinespecials = true;
+    }
+}
+
+static void P_LoadZNodes(int lump)
+{
+    byte                *data = W_CacheLumpNum(lump, PU_STATIC);
+    unsigned int        i;
+    unsigned int        orgVerts, newVerts;
+    unsigned int        numSubs, currSeg;
+    unsigned int        numSegs;
+    unsigned int        numNodes;
+    vertex_t            *newvertarray = NULL;
+
+    // skip header
+    data += 4;
+
+    // Read extra vertices added during node building
+    orgVerts = *((const unsigned int *)data);
+    data += sizeof(orgVerts);
+
+    newVerts = *((const unsigned int *)data);
+    data += sizeof(newVerts);
+
+    if (!samelevel)
+    {
+        if (orgVerts + newVerts == (unsigned int)numvertexes)
+            newvertarray = vertexes;
+        else
+        {
+            newvertarray = calloc(orgVerts + newVerts, sizeof(vertex_t));
+            memcpy(newvertarray, vertexes, orgVerts * sizeof(vertex_t));
+        }
+
+        for (i = 0; i < newVerts; i++)
+        {
+            newvertarray[i + orgVerts].x = *((const unsigned int *)data);
+            data += sizeof(newvertarray[0].x);
+
+            newvertarray[i + orgVerts].y = *((const unsigned int *)data);
+            data += sizeof(newvertarray[0].y);
+        }
+
+        if (vertexes != newvertarray)
+        {
+            for (i = 0; i < (unsigned int)numlines; i++)
+            {
+                lines[i].v1 = lines[i].v1 - vertexes + newvertarray;
+                lines[i].v2 = lines[i].v2 - vertexes + newvertarray;
+            }
+            free(vertexes);
+            vertexes = newvertarray;
+            numvertexes = orgVerts + newVerts;
+        }
+    }
+    else
+    {
+        int     size = newVerts * (sizeof(newvertarray[0].x) + sizeof(newvertarray[0].y));
+
+        data += size;
+
+        // P_LoadVertexes reset numvertexes, need to increase it again
+        numvertexes = orgVerts + newVerts;
+    }
+
+    // Read the subsectors
+    numSubs = *((const unsigned int*)data);
+    data += sizeof(numSubs);
+
+    numsubsectors = numSubs;
+    if (numsubsectors <= 0)
+        I_Error("There are no subsectors in this map.");
+
+    subsectors = calloc_IfSameLevel(subsectors, numsubsectors, sizeof(subsector_t));
+
+    for (i = currSeg = 0; i < numSubs; i++)
+    {
+        const mapsubsector_znod_t       *mseg = (const mapsubsector_znod_t *)data + i;
+
+        subsectors[i].firstline = currSeg;
+        subsectors[i].numlines = mseg->numsegs;
+        currSeg += mseg->numsegs;
+    }
+    data += numSubs * sizeof(mapsubsector_znod_t);
+
+    // Read the segs
+    numSegs = *((const unsigned int*)data);
+    data += sizeof(numSegs);
+
+    // The number of segs stored should match the number of
+    // segs used by subsectors.
+    if (numSegs != currSeg)
+        I_Error("There are an incorrect number of segs in the nodes.");
+
+    numsegs = numSegs;
+    segs = calloc_IfSameLevel(segs, numsegs, sizeof(seg_t));
+
+    P_LoadZSegs(data);
+    data += numsegs * sizeof(mapseg_znod_t);
+
+    // Read nodes
+    numNodes = *((const unsigned int*)data);
+    data += sizeof(numNodes);
+
+    numnodes = numNodes;
+    nodes = calloc_IfSameLevel(nodes, numNodes, sizeof(node_t));
+
+    for (i = 0; i < numNodes; i++)
+    {
+        int                     j;
+        node_t                  *no = nodes + i;
+        const mapnode_znod_t    *mn = (const mapnode_znod_t *)data + i;
+
+        no->x = SHORT(mn->x) << FRACBITS;
+        no->y = SHORT(mn->y) << FRACBITS;
+        no->dx = SHORT(mn->dx) << FRACBITS;
+        no->dy = SHORT(mn->dy) << FRACBITS;
+
+        for (j = 0; j < 2; ++j)
+        {
+            int k;
+
+            no->children[j] = (unsigned int)(mn->children[j]);
+
+            for (k = 0; k < 4; ++k)
+                no->bbox[j][k] = SHORT(mn->bbox[j][k]) << FRACBITS;
+        }
+    }
+
+    W_ReleaseLumpNum(lump);
+}
+
 //
 // P_LoadThings
 //
 void P_LoadThings(int lump)
 {
-    const mapthing_t    *data;
+    const mapthing_t    *data = (const mapthing_t *)W_CacheLumpNum(lump, PU_STATIC);
     int                 i;
-    int                 numthings;
 
-    data = (const mapthing_t *)W_CacheLumpNum(lump, PU_STATIC);
-    numthings = W_LumpLength(lump) / sizeof(mapthing_t);
+    sizethings = W_LumpLength(lump);
+    numthings = sizethings / sizeof(mapthing_t);
+
+    srand(numthings);
 
     for (i = 0; i < numthings; i++)
     {
         mapthing_t      mt = data[i];
-        boolean         spawn = true;
+        dboolean        spawn = true;
 
         // Do not spawn cool, new monsters if !commercial
         if (gamemode != commercial)
@@ -549,7 +1033,7 @@ void P_LoadThings(int lump)
         mt.options = SHORT(mt.options);
 
         // Apply any level-specific fixes.
-        if (canmodify && mapfixes)
+        if (canmodify && r_fixmaperrors)
         {
             int j = 0;
 
@@ -585,8 +1069,10 @@ void P_LoadThings(int lump)
             mt.type = Zombieman;
 
         if (spawn)
-            P_SpawnMapThing(&mt);
+            P_SpawnMapThing(&mt, i);
     }
+
+    srand((unsigned int)time(NULL));
 
     W_ReleaseLumpNum(lump);
 }
@@ -594,15 +1080,16 @@ void P_LoadThings(int lump)
 //
 // P_LoadLineDefs
 // Also counts secret lines for intermissions.
+// killough 4/4/98: split into two functions, to allow sidedef overloading
 //
-void P_LoadLineDefs(int lump)
+static void P_LoadLineDefs(int lump)
 {
     const byte  *data = W_CacheLumpNum(lump, PU_STATIC);
     int         i;
 
-    numlines = W_LumpLength(lump) / sizeof(maplinedef_t);
+    sizelines = W_LumpLength(lump);
+    numlines = sizelines / sizeof(maplinedef_t);
     lines = calloc_IfSameLevel(lines, numlines, sizeof(line_t));
-    memset(lines, 0, numlines * sizeof(line_t));
 
     for (i = 0; i < numlines; i++)
     {
@@ -612,24 +1099,19 @@ void P_LoadLineDefs(int lump)
 
         ld->flags = (unsigned short)SHORT(mld->flags);
         ld->hidden = false;
+
         ld->special = SHORT(mld->special);
+
         ld->tag = SHORT(mld->tag);
         v1 = ld->v1 = &vertexes[(unsigned short)SHORT(mld->v1)];
         v2 = ld->v2 = &vertexes[(unsigned short)SHORT(mld->v2)];
         ld->dx = v2->x - v1->x;
         ld->dy = v2->y - v1->y;
 
-        if (!ld->dx)
-            ld->slopetype = ST_VERTICAL;
-        else if (!ld->dy)
-            ld->slopetype = ST_HORIZONTAL;
-        else
-        {
-            if (FixedDiv(ld->dy , ld->dx) > 0)
-                ld->slopetype = ST_POSITIVE;
-            else
-                ld->slopetype = ST_NEGATIVE;
-        }
+        ld->tranlump = -1;   // killough 4/11/98: no translucency by default
+
+        ld->slopetype = !ld->dx ? ST_VERTICAL : !ld->dy ? ST_HORIZONTAL :
+            FixedDiv(ld->dy, ld->dx) > 0 ? ST_POSITIVE : ST_NEGATIVE;
 
         if (v1->x < v2->x)
         {
@@ -654,52 +1136,110 @@ void P_LoadLineDefs(int lump)
         }
 
         // calculate sound origin of line to be its midpoint
-        ld->soundorg.x = (ld->bbox[BOXLEFT] + ld->bbox[BOXRIGHT]) / 2;
-        ld->soundorg.y = (ld->bbox[BOXTOP] + ld->bbox[BOXBOTTOM]) / 2;
+        // e6y: fix sound origin for large levels
+        ld->soundorg.x = ld->bbox[BOXLEFT] / 2 + ld->bbox[BOXRIGHT] / 2;
+        ld->soundorg.y = ld->bbox[BOXTOP] / 2 + ld->bbox[BOXBOTTOM] / 2;
 
         ld->sidenum[0] = SHORT(mld->sidenum[0]);
         ld->sidenum[1] = SHORT(mld->sidenum[1]);
 
-        {
-            // cph 2006/09/30 - fix sidedef errors right away
-            int j;
-
-            for (j = 0; j < 2; j++)
-                if (ld->sidenum[j] != NO_INDEX && ld->sidenum[j] >= numsides) 
-                    ld->sidenum[j] = NO_INDEX;
-
-            // killough 11/98: fix common wad errors (missing sidedefs):
-            if (ld->sidenum[0] == NO_INDEX)
-                ld->sidenum[0] = 0;  // Substitute dummy sidedef for missing right side
-
-            if (ld->sidenum[1] == NO_INDEX && (ld->flags & ML_TWOSIDED))
-                ld->flags &= ~ML_TWOSIDED;  // Clear 2s flag for missing left side
-        }
-
-        ld->frontsector = (ld->sidenum[0] == NO_INDEX ? 0 : sides[ld->sidenum[0]].sector);
-        ld->backsector = (ld->sidenum[1] == NO_INDEX ? 0 : sides[ld->sidenum[1]].sector);
+        // killough 4/4/98: support special sidedef interpretation below
+        if (ld->sidenum[0] != NO_INDEX && ld->special)
+            sides[*ld->sidenum].special = ld->special;
     }
 
     W_ReleaseLumpNum(lump);
 }
 
+// killough 4/4/98: delay using sidedefs until they are loaded
+static void P_LoadLineDefs2(int lump)
+{
+    int         i = numlines;
+    line_t      *ld = lines;
+
+    transferredsky = false;
+
+    for (; i--; ld++)
+    {
+        {
+            // cph 2006/09/30 - fix sidedef errors right away
+            int j;
+
+            for (j = 0; j < 2; j++)
+                if (ld->sidenum[j] != NO_INDEX && ld->sidenum[j] >= numsides)
+                {
+                    C_Warning("Linedef %s references an invalid sidedef of %s.",
+                        commify(i), commify(ld->sidenum[j]));
+                    ld->sidenum[j] = NO_INDEX;
+                }
+
+            // killough 11/98: fix common wad errors (missing sidedefs):
+            if (ld->sidenum[0] == NO_INDEX)
+            {
+                ld->sidenum[0] = 0;  // Substitute dummy sidedef for missing right side
+                C_Warning("Linedef %s is missing its first sidedef.", commify(i));
+            }
+
+            if (ld->sidenum[1] == NO_INDEX && (ld->flags & ML_TWOSIDED))
+            {
+                ld->flags &= ~ML_TWOSIDED;  // Clear 2s flag for missing left side
+                C_Warning("Linedef %s has the two-sided flag set but has no second sidedef.",
+                    commify(i));
+            }
+        }
+
+        ld->frontsector = (ld->sidenum[0] != NO_INDEX ? sides[ld->sidenum[0]].sector : 0);
+        ld->backsector = (ld->sidenum[1] != NO_INDEX ? sides[ld->sidenum[1]].sector : 0);
+
+        // killough 4/11/98: handle special types
+        switch (ld->special)
+        {
+            int lump;
+
+            case Translucent_MiddleTexture:            // killough 4/11/98: translucent 2s textures
+                lump = sides[*ld->sidenum].special;    // translucency from sidedef
+                if (!ld->tag)                          // if tag==0,
+                    ld->tranlump = lump;               // affect this linedef only
+                else
+                {
+                    int j;
+
+                    for (j = 0; j < numlines; j++)     // if tag!=0,
+                        if (lines[j].tag == ld->tag)   // affect all matching linedefs
+                            lines[j].tranlump = lump;
+                }
+                break;
+
+            case TransferSkyTextureToTaggedSectors:
+            case TransferSkyTextureToTaggedSectors_Flipped:
+                transferredsky = true;
+                break;
+        }
+    }
+}
+
 //
 // P_LoadSideDefs
 //
-void P_LoadSideDefs(int lump)
+// killough 4/4/98: split into two functions
+static void P_LoadSideDefs(int lump)
 {
-    const byte  *data;
-    int         i;
-
-    numsides = W_LumpLength(lump) / sizeof(mapsidedef_t);
+    sizesides = W_LumpLength(lump);
+    numsides = sizesides / sizeof(mapsidedef_t);
     sides = calloc_IfSameLevel(sides, numsides, sizeof(side_t));
-    memset(sides, 0, numsides * sizeof(side_t));
-    data = (byte *)W_CacheLumpNum(lump, PU_STATIC);
+}
+
+// killough 4/4/98: delay using texture names until after linedefs are loaded, to allow overloading
+static void P_LoadSideDefs2(int lump)
+{
+    const byte  *data = (byte *)W_CacheLumpNum(lump, PU_STATIC);
+    int         i;
 
     for (i = 0; i < numsides; i++)
     {
         mapsidedef_t    *msd = (mapsidedef_t *)data + i;
         side_t          *sd = sides + i;
+        sector_t        *sec;
         unsigned short  sector_num = SHORT(msd->sector);
 
         sd->textureoffset = SHORT(msd->textureoffset) << FRACBITS;
@@ -707,111 +1247,329 @@ void P_LoadSideDefs(int lump)
 
         // cph 2006/09/30 - catch out-of-range sector numbers; use sector 0 instead
         if (sector_num >= numsectors)
+        {
+            C_Warning("Sidedef %s references an invalid sector of %s.",
+                commify(i), commify(sector_num));
             sector_num = 0;
-        sd->sector = &sectors[sector_num];
+        }
+        sd->sector = sec = &sectors[sector_num];
 
-        sd->toptexture = R_TextureNumForName(msd->toptexture);
-        sd->bottomtexture = R_TextureNumForName(msd->bottomtexture);
-        sd->midtexture = R_TextureNumForName(msd->midtexture);
+        // killough 4/4/98: allow sidedef texture names to be overloaded
+        switch (sd->special)
+        {
+            case CreateFakeCeilingAndFloor:
+                // variable colormap via 242 linedef
+                sd->bottomtexture =
+                    (sec->bottommap = R_ColormapNumForName(msd->bottomtexture)) < 0 ?
+                    sec->bottommap = 0, R_TextureNumForName(msd->bottomtexture) : 0;
+                sd->midtexture =
+                    (sec->midmap = R_ColormapNumForName(msd->midtexture)) < 0 ?
+                    sec->midmap = 0, R_TextureNumForName(msd->midtexture) : 0;
+                sd->toptexture =
+                    (sec->topmap = R_ColormapNumForName(msd->toptexture)) < 0 ?
+                    sec->topmap = 0, R_TextureNumForName(msd->toptexture) : 0;
+                break;
+
+            case Translucent_MiddleTexture:
+                // killough 4/11/98: apply translucency to 2s normal texture
+                sd->midtexture = strncasecmp("TRANMAP", msd->midtexture, 8) ?
+                    (sd->special = W_CheckNumForName(msd->midtexture)) < 0 ||
+                    W_LumpLength(sd->special) != 65536 ?
+                    sd->special = 0, R_TextureNumForName(msd->midtexture) :
+                    (sd->special++, 0) : (sd->special = 0);
+                sd->toptexture = R_TextureNumForName(msd->toptexture);
+                sd->bottomtexture = R_TextureNumForName(msd->bottomtexture);
+                break;
+
+            default:
+                // normal cases
+                sd->midtexture = R_TextureNumForName(msd->midtexture);
+                sd->toptexture = R_TextureNumForName(msd->toptexture);
+                sd->bottomtexture = R_TextureNumForName(msd->bottomtexture);
+                break;
+        }
     }
 
     W_ReleaseLumpNum(lump);
 }
 
 //
-// P_LoadBlockMap
+// killough 10/98:
 //
-// Read wad blockmap using int16_t wadblockmaplump[].
-// Expand from 16bit wad to internal 32bit blockmap.
-// (Taken from Doom Legacy)
+// Rewritten to use faster algorithm.
 //
-void P_LoadBlockMap(int lump)
+// New procedure uses Bresenham-like algorithm on the linedefs, adding the
+// linedef to each block visited from the beginning to the end of the linedef.
+//
+// The algorithm's complexity is on the order of nlines*total_linedef_length.
+//
+// Please note: This section of code is not interchangeable with TeamTNT's
+// code which attempts to fix the same problem.
+//
+static void P_CreateBlockMap(void)
 {
-    unsigned int        count = W_LumpLength(lump) / 2;                    // number of 16 bit blockmap entries
-    uint16_t            *wadblockmaplump = W_CacheLumpNum(lump, PU_LEVEL); // blockmap lump temp
-    uint32_t            firstlist, lastlist;  // blockmap block list bounds
-    uint32_t            overflow_corr = 0;
-    uint32_t            prev_bme = 0;  // for detecting overflow wrap
-    unsigned int        i;
+    int         i;
+    fixed_t     minx = INT_MAX;
+    fixed_t     miny = INT_MAX;
+    fixed_t     maxx = INT_MIN;
+    fixed_t     maxy = INT_MIN;
+    vertex_t    *vertex;
 
-    // [WDJ] when zennode has not been run, this code will corrupt Zone memory.
-    // It assumes a minimum size blockmap.
-    if (count < 5)
-        I_Error("Missing blockmap, node builder has not been run.\n");
-
-    // [WDJ] Do endian as read from blockmap lump temp
-    blockmaphead = malloc_IfSameLevel(blockmaphead, sizeof(*blockmaphead) * count);
-
-    // killough 3/1/98: Expand wad blockmap into larger internal one,
-    // by treating all offsets except -1 as unsigned and zero-extending
-    // them. This potentially doubles the size of blockmaps allowed,
-    // because Doom originally considered the offsets as always signed.
-    // [WDJ] They are unsigned in Unofficial Doom Spec.
-    blockmaphead[0] = LE_SWAP16(wadblockmaplump[0]);            // map orgin_x
-    blockmaphead[1] = LE_SWAP16(wadblockmaplump[1]);            // map orgin_y
-    blockmaphead[2] = LE_SWAP16(wadblockmaplump[2]);            // number columns (x size)
-    blockmaphead[3] = LE_SWAP16(wadblockmaplump[3]);            // number rows (y size)
-
-    bmaporgx = blockmaphead[0] << FRACBITS;
-    bmaporgy = blockmaphead[1] << FRACBITS;
-    bmapwidth = blockmaphead[2];
-    bmapheight = blockmaphead[3];
-    blockmapindex = &blockmaphead[4];
-    firstlist = 4 + bmapwidth * bmapheight;
-    lastlist = count - 1;
-
-    if (firstlist >= lastlist || bmapwidth < 1 || bmapheight < 1)
-        I_Error("Blockmap corrupt, must run node builder on wad.\n");
-
-    // read blockmap index array
-    for (i = 4; i < firstlist; i++)                             // for all entries in wad offset index
+    // First find limits of map
+    vertex = vertexes;
+    i = numvertexes;
+    do
     {
-        uint32_t        bme = LE_SWAP16(wadblockmaplump[i]);    // offset
+        fixed_t j = vertex->x >> FRACBITS;
 
-        // upon overflow, the bme will wrap to low values
-        if (bme < firstlist                                     // too small to be valid
-            && bme < 0x1000 && prev_bme > 0xf000)               // wrapped
+        if (j < minx)
+            minx = j;
+        if (j > maxx)
+            maxx = j;
+        j = vertex->y >> FRACBITS;
+        if (j < miny)
+            miny = j;
+        if (j > maxy)
+            maxy = j;
+        ++vertex;
+    } while (--i);
+
+    // Save blockmap parameters
+    bmaporgx = minx << FRACBITS;
+    bmaporgy = miny << FRACBITS;
+    bmapwidth = ((maxx - minx) >> MAPBTOFRAC) + 1;
+    bmapheight = ((maxy - miny) >> MAPBTOFRAC) + 1;
+
+    // Compute blockmap, which is stored as a 2d array of variable-sized lists.
+    //
+    // Pseudocode:
+    //
+    // For each linedef:
+    //
+    //   Map the starting and ending vertices to blocks.
+    //
+    //   Starting in the starting vertex's block, do:
+    //
+    //     Add linedef to current block's list, dynamically resizing it.
+    //
+    //     If current block is the same as the ending vertex's block, exit loop.
+    //
+    //     Move to an adjacent block by moving towards the ending block in
+    //     either the x or y direction, to the block which contains the linedef.
+    {
+        // blocklist structure
+        typedef struct
         {
-            // first or repeated overflow
-            overflow_corr += 0x00010000;
-        }
-        prev_bme = bme;                                         // uncorrected
+            int n, nalloc, *list;
+        } bmap_t;
 
-        // correct for overflow, or else try without correction
-        if (overflow_corr)
+        unsigned int    tot = bmapwidth * bmapheight;           // size of blockmap
+        bmap_t          *bmap = calloc(sizeof(*bmap), tot);     // array of blocklists
+
+        if (!bmap)
+            I_Error("Unable to create blockmap.");
+
+        for (i = 0; i < numlines; i++)
         {
-            uint32_t    bmec = bme + overflow_corr;
+            // starting coordinates
+            int x = (lines[i].v1->x >> FRACBITS) - minx;
+            int y = (lines[i].v1->y >> FRACBITS) - miny;
 
-            // First entry of list is 0, but high odds of hitting one randomly.
-            // Check for valid blockmap offset, and offset overflow
-            if (bmec <= lastlist
-                && wadblockmaplump[bmec] == 0                   // valid start list
-                && bmec - blockmaphead[i - 1] < 1000)           // reasonably close sequentially
+            // x - y deltas
+            int adx = lines[i].dx >> FRACBITS;
+            int dx = (adx < 0 ? -1 : 1);
+            int ady = lines[i].dy >> FRACBITS;
+            int dy = (ady < 0 ? -1 : 1);
+
+            // difference in preferring to move across y (>0) instead of x (<0)
+            int diff = !adx ? 1 : !ady ? -1 :
+                (((x >> MAPBTOFRAC) << MAPBTOFRAC)
+                + (dx > 0 ? MAPBLOCKUNITS - 1 : 0) - x) * (ady = abs(ady)) * dx
+                - (((y >> MAPBTOFRAC) << MAPBTOFRAC)
+                + (dy > 0 ? MAPBLOCKUNITS - 1 : 0) - y) * (adx = abs(adx)) * dy;
+
+            // starting block, and pointer to its blocklist structure
+            int b = (y >> MAPBTOFRAC) * bmapwidth + (x >> MAPBTOFRAC);
+
+            // ending block
+            int bend = (((lines[i].v2->y >> FRACBITS) - miny) >> MAPBTOFRAC) * bmapwidth
+                + (((lines[i].v2->x >> FRACBITS) - minx) >> MAPBTOFRAC);
+
+            // delta for pointer when moving across y
+            dy *= bmapwidth;
+
+            // deltas for diff inside the loop
+            adx <<= MAPBTOFRAC;
+            ady <<= MAPBTOFRAC;
+
+            // Now we simply iterate block-by-block until we reach the end block.
+            while ((unsigned int)b < tot)       // failsafe -- should ALWAYS be true
             {
-                bme = bmec;
+                bmap_t  *bp = &bmap[b];
+
+                // Increase size of allocated list if necessary
+                if (bp->n >= bp->nalloc && !(bp->list = Z_Realloc(bp->list,
+                    (bp->nalloc = bp->nalloc ? bp->nalloc * 2 : 8) * sizeof(*bp->list))))
+                    I_Error("Unable to create blockmap.");
+
+                // Add linedef to end of list
+                bp->list[bp->n++] = i;
+
+                // If we have reached the last block, exit
+                if (b == bend)
+                    break;
+
+                // Move in either the x or y direction to the next block
+                if (diff < 0)
+                {
+                    diff += ady;
+                    b += dx;
+                }
+                else
+                {
+                    diff -= adx;
+                    b += dy;
+                }
             }
         }
 
-        if (bme > lastlist)
-            I_Error("Blockmap offset[%i]= %i, exceeds bounds.\n", i, bme);
-        if (bme < firstlist
-            || wadblockmaplump[bme] != 0)                       // not start list
-            I_Error("Bad blockmap offset[%i]= %i.\n", i, bme);
-        blockmaphead[i] = bme;
-    }
+        // Compute the total size of the blockmap.
+        //
+        // Compression of empty blocks is performed by reserving two offset words
+        // at tot and tot+1.
+        //
+        // 4 words, unused if this routine is called, are reserved at the start.
+        {
+            int count = tot + 6;  // we need at least 1 word per block, plus reserved's
 
-    // read blockmap lists
-    for (i = firstlist; i < count; i++)                 // for all list entries in wad blockmap
+            for (i = 0; (unsigned int)i < tot; i++)
+                if (bmap[i].n)
+                    count += bmap[i].n + 2;     // 1 header word + 1 trailer word + blocklist
+
+            // Allocate blockmap lump with computed count
+            blockmaplump = malloc_IfSameLevel(blockmaplump, sizeof(*blockmaplump) * count);
+        }
+
+        // Now compress the blockmap.
+        {
+            int         ndx = tot += 4; // Advance index to start of linedef lists
+            bmap_t      *bp = bmap;     // Start of uncompressed blockmap
+
+            blockmaplump[ndx++] = 0;    // Store an empty blockmap list at start
+            blockmaplump[ndx++] = -1;   // (Used for compression)
+
+            for (i = 4; (unsigned int)i < tot; i++, bp++)
+                if (bp->n)                                              // Non-empty blocklist
+                {
+                    blockmaplump[blockmaplump[i] = ndx++] = 0;          // Store index & header
+                    do
+                        blockmaplump[ndx++] = bp->list[--bp->n];        // Copy linedef list
+                    while (bp->n);
+                    blockmaplump[ndx++] = -1;                           // Store trailer
+                    free(bp->list);                                     // Free linedef list
+                }
+                else
+                    // Empty blocklist: point to reserved empty blocklist
+                    blockmaplump[i] = tot;
+
+            free(bmap);                 // Free uncompressed blockmap
+        }
+    }
+}
+
+//
+// P_LoadBlockMap
+//
+// killough 3/1/98: substantially modified to work
+// towards removing blockmap limit (a wad limitation)
+//
+// killough 3/30/98: Rewritten to remove blockmap limit,
+// though current algorithm is brute-force and non-optimal.
+//
+void P_LoadBlockMap(int lump)
+{
+    int count;
+    int lumplen;
+
+    blockmaprecreated = false;
+    if (lump >= numlumps || (lumplen = W_LumpLength(lump)) < 8 || (count = lumplen / 2) >= 0x10000)
     {
-        // killough 3/1/98
-        // keep -1 (0xffff), but other values are unsigned
-        uint16_t        bme = LE_SWAP16(wadblockmaplump[i]);
+        P_CreateBlockMap();
+        blockmaprecreated = true;
+    }
+    else
+    {
+        short   *wadblockmaplump = W_CacheLumpNum(lump, PU_LEVEL);
+        int      i;
 
-        blockmaphead[i] = (bme == 0xffff ? (uint32_t)(-1) : (uint32_t)bme);
+        blockmaplump = malloc_IfSameLevel(blockmaplump, sizeof(*blockmaplump) * count);
+
+        // killough 3/1/98: Expand wad blockmap into larger internal one,
+        // by treating all offsets except -1 as unsigned and zero-extending
+        // them. This potentially doubles the size of blockmaps allowed,
+        // because DOOM originally considered the offsets as always signed.
+        blockmaplump[0] = SHORT(wadblockmaplump[0]);
+        blockmaplump[1] = SHORT(wadblockmaplump[1]);
+        blockmaplump[2] = (uint32_t)(SHORT(wadblockmaplump[2])) & 0xFFFF;
+        blockmaplump[3] = (uint32_t)(SHORT(wadblockmaplump[3])) & 0xFFFF;
+
+        // Swap all short integers to native byte ordering.
+        for (i = 4; i < count; i++)
+        {
+            short   t = SHORT(wadblockmaplump[i]);
+
+            blockmaplump[i] = (t == -1 ? -1l : ((uint32_t)t & 0xFFFF));
+        }
+
+        Z_Free(wadblockmaplump);
+
+        // Read the header
+        bmaporgx = blockmaplump[0] << FRACBITS;
+        bmaporgy = blockmaplump[1] << FRACBITS;
+        bmapwidth = blockmaplump[2];
+        bmapheight = blockmaplump[3];
     }
 
-    // clear out mobj chains
+    // Clear out mobj chains
     blocklinks = calloc_IfSameLevel(blocklinks, bmapwidth * bmapheight, sizeof(*blocklinks));
+    blockmap = blockmaplump + 4;
+}
+
+//
+// reject overrun emulation
+//
+void RejectOverrun(int rejectlump, const byte **rejectmatrix, int totallines)
+{
+    unsigned int        required = (numsectors * numsectors + 7) / 8;
+    unsigned int        length = W_LumpLength(rejectlump);
+
+    if (length < required)
+    {
+        // allocate a new block and copy the reject table into it; zero the rest
+        // PU_LEVEL => will be freed on level exit
+        byte    *newreject = Z_Malloc(required, PU_LEVEL, NULL);
+
+        *rejectmatrix = memmove(newreject, *rejectmatrix, length);
+
+        memset(newreject + length, 0, required - length);
+
+        // unlock the original lump, it is no longer needed
+        W_ReleaseLumpNum(rejectlump);
+    }
+}
+//
+// P_LoadReject - load the reject table
+//
+static void P_LoadReject(int lumpnum, int totallines)
+{
+    // dump any old cached reject lump, then cache the new one
+    if (rejectlump != -1)
+        W_ReleaseLumpNum(rejectlump);
+    rejectlump = lumpnum + ML_REJECT;
+    rejectmatrix = W_CacheLumpNum(rejectlump, PU_STATIC);
+
+    //e6y: check for overflow
+    RejectOverrun(rejectlump, &rejectmatrix, totallines);
 }
 
 //
@@ -822,19 +1580,19 @@ void P_LoadBlockMap(int lump)
 // killough 5/3/98: reformatted, cleaned up
 // cph 18/8/99: rewritten to avoid O(numlines * numsectors) section
 // It makes things more complicated, but saves seconds on big levels
-// figgi 09/18/00 -- adapted for gl-nodes
 
 // cph - convenient sub-function
 static void P_AddLineToSector(line_t *li, sector_t *sector)
 {
-    fixed_t *bbox = (void *)sector->blockbox;
+    fixed_t     *bbox = (void *)sector->blockbox;
 
     sector->lines[sector->linecount++] = li;
     M_AddToBox(bbox, li->v1->x, li->v1->y);
     M_AddToBox(bbox, li->v2->x, li->v2->y);
 }
 
-static void P_GroupLines(void)
+// modified to return totallines (needed by P_LoadReject)
+static int P_GroupLines(void)
 {
     line_t      *li;
     sector_t    *sector;
@@ -855,8 +1613,8 @@ static void P_GroupLines(void)
             }
             seg++;
         }
-        if (subsectors[i].sector == NULL)
-            I_Error("P_GroupLines: Subsector a part of no sector!");
+        if (!subsectors[i].sector)
+            I_Error("Subsector %s is not a part of any sector.", commify(i));
     }
 
     // count number of lines in each sector
@@ -874,8 +1632,6 @@ static void P_GroupLines(void)
     {
         line_t  **linebuffer = Z_Malloc(total * sizeof(line_t *), PU_LEVEL, 0);
 
-        // e6y: REJECT overrun emulation code
-        // moved to P_LoadReject
         for (i = 0, sector = sectors; i < numsectors; i++, sector++)
         {
             sector->lines = linebuffer;
@@ -919,6 +1675,8 @@ static void P_GroupLines(void)
         block = (block < 0 ? 0 : block);
         sector->blockbox[BOXLEFT] = block;
     }
+
+    return total;       // this value is needed by the reject overrun emulation code
 }
 
 //
@@ -926,9 +1684,9 @@ static void P_GroupLines(void)
 //
 // Remove slime trails.
 //
-// Slime trails are inherent to Doom's coordinate system -- i.e. there is
+// Slime trails are inherent to DOOM's coordinate system -- i.e. there is
 // nothing that a node builder can do to prevent slime trails ALL of the time,
-// because it's a product of the integer coodinate system, and just because
+// because it's a product of the integer coordinate system, and just because
 // two lines pass through exact integer coordinates, doesn't necessarily mean
 // that they will intersect at integer coordinates. Thus we must allow for
 // fractional coordinates if we are to be able to split segs with node lines,
@@ -961,15 +1719,15 @@ static void P_GroupLines(void)
 // (because then any roundoff error is parallel to the linedef, which doesn't
 // cause slime). Skipping simple orthogonal lines lets the code finish quicker.
 //
-// Please note: This section of code is not interchangable with TeamTNT's
+// Please note: This section of code is not interchangeable with TeamTNT's
 // code which attempts to fix the same problem.
 //
-// Firelines (TM) is a Rezistered Trademark of MBF Productions
+// Firelines (TM) is a Registered Trademark of MBF Productions
 //
 
 static void P_RemoveSlimeTrails(void)                   // killough 10/98
 {
-    byte        *hit = (byte *)calloc(1, numvertexes);  // Hitlist for vertices
+    byte        *hit = calloc(1, numvertexes);          // Hitlist for vertices
     int         i;
 
     for (i = 0; i < numsegs; i++)                       // Go through each seg
@@ -995,10 +1753,18 @@ static void P_RemoveSlimeTrails(void)                   // killough 10/98
                         int64_t s = dx2 + dy2;
                         int     x0 = v->x, y0 = v->y, x1 = l->v1->x, y1 = l->v1->y;
 
-                        v->x = (int)((dx2 * x0 + dy2 * x1 + dxy * (y0 - y1)) / s);
-                        v->y = (int)((dy2 * y0 + dx2 * y1 + dxy * (x0 - x1)) / s);
+                        v->x = (fixed_t)((dx2 * x0 + dy2 * x1 + dxy * (y0 - y1)) / s);
+                        v->y = (fixed_t)((dy2 * y0 + dx2 * y1 + dxy * (x0 - x1)) / s);
+
+                        // [crispy] wait a minute... moved more than 8 map units?
+                        // maybe that's a linguortal then, back to the original coordinates
+                        if (ABS(v->x - x0) > 8 * FRACUNIT || ABS(v->y - y0) > 8 * FRACUNIT)
+                        {
+                            v->x = x0;
+                            v->y = y0;
+                        }
                     }
-                }  // Obsfucated C contest entry:   :)
+                }  // Obfuscated C contest entry:   :)
             }
             while (v != segs[i].v2 && (v = segs[i].v2));
         }
@@ -1006,7 +1772,7 @@ static void P_RemoveSlimeTrails(void)                   // killough 10/98
     free(hit);
 }
 
-// precalc values for use later in long wall error fix in R_StoreWallRange()
+// Precalc values for use later in long wall error fix in R_StoreWallRange()
 static void P_CalcSegsLength(void)
 {
     int i;
@@ -1018,13 +1784,16 @@ static void P_CalcSegsLength(void)
         fixed_t dy = li->v2->y - li->v1->y;
 
         li->length = (fixed_t)sqrt((double)dx * dx + (double)dy * dy);
+
+        // [crispy] re-calculate angle used for rendering
+        li->angle = R_PointToAngle2(li->v1->x, li->v1->y, li->v2->x, li->v2->y);
     }
 }
 
 char            mapnum[6];
-char            maptitle[128];
-char            mapnumandtitle[133];
-char            automaptitle[133];
+char            maptitle[256];
+char            mapnumandtitle[512];
+char            automaptitle[512];
 
 extern char     **mapnames[];
 extern char     **mapnames2[];
@@ -1035,91 +1804,95 @@ extern char     **mapnamesn[];
 
 extern int      dehcount;
 
-void ExtractFileBase(char *path, char *dest);
-char *uppercase(char *str);
-
 // Determine map name to use
-void P_MapName(int episode, int map)
+void P_MapName(int ep, int map)
 {
-    char        *pos;
-    char        wad[260];
-    int         i;
-    boolean     mapnumonly = false;
+    dboolean    mapnumonly = false;
+    char        *mapinfoname = P_GetMapName((ep - 1) * 10 + map);
 
     switch (gamemission)
     {
         case doom:
-            M_snprintf(mapnum, sizeof(mapnum), "E%iM%i", episode, map);
-            i = (episode - 1) * 9 + map - 1;
+            M_snprintf(mapnum, sizeof(mapnum), "E%iM%i", ep, map);
             if (W_CheckMultipleLumps(mapnum) > 1 && dehcount == 1 && !chex)
             {
                 mapnumonly = true;
                 M_StringCopy(maptitle, mapnum, sizeof(maptitle));
                 M_StringCopy(mapnumandtitle, mapnum, sizeof(mapnumandtitle));
-                ExtractFileBase(lumpinfo[W_GetNumForName(mapnum)].wad_file->path, wad);
-                M_snprintf(automaptitle, 133, "%s.wad's %s", wad, mapnum);
+                M_snprintf(automaptitle, sizeof(automaptitle), "%s: %s",
+                    leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
+            else if (mapinfoname[0])
+                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else
-                M_StringCopy(maptitle, *mapnames[i], sizeof(maptitle));
+                M_StringCopy(maptitle, *mapnames[(ep - 1) * 9 + map - 1], sizeof(maptitle));
             break;
 
         case doom2:
-            i = map - 1;
             M_snprintf(mapnum, sizeof(mapnum), "MAP%02i", map);
             if (W_CheckMultipleLumps(mapnum) > 1 && (!nerve || map > 9) && dehcount == 1)
             {
                 mapnumonly = true;
                 M_StringCopy(maptitle, mapnum, sizeof(maptitle));
                 M_StringCopy(mapnumandtitle, mapnum, sizeof(mapnumandtitle));
-                ExtractFileBase(lumpinfo[W_GetNumForName(mapnum)].wad_file->path, wad);
-                M_snprintf(automaptitle, 133, "%s.wad's %s", wad, mapnum);
+                M_snprintf(automaptitle, sizeof(automaptitle), "%s: %s",
+                    leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
+            else if (mapinfoname[0])
+                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else
-                M_StringCopy(maptitle, (bfgedition ? *mapnames2_bfg[i] : *mapnames2[i]),
-                    sizeof(maptitle));
+                M_StringCopy(maptitle, (bfgedition ? *mapnames2_bfg[map - 1] :
+                    *mapnames2[map - 1]), sizeof(maptitle));
             break;
 
         case pack_nerve:
             M_snprintf(mapnum, sizeof(mapnum), "MAP%02i", map);
-            M_StringCopy(maptitle, *mapnamesn[map - 1], sizeof(maptitle));
+            if (mapinfoname[0])
+                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
+            else
+                M_StringCopy(maptitle, *mapnamesn[map - 1], sizeof(maptitle));
             break;
 
         case pack_plut:
-            i = map - 1;
             M_snprintf(mapnum, sizeof(mapnum), "MAP%02i", map);
             if (W_CheckMultipleLumps(mapnum) > 1 && dehcount == 1)
             {
                 mapnumonly = true;
                 M_StringCopy(maptitle, mapnum, sizeof(maptitle));
                 M_StringCopy(mapnumandtitle, mapnum, sizeof(mapnumandtitle));
-                ExtractFileBase(lumpinfo[W_GetNumForName(mapnum)].wad_file->path, wad);
-                M_snprintf(automaptitle, 133, "%s.wad's %s", wad, mapnum);
+                M_snprintf(automaptitle, sizeof(automaptitle), "%s: %s",
+                    leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
+            else if (mapinfoname[0])
+                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else
                 M_StringCopy(maptitle, *mapnamesp[map - 1], sizeof(maptitle));
             break;
 
         case pack_tnt:
-            i = map - 1;
             M_snprintf(mapnum, sizeof(mapnum), "MAP%02i", map);
             if (W_CheckMultipleLumps(mapnum) > 1 && dehcount == 1)
             {
                 mapnumonly = true;
                 M_StringCopy(maptitle, mapnum, sizeof(maptitle));
                 M_StringCopy(mapnumandtitle, mapnum, sizeof(mapnumandtitle));
-                ExtractFileBase(lumpinfo[W_GetNumForName(mapnum)].wad_file->path, wad);
-                M_snprintf(automaptitle, 133, "%s.wad's %s", wad, mapnum);
+                M_snprintf(automaptitle, sizeof(automaptitle), "%s: %s",
+                    leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
+            else if (mapinfoname[0])
+                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else
                 M_StringCopy(maptitle, *mapnamest[map - 1], sizeof(maptitle));
             break;
-            
+
         default:
             break;
     }
 
     if (!mapnumonly)
     {
+        char    *pos;
+
         if ((pos = strchr(maptitle, ':')))
         {
             if (M_StringStartsWith(uppercase(maptitle), "LEVEL"))
@@ -1127,49 +1900,78 @@ void P_MapName(int episode, int map)
                 strcpy(maptitle, pos + 1);
                 if (maptitle[0] == ' ')
                     strcpy(maptitle, &maptitle[1]);
-                M_snprintf(mapnumandtitle, sizeof(mapnumandtitle), "%s: %s", mapnum, maptitle);
+                M_snprintf(mapnumandtitle, sizeof(mapnumandtitle), "%s: %s", mapnum,
+                    titlecase(maptitle));
             }
             else
             {
-                M_StringCopy(mapnumandtitle, maptitle, sizeof(mapnumandtitle));
+                M_StringCopy(mapnumandtitle, titlecase(maptitle), sizeof(mapnumandtitle));
                 strcpy(maptitle, pos + 1);
                 if (maptitle[0] == ' ')
                     strcpy(maptitle, &maptitle[1]);
             }
         }
+        else if (!M_StringCompare(mapnum, maptitle))
+            M_snprintf(mapnumandtitle, sizeof(mapnumandtitle), "%s: %s", mapnum,
+                titlecase(maptitle));
         else
-            M_snprintf(mapnumandtitle, sizeof(mapnumandtitle), "%s: %s", mapnum, maptitle);
+            M_StringCopy(mapnumandtitle, mapnum, sizeof(mapnumandtitle));
         M_StringCopy(automaptitle, mapnumandtitle, sizeof(automaptitle));
     }
 }
 
-extern boolean idclev;
-extern boolean oldweaponsowned[];
+static mapformat_t P_CheckMapFormat(int lumpnum)
+{
+    mapformat_t format = DOOMBSP;
+    byte        *nodes = NULL;
+    int         b;
+
+    if ((b = lumpnum + ML_NODES) < numlumps && (nodes = W_CacheLumpNum(b, PU_CACHE))
+        && W_LumpLength(b) > 0)
+    {
+        if (!memcmp(nodes, "xNd4\0\0\0\0", 8))
+            format = DEEPBSP;
+        else if (!memcmp(nodes, "XNOD", 4))
+                format = ZDBSPX;
+        else if (!memcmp(nodes, "ZNOD", 4))
+            I_Error("Compressed ZDoom nodes are not supported.");
+    }
+
+    if (nodes)
+        W_ReleaseLumpNum(b);
+
+    return format;
+}
+
+extern dboolean idclev;
+extern dboolean oldweaponsowned[];
 
 //
 // P_SetupLevel
 //
-void P_SetupLevel(int episode, int map)
+void P_SetupLevel(int ep, int map)
 {
-    int  i;
-    char lumpname[6];
-    int  lumpnum;
+    char        lumpname[6];
+    int         lumpnum;
 
-    totalkills = totalitems = totalsecret = wminfo.maxfrags = 0;
+    totalkills = totalitems = totalsecret = 0;
     wminfo.partime = 0;
-    for (i = 0; i < MAXPLAYERS; i++)
-        players[i].killcount = players[i].secretcount = players[i].itemcount = 0;
+    players[0].killcount = players[0].secretcount = players[0].itemcount = 0;
 
     // Initial height of PointOfView
     // will be set by player think.
-    players[consoleplayer].viewz = 1;
+    players[0].viewz = 1;
 
     idclev = false;
 
-    // Make sure all sounds are stopped before Z_FreeTags.
-    S_Start();
-
     Z_FreeTags(PU_LEVEL, PU_PURGELEVEL - 1);
+
+    if (rejectlump != -1)
+    {
+        // cph - unlock the reject table
+        W_ReleaseLumpNum(rejectlump);
+        rejectlump = -1;
+    }
 
     P_InitThinkers();
 
@@ -1177,24 +1979,35 @@ void P_SetupLevel(int episode, int map)
     if (gamemode == commercial)
         M_snprintf(lumpname, 6, "MAP%02i", map);
     else
-        M_snprintf(lumpname, 5, "E%iM%i", episode, map);
+        M_snprintf(lumpname, 5, "E%iM%i", ep, map);
 
     if (nerve && gamemission == doom2)
         lumpnum = W_GetNumForName2(lumpname);
     else
         lumpnum = W_GetNumForName(lumpname);
 
-    canmodify = (W_CheckMultipleLumps(lumpname) == 1
-                 || gamemission == pack_nerve
-                 || (nerve && gamemission == doom2));
+    mapformat = P_CheckMapFormat(lumpnum);
+
+    canmodify = ((W_CheckMultipleLumps(lumpname) == 1 || gamemission == pack_nerve
+        || (nerve && gamemission == doom2)) && !FREEDOOM);
 
     leveltime = 0;
+    animatedliquiddiff = FRACUNIT;
+    animatedliquidxdir = M_RandomInt(-1, 1) * FRACUNIT / 12;
+    animatedliquidydir = M_RandomInt(-1, 1) * FRACUNIT / 12;
+    if (!animatedliquidxdir && !animatedliquidydir)
+    {
+        animatedliquidxdir = FRACUNIT / 12;
+        animatedliquidydir = FRACUNIT / 12;
+    }
+    animatedliquidxoffs = 0;
+    animatedliquidyoffs = 0;
 
     // e6y: speedup of level reloading
     // Most of level's structures now are allocated with PU_STATIC instead of PU_LEVEL
-    samelevel = (map == current_map && episode == current_episode);
+    samelevel = (map == current_map && ep == current_episode);
 
-    current_episode = episode;
+    current_episode = ep;
     current_map = map;
 
     if (!samelevel)
@@ -1203,61 +2016,55 @@ void P_SetupLevel(int episode, int map)
         free(nodes);
         free(subsectors);
         free(blocklinks);
-        free(blockmaphead);
+        free(blockmaplump);
         free(lines);
         free(sides);
         free(sectors);
         free(vertexes);
     }
 
-    P_MapName(gameepisode, gamemap);
-
     // note: most of this ordering is important
+    P_LoadVertexes(lumpnum + ML_VERTEXES);
+    P_LoadSectors(lumpnum + ML_SECTORS);
+    P_LoadSideDefs(lumpnum + ML_SIDEDEFS);
+    P_LoadLineDefs(lumpnum + ML_LINEDEFS);
+    P_LoadSideDefs2(lumpnum + ML_SIDEDEFS);
+    P_LoadLineDefs2(lumpnum + ML_LINEDEFS);
+
     if (!samelevel)
         P_LoadBlockMap(lumpnum + ML_BLOCKMAP);
     else
         memset(blocklinks, 0, bmapwidth * bmapheight * sizeof(*blocklinks));
 
-    P_LoadVertexes(lumpnum + ML_VERTEXES);
-    P_LoadSectors(lumpnum + ML_SECTORS);
-    P_LoadSideDefs(lumpnum + ML_SIDEDEFS);
+    if (mapformat == ZDBSPX)
+        P_LoadZNodes(lumpnum + ML_NODES);
+    else if (mapformat == DEEPBSP)
+    {
+        P_LoadSubsectors_V4(lumpnum + ML_SSECTORS);
+        P_LoadNodes_V4(lumpnum + ML_NODES);
+        P_LoadSegs_V4(lumpnum + ML_SEGS);
+    }
+    else
+    {
+        P_LoadSubsectors(lumpnum + ML_SSECTORS);
+        P_LoadNodes(lumpnum + ML_NODES);
+        P_LoadSegs(lumpnum + ML_SEGS);
+    }
 
-    P_LoadLineDefs(lumpnum + ML_LINEDEFS);
-    P_LoadSubsectors(lumpnum + ML_SSECTORS);
-    P_LoadNodes(lumpnum + ML_NODES);
-    P_LoadSegs(lumpnum + ML_SEGS);
-
-    rejectmatrix = (byte *)W_CacheLumpNum(lumpnum + ML_REJECT, PU_LEVEL);
-    rejectmatrixsize = W_LumpLength(lumpnum + ML_REJECT);
-    P_GroupLines();
+    // reject loading and underflow padding separated out into new function
+    // P_GroupLines modified to return a number the underflow padding needs
+    P_LoadReject(lumpnum, P_GroupLines());
 
     P_RemoveSlimeTrails();
 
     P_CalcSegsLength();
 
-    deathmatch_p = deathmatchstarts;
-
-    bloodSplatQueueSlot = 0;
-    memset(bloodSplatQueue, 0, sizeof(mobj_t *) * bloodsplats);
+    r_bloodsplats_total = 0;
+    memset(bloodsplats, 0, sizeof(mobj_t *) * r_bloodsplats_max);
 
     P_LoadThings(lumpnum + ML_THINGS);
 
     P_InitCards(&players[0]);
-    P_InitAnimatedLiquids();
-
-    // if deathmatch, randomly spawn the active players
-    if (deathmatch)
-    {
-        for (i = 0; i < MAXPLAYERS; i++)
-            if (playeringame[i])
-            {
-                players[i].mo = NULL;
-                G_DeathMatchSpawnPlayer(i);
-            }
-    }
-
-    // clear special respawning queue
-    iqueuehead = iqueuetail = 0;
 
     // set up world state
     P_SpawnSpecials();
@@ -1266,6 +2073,213 @@ void P_SetupLevel(int episode, int map)
 
     // preload graphics
     R_PrecacheLevel();
+
+    S_Start();
+}
+
+static void InitMapInfo(void)
+{
+    int         episode;
+    int         map;
+    int         mapmax = 1;
+    int         mcmdvalue;
+    mapinfo_t   *info;
+
+    if (!(MAPINFO = (W_CheckNumForName(MAPINFO_SCRIPT_NAME) >= 0)))
+        return;
+
+    info = mapinfo;
+
+    info->author[0] = '\0';
+    info->music = 0;
+    info->name[0] = '\0';
+    info->next = 0;
+    info->par = 0;
+    info->secretnext = 0;
+    info->sky1texture = 0;
+    info->sky1scrolldelta = 0;
+    info->titlepatch = 0;
+
+    SC_Open(MAPINFO_SCRIPT_NAME);
+    while (SC_GetString())
+    {
+        if (!SC_Compare("MAP"))
+            continue;
+        SC_MustGetString();
+        map = strtol(sc_String, NULL, 0);
+        if (map < 1 || map > 99)
+        {
+            char        *mapnum = uppercase(sc_String);
+
+            if (gamemode == commercial)
+            {
+                episode = 1;
+                sscanf(mapnum, "MAP0%1i", &map);
+                if (!map)
+                    sscanf(mapnum, "MAP%2i", &map);
+            }
+            else
+            {
+                sscanf(mapnum, "E%1iM%1i", &episode, &map);
+                map += (episode - 1) * 10;
+            }
+        }
+        if (map < 1 || map > 99)
+            SC_ScriptError(NULL);
+
+        info = &mapinfo[map];
+
+        // Copy defaults to current map definition
+        memcpy(info, &mapinfo[0], sizeof(*info));
+
+        // Map name must follow the number
+        SC_MustGetString();
+        if (!SC_Compare("LOOKUP"))
+            M_StringCopy(info->name, sc_String, sizeof(info->name));
+
+        // Process optional tokens
+        while (SC_GetString())
+        {
+            if (SC_Compare("MAP"))
+            {
+                SC_UnGet();
+                break;
+            }
+            if ((mcmdvalue = SC_MatchString(mapcmdnames)) >= 0)
+                switch (mapcmdids[mcmdvalue])
+                {
+                    case MCMD_AUTHOR:
+                        SC_MustGetString();
+                        M_StringCopy(info->author, sc_String, sizeof(info->author));
+                        break;
+
+                    case MCMD_MUSIC:
+                        SC_MustGetString();
+                        info->music = W_GetNumForName(sc_String);
+                        break;
+
+                    case MCMD_NEXT:
+                    {
+                        int     nextepisode = 0;
+                        int     nextmap = 0;
+
+                        SC_MustGetString();
+                        nextmap = strtol(sc_String, (char **)NULL, 10);
+                        if (nextmap < 1 || nextmap > 99)
+                        {
+                            char        *mapnum = uppercase(sc_String);
+
+                            if (gamemode == commercial)
+                            {
+                                nextepisode = 1;
+                                sscanf(mapnum, "MAP0%1i", &nextmap);
+                                if (!nextmap)
+                                    sscanf(mapnum, "MAP%2i", &nextmap);
+                            }
+                            else
+                                sscanf(mapnum, "E%1iM%1i", &nextepisode, &nextmap);
+                        }
+                        info->next = (nextepisode - 1) * 10 + nextmap;
+                        break;
+                    }
+
+                    case MCMD_PAR:
+                        SC_MustGetNumber();
+                        info->par = sc_Number;
+                        break;
+
+                    case MCMD_SECRETNEXT:
+                    {
+                        int     nextepisode = 0;
+                        int     nextmap = 0;
+
+                        SC_MustGetString();
+                        nextmap = strtol(sc_String, (char **)NULL, 10);
+                        if (nextmap < 1 || nextmap > 99)
+                        {
+                            char        *mapnum = uppercase(sc_String);
+
+                            if (gamemode == commercial)
+                            {
+                                nextepisode = 1;
+                                sscanf(mapnum, "MAP0%1i", &nextmap);
+                                if (!nextmap)
+                                    sscanf(mapnum, "MAP%2i", &nextmap);
+                            }
+                            else
+                                sscanf(mapnum, "E%1iM%1i", &nextepisode, &nextmap);
+                        }
+                        info->secretnext = (nextepisode - 1) * 10 + nextmap;
+                        break;
+                    }
+
+                    case MCMD_SKY1:
+                        SC_MustGetString();
+                        info->sky1texture = R_TextureNumForName(sc_String);
+                        SC_MustGetNumber();
+                        info->sky1scrolldelta = sc_Number << 8;
+                        break;
+
+                    case MCMD_TITLEPATCH:
+                        SC_MustGetString();
+                        info->titlepatch = W_GetNumForName(sc_String);
+                        break;
+                }
+        }
+        mapmax = MAX(map, mapmax);
+    }
+    SC_Close();
+    mapcount = mapmax;
+}
+
+static int QualifyMap(int map)
+{
+    return (map < 1 || map > mapcount ? 0 : map);
+}
+
+char *P_GetMapAuthor(int map)
+{
+    return (MAPINFO ? mapinfo[QualifyMap(map)].author : "");
+}
+
+int P_GetMapMusic(int map)
+{
+    return (MAPINFO ? mapinfo[QualifyMap(map)].music : 0);
+}
+
+char *P_GetMapName(int map)
+{
+    return (MAPINFO ? mapinfo[QualifyMap(map)].name : "");
+}
+
+int P_GetMapNext(int map)
+{
+    return (MAPINFO ? mapinfo[QualifyMap(map)].next : 0);
+}
+
+int P_GetMapPar(int map)
+{
+    return (MAPINFO ? mapinfo[QualifyMap(map)].par : 0);
+}
+
+int P_GetMapSecretNext(int map)
+{
+    return (MAPINFO ? mapinfo[QualifyMap(map)].secretnext : 0);
+}
+
+int P_GetMapSky1Texture(int map)
+{
+    return (MAPINFO ? mapinfo[QualifyMap(map)].sky1texture : 0);
+}
+
+int P_GetMapSky1ScrollDelta(int map)
+{
+    return (MAPINFO ? mapinfo[QualifyMap(map)].sky1scrolldelta : 0);
+}
+
+int P_GetMapTitlePatch(int map)
+{
+    return (MAPINFO ? mapinfo[QualifyMap(map)].titlepatch : 0);
 }
 
 //
@@ -1273,6 +2287,7 @@ void P_SetupLevel(int episode, int map)
 //
 void P_Init(void)
 {
+    InitMapInfo();
     P_InitSwitchList();
     P_InitPicAnims();
     R_InitSprites(sprnames);

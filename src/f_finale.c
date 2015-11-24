@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -66,24 +66,24 @@ typedef enum
 static finalestage_t    finalestage;
 static int              finalecount;
 
-#define TEXTSPEED       3       // original value               // phares
-#define TEXTWAIT        250     // original value               // phares
-#define NEWTEXTSPEED    0.01f   // new value                    // phares
-#define NEWTEXTWAIT     1000    // new value                    // phares
+#define TEXTSPEED       (3 * FRACUNIT)          // original value       // phares
+#define TEXTWAIT        (250 * FRACUNIT)        // original value       // phares
+#define NEWTEXTSPEED    ((FRACUNIT + 50) / 100) // new value            // phares
+#define NEWTEXTWAIT     (1000 * FRACUNIT)       // new value            // phares
 
 static char     *finaletext;
 static char     *finaleflat;
 
 void F_StartCast(void);
 void F_CastTicker(void);
-boolean F_CastResponder(event_t *ev);
+dboolean F_CastResponder(event_t *ev);
 void F_CastDrawer(void);
 
 void WI_checkForAccelerate(void);    // killough 3/28/98: used to
 extern int acceleratestage;          // accelerate intermission screens
 static int midstage;                 // whether we're in "mid-stage"
 
-extern boolean shadows;
+extern dboolean r_shadows;
 
 //
 // F_StartFinale
@@ -98,8 +98,8 @@ void F_StartFinale(void)
     // killough 3/28/98: clear accelerative text flags
     acceleratestage = midstage = 0;
 
-    // Okay - IWAD dependend stuff.
-    // This has been changed severly, and
+    // Okay - IWAD dependent stuff.
+    // This has been changed severely, and
     //  some stuff might have changed in the process.
     switch (gamemode)
     {
@@ -108,7 +108,7 @@ void F_StartFinale(void)
         case registered:
         case retail:
         {
-            S_ChangeMusic(mus_victor, true, false);
+            S_ChangeMusic(mus_victor, true, false, false);
 
             switch (gameepisode)
             {
@@ -137,9 +137,9 @@ void F_StartFinale(void)
         // DOOM II and missions packs with E1, M34
         case commercial:
         {
-            S_ChangeMusic(mus_read_m, true, false);
+            S_ChangeMusic(mus_read_m, true, false, false);
 
-            switch (gamemap)      // This is regular Doom II
+            switch (gamemap)      // This is regular DOOM II
             {
                 case 6:
                     finaleflat = bgflat06;
@@ -187,7 +187,7 @@ void F_StartFinale(void)
 
         // Indeterminate.
         default:
-            S_ChangeMusic(mus_read_m, true, false);
+            S_ChangeMusic(mus_read_m, true, false, false);
             finaleflat = "F_SKY1";
             finaletext = s_C1TEXT;
             break;
@@ -197,7 +197,7 @@ void F_StartFinale(void)
     finalecount = 0;
 }
 
-boolean F_Responder(event_t *ev)
+dboolean F_Responder(event_t *ev)
 {
     if (finalestage == F_STAGE_CAST)
         return F_CastResponder(ev);
@@ -205,7 +205,7 @@ boolean F_Responder(event_t *ev)
     return false;
 }
 
-static float TextSpeed(void)
+static fixed_t TextSpeed(void)
 {
     return (midstage ? NEWTEXTSPEED : (midstage = acceleratestage) ?
             acceleratestage = 0, NEWTEXTSPEED : TEXTSPEED);
@@ -229,8 +229,8 @@ void F_Ticker(void)
 
     if (finalestage == F_STAGE_TEXT)
     {
-        if (finalecount > strlen(finaletext) * TextSpeed() + (midstage ? NEWTEXTWAIT : TEXTWAIT)
-            || (midstage && acceleratestage))
+        if (finalecount > FixedMul(strlen(finaletext) * FRACUNIT, TextSpeed())
+            + (midstage ? NEWTEXTWAIT : TEXTWAIT) || (midstage && acceleratestage))
         {
             if (gamemode != commercial)
             {
@@ -276,7 +276,8 @@ static struct
 // F_TextWrite
 //
 extern patch_t *hu_font[HU_FONTSIZE];
-void M_DrawSmallChar(int x, int y, int i, boolean shadow);
+
+void M_DrawSmallChar(int x, int y, int i, dboolean shadow);
 
 void F_TextWrite(void)
 {
@@ -284,7 +285,7 @@ void F_TextWrite(void)
     byte        *src;
     byte        *dest;
     int         x, y, w;
-    int         count = (int)((float)(finalecount - 10) / TextSpeed());
+    int         count = FixedDiv(((finalecount - 10) * FRACUNIT), TextSpeed()) >> FRACBITS;
     const char  *ch = finaletext;
     int         cx = 12;
     int         cy = 10;
@@ -301,8 +302,8 @@ void F_TextWrite(void)
         {
             for (i = 0; i < 64; i++)
             {
-                int j = i * 2;
-                byte dot = *(src + (((y / 2) & 63) << 6) + i);
+                int     j = i * 2;
+                byte    dot = *(src + (((y / 2) & 63) << 6) + i);
 
                 if (y * SCREENWIDTH + x + j < SCREENWIDTH * (SCREENHEIGHT - 1))
                     *(dest + j) = dot;
@@ -324,7 +325,7 @@ void F_TextWrite(void)
 
     for (; count; count--)
     {
-        int     c = *ch++;
+        char    c = *ch++;
 
         if (!c)
             break;
@@ -416,12 +417,14 @@ int     castnum;
 int     casttics;
 state_t *caststate;
 int     castrot;
-boolean castdeath;
-boolean castdeathflip;
+dboolean castdeath;
+dboolean castdeathflip;
 int     castframes;
 int     castonmelee;
-boolean castattacking;
-boolean firstevent;
+dboolean castattacking;
+dboolean firstevent;
+
+extern char *playername;
 
 //
 // F_StartCast
@@ -440,7 +443,9 @@ void F_StartCast(void)
     castframes = 0;
     castonmelee = 0;
     castattacking = false;
-    S_ChangeMusic(mus_evil, true, false);
+    if (!M_StringCompare(playername, playername_default))
+        s_CC_HERO = playername;
+    S_ChangeMusic(mus_evil, true, false, false);
 }
 
 //
@@ -591,7 +596,7 @@ stopattack:
 extern int key_use;
 extern int key_fire;
 
-boolean F_CastResponder(event_t *ev)
+dboolean F_CastResponder(event_t *ev)
 {
     mobjtype_t  type;
 
@@ -629,29 +634,29 @@ boolean F_CastResponder(event_t *ev)
         // rotate (taken from Eternity Engine)
         if (ev->data1 == KEY_LEFTARROW)
         {
-            if (castrot == 7)
+            if (castrot == 14)
                 castrot = 0;
             else
-                ++castrot;
+                castrot += 2;
             return true;
         }
         if (ev->data1 == KEY_RIGHTARROW)
         {
             if (castrot == 0)
-                castrot = 7;
+                castrot = 14;
             else
-                --castrot;
+                castrot -= 2;
             return true;
         }
     }
 
-    S_StartSound(players[consoleplayer].mo, sfx_dshtgn);
+    S_StartSound(players[0].mo, sfx_dshtgn);
 
     type = castorder[castnum].type;
-    
+
     // go into death frame
     castdeath = true;
-    if (corpses_mirror && type != MT_CHAINGUY && type != MT_CYBORG)
+    if (r_corpses_mirrored && type != MT_CHAINGUY && type != MT_CYBORG)
         castdeathflip = rand() & 1;
     caststate = &states[mobjinfo[type].deathstate];
     casttics = caststate->tics;
@@ -716,7 +721,7 @@ void F_CastPrint(char *text)
 //
 // F_CastDrawer
 //
-extern boolean translucency;
+extern dboolean r_translucency;
 
 void F_CastDrawer(void)
 {
@@ -724,7 +729,7 @@ void F_CastDrawer(void)
     spriteframe_t       *sprframe;
     int                 lump;
     int                 rot = 0;
-    boolean             flip;
+    dboolean            flip;
     patch_t             *patch;
     int                 y = ORIGINALHEIGHT - 30;
     mobjtype_t          type = castorder[castnum].type;
@@ -740,7 +745,7 @@ void F_CastDrawer(void)
     if (sprframe->rotate)
         rot = castrot;
     lump = sprframe->lump[rot];
-    flip = (boolean)sprframe->flip[rot];
+    flip = (dboolean)(sprframe->flip & (1 << rot));
 
     patch = W_CacheLumpNum(lump + firstspritelump, PU_CACHE);
 
@@ -755,9 +760,9 @@ void F_CastDrawer(void)
     {
         patch->leftoffset = (spritewidth[lump] - spriteoffset[lump]) >> FRACBITS;
 
-        if (shadows && ((type != MT_SKULL && type != MT_PAIN) || !castdeath))
+        if (r_shadows && ((type != MT_SKULL && type != MT_PAIN) || !castdeath))
         {
-            if (translucency)
+            if (r_translucency)
             {
                 if (type == MT_SHADOWS)
                     V_DrawFlippedSpectreShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
@@ -768,7 +773,7 @@ void F_CastDrawer(void)
                 V_DrawFlippedSolidShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
         }
 
-        if (translucency && (type == MT_SKULL || (type == MT_PAIN && castdeath)))
+        if (r_translucency && (type == MT_SKULL || (type == MT_PAIN && castdeath)))
             V_DrawFlippedTranslucentRedPatch(ORIGINALWIDTH / 2, y, patch);
         else if (type == MT_SHADOWS)
             V_DrawFlippedFuzzPatch(ORIGINALWIDTH / 2, y, patch);
@@ -779,9 +784,9 @@ void F_CastDrawer(void)
     {
         patch->leftoffset = spriteoffset[lump] >> FRACBITS;
 
-        if (shadows && ((type != MT_SKULL && type != MT_PAIN) || !castdeath))
+        if (r_shadows && ((type != MT_SKULL && type != MT_PAIN) || !castdeath))
         {
-            if (translucency)
+            if (r_translucency)
             {
                 if (type == MT_SHADOWS)
                     V_DrawSpectreShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
@@ -792,7 +797,7 @@ void F_CastDrawer(void)
                 V_DrawSolidShadowPatch(ORIGINALWIDTH / 2, ORIGINALHEIGHT - 28, patch);
         }
 
-        if (translucency && (type == MT_SKULL || (type == MT_PAIN && castdeath)))
+        if (r_translucency && (type == MT_SKULL || (type == MT_PAIN && castdeath)))
             V_DrawTranslucentRedPatch(ORIGINALWIDTH / 2, y, patch);
         else if (type == MT_SHADOWS)
             V_DrawFuzzPatch(ORIGINALWIDTH / 2, y, patch);
@@ -810,8 +815,6 @@ void F_DrawPatchCol(int x, patch_t *patch, int col, fixed_t fracstep)
     byte        *source;
     byte        *dest;
     byte        *desttop;
-    int         count;
-    fixed_t     frac;
 
     column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
 
@@ -820,10 +823,12 @@ void F_DrawPatchCol(int x, patch_t *patch, int col, fixed_t fracstep)
     // step through the posts in a column
     while (column->topdelta != 0xff)
     {
+        int         count = (column->length << FRACBITS) / fracstep;
+        fixed_t     frac = 0;
+
         source = (byte *)column + 3;
         dest = desttop + column->topdelta * SCREENWIDTH;
-        count = (column->length << FRACBITS) / fracstep;
-        frac = 0;
+
         while (count--)
         {
             *dest = source[frac >> FRACBITS];
@@ -898,12 +903,12 @@ void F_BunnyScroll(void)
 
 static void F_ArtScreenDrawer(void)
 {
-    char        *lumpname;
-
     if (gameepisode == 3)
         F_BunnyScroll();
     else
     {
+        char    *lumpname;
+
         switch (gameepisode)
         {
             case 1:

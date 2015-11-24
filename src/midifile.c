@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -45,6 +45,7 @@
 #include "doomtype.h"
 #include "i_swap.h"
 #include "midifile.h"
+#include "z_zone.h"
 
 #define HEADER_CHUNK_ID "MThd"
 #define TRACK_CHUNK_ID  "MTrk"
@@ -81,6 +82,7 @@ typedef struct
     // Events in this track:
     midi_event_t        *events;
     int                 num_events;
+    unsigned int        num_event_mem;  // NSM track size of structure
 } midi_track_t;
 
 struct midi_track_iter_s
@@ -103,13 +105,13 @@ struct midi_file_s
 };
 
 // Check the header of a chunk:
-static boolean CheckChunkHeader(chunk_header_t *chunk, char *expected_id)
+static dboolean CheckChunkHeader(chunk_header_t *chunk, char *expected_id)
 {
     return (memcmp((char *)chunk->chunk_id, expected_id, 4) == 0);
 }
 
-// Read a single byte.  Returns false on error.
-static boolean ReadByte(byte *result, FILE *stream)
+// Read a single byte. Returns false on error.
+static dboolean ReadByte(byte *result, FILE *stream)
 {
     int c;
 
@@ -126,7 +128,7 @@ static boolean ReadByte(byte *result, FILE *stream)
 }
 
 // Read a variable-length value.
-static boolean ReadVariableLength(unsigned int *result, FILE *stream)
+static dboolean ReadVariableLength(unsigned int *result, FILE *stream)
 {
     int         i;
     byte        b;
@@ -139,12 +141,10 @@ static boolean ReadVariableLength(unsigned int *result, FILE *stream)
             return false;
 
         // Insert the bottom seven bits from this byte.
-
         *result <<= 7;
-        *result |= b & 0x7f;
+        *result |= b & 0x7F;
 
         // If the top bit is not set, this is the end.
-
         if ((b & 0x80) == 0)
             return true;
     }
@@ -153,16 +153,19 @@ static boolean ReadVariableLength(unsigned int *result, FILE *stream)
 }
 
 // Read a byte sequence into the data buffer.
-
 static void *ReadByteSequence(unsigned int num_bytes, FILE *stream)
 {
     unsigned int        i;
     byte                *result;
 
+    // events can be length 0. malloc(0) is not portable (can return NULL)
+    if (!num_bytes)
+        return malloc(4);
+
     // Allocate a buffer:
     result = (byte *)malloc(num_bytes + 1);
 
-    if (result == NULL)
+    if (!result)
         return NULL;
 
     // Read the data:
@@ -181,13 +184,13 @@ static void *ReadByteSequence(unsigned int num_bytes, FILE *stream)
 // Read a MIDI channel event.
 // two_param indicates that the event type takes two parameters
 // (three byte) otherwise it is single parameter (two byte)
-static boolean ReadChannelEvent(midi_event_t *event, byte event_type, boolean two_param, FILE *stream)
+static dboolean ReadChannelEvent(midi_event_t *event, byte event_type, dboolean two_param, FILE *stream)
 {
     byte        b;
 
     // Set basics:
-    event->event_type = (midi_event_type_t)(event_type & 0xf0);
-    event->data.channel.channel = event_type & 0x0f;
+    event->event_type = (midi_event_type_t)(event_type & 0xF0);
+    event->data.channel.channel = event_type & 0x0F;
 
     // Read parameters:
     if (!ReadByte(&b, stream))
@@ -208,7 +211,7 @@ static boolean ReadChannelEvent(midi_event_t *event, byte event_type, boolean tw
 }
 
 // Read sysex event:
-static boolean ReadSysExEvent(midi_event_t *event, int event_type, FILE *stream)
+static dboolean ReadSysExEvent(midi_event_t *event, int event_type, FILE *stream)
 {
     event->event_type = (midi_event_type_t)event_type;
 
@@ -218,42 +221,39 @@ static boolean ReadSysExEvent(midi_event_t *event, int event_type, FILE *stream)
     // Read the byte sequence:
     event->data.sysex.data = (byte *)ReadByteSequence(event->data.sysex.length, stream);
 
-    if (event->data.sysex.data == NULL)
+    if (!event->data.sysex.data)
         return false;
 
     return true;
 }
 
 // Read meta event:
-static boolean ReadMetaEvent(midi_event_t *event, FILE *stream)
+static dboolean ReadMetaEvent(midi_event_t *event, FILE *stream)
 {
     byte        b;
 
     event->event_type = MIDI_EVENT_META;
 
     // Read meta event type:
-
     if (!ReadByte(&b, stream))
         return false;
 
     event->data.meta.type = b;
 
     // Read length of meta event data:
-
     if (!ReadVariableLength(&event->data.meta.length, stream))
         return false;
 
     // Read the byte sequence:
-
     event->data.meta.data = (byte *)ReadByteSequence(event->data.meta.length, stream);
 
-    if (event->data.meta.data == NULL)
+    if (!event->data.meta.data)
         return false;
 
     return true;
 }
 
-static boolean ReadEvent(midi_event_t *event, unsigned int *last_event_type, FILE *stream)
+static dboolean ReadEvent(midi_event_t *event, unsigned int *last_event_type, FILE *stream)
 {
     byte        event_type;
 
@@ -263,9 +263,9 @@ static boolean ReadEvent(midi_event_t *event, unsigned int *last_event_type, FIL
     if (!ReadByte(&event_type, stream))
         return false;
 
-    // All event types have their top bit set.  Therefore, if
+    // All event types have their top bit set. Therefore, if
     // the top bit is not set, it is because we are using the "same
-    // as previous event type" shortcut to save a byte.  Skip back
+    // as previous event type" shortcut to save a byte. Skip back
     // a byte so that we read this byte again.
     if ((event_type & 0x80) == 0)
     {
@@ -278,7 +278,7 @@ static boolean ReadEvent(midi_event_t *event, unsigned int *last_event_type, FIL
         *last_event_type = event_type;
 
     // Check event type:
-    switch (event_type & 0xf0)
+    switch (event_type & 0xF0)
     {
         // Two parameter channel events:
         case MIDI_EVENT_NOTE_OFF:
@@ -337,8 +337,7 @@ static void FreeEvent(midi_event_t *event)
 }
 
 // Read and check the track chunk header
-
-static boolean ReadTrackHeader(midi_track_t *track, FILE *stream)
+static dboolean ReadTrackHeader(midi_track_t *track, FILE *stream)
 {
     size_t              records_read;
     chunk_header_t      chunk_header;
@@ -356,14 +355,14 @@ static boolean ReadTrackHeader(midi_track_t *track, FILE *stream)
     return true;
 }
 
-static boolean ReadTrack(midi_track_t *track, FILE *stream)
+static dboolean ReadTrack(midi_track_t *track, FILE *stream)
 {
-    midi_event_t        *new_events;
-    midi_event_t        *event;
+    midi_event_t        *new_events = NULL;
     unsigned int        last_event_type;
 
     track->num_events = 0;
     track->events = NULL;
+    track->num_event_mem = 0;   // NSM
 
     // Read the header:
     if (!ReadTrackHeader(track, stream))
@@ -374,11 +373,18 @@ static boolean ReadTrack(midi_track_t *track, FILE *stream)
 
     for (;;)
     {
-        // Resize the track slightly larger to hold another event:
-        new_events = (midi_event_t *)realloc(track->events,
-                                             sizeof(midi_event_t) * (track->num_events + 1));
+        midi_event_t    *event;
 
-        if (new_events == NULL)
+        // Resize the track slightly larger to hold another event:
+        if (track->num_events == track->num_event_mem)
+        {
+            // depending on the state of the heap and the malloc implementation, realloc()
+            // one more event at a time can be VERY slow. 10sec+ in MSVC
+            track->num_event_mem += 100;
+            new_events = Z_Realloc(track->events, sizeof(midi_event_t) * track->num_event_mem);
+        }
+
+        if (!new_events)
             return false;
 
         track->events = new_events;
@@ -410,21 +416,19 @@ static void FreeTrack(midi_track_t *track)
     free(track->events);
 }
 
-static boolean ReadAllTracks(midi_file_t *file, FILE *stream)
+static dboolean ReadAllTracks(midi_file_t *file, FILE *stream)
 {
     unsigned int        i;
 
     // Allocate list of tracks and read each track:
+    file->tracks = malloc(sizeof(midi_track_t) * file->num_tracks);
 
-    file->tracks = (midi_track_t *)malloc(sizeof(midi_track_t) * file->num_tracks);
-
-    if (file->tracks == NULL)
+    if (!file->tracks)
         return false;
 
     memset(file->tracks, 0, sizeof(midi_track_t) * file->num_tracks);
 
     // Read each track:
-
     for (i = 0; i < file->num_tracks; ++i)
         if (!ReadTrack(&file->tracks[i], stream))
             return false;
@@ -433,8 +437,7 @@ static boolean ReadAllTracks(midi_file_t *file, FILE *stream)
 }
 
 // Read and check the header chunk.
-
-static boolean ReadFileHeader(midi_file_t *file, FILE *stream)
+static dboolean ReadFileHeader(midi_file_t *file, FILE *stream)
 {
     size_t              records_read;
     unsigned int        format_type;
@@ -459,10 +462,10 @@ static boolean ReadFileHeader(midi_file_t *file, FILE *stream)
 
 void MIDI_FreeFile(midi_file_t *file)
 {
-    unsigned int        i;
-
-    if (file->tracks != NULL)
+    if (file->tracks)
     {
+        unsigned int    i;
+
         for (i = 0; i < file->num_tracks; ++i)
             FreeTrack(&file->tracks[i]);
 
@@ -477,9 +480,9 @@ midi_file_t *MIDI_LoadFile(char *filename)
     midi_file_t *file;
     FILE        *stream;
 
-    file = (midi_file_t *)malloc(sizeof(midi_file_t));
+    file = malloc(sizeof(midi_file_t));
 
-    if (file == NULL)
+    if (!file)
         return NULL;
 
     file->tracks = NULL;
@@ -490,7 +493,7 @@ midi_file_t *MIDI_LoadFile(char *filename)
     // Open file
     stream = fopen(filename, "rb");
 
-    if (stream == NULL)
+    if (!stream)
     {
         MIDI_FreeFile(file);
         return NULL;
@@ -530,7 +533,7 @@ midi_track_iter_t *MIDI_IterateTrack(midi_file_t *file, unsigned int track)
 
     assert(track < file->num_tracks);
 
-    iter = (midi_track_iter_t *)malloc(sizeof(*iter));
+    iter = malloc(sizeof(*iter));
     iter->track = &file->tracks[track];
     iter->position = 0;
 

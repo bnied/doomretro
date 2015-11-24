@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -40,15 +40,15 @@
 #include "i_swap.h"
 #include "m_config.h"
 #include "st_lib.h"
+#include "st_stuff.h"
 #include "v_video.h"
 #include "w_wad.h"
 #include "z_zone.h"
 
-extern int graphicdetail;
+extern int r_detail;
 
 //
-// Hack display negative frags.
-//  Loads and store the stminus lump.
+//  Loads and store the sttminus lump.
 //
 patch_t *sttminus;
 
@@ -57,7 +57,7 @@ void STlib_init(void)
     sttminus = W_CacheLumpName("STTMINUS", PU_STATIC);
 }
 
-void STlib_initNum(st_number_t *n, int x, int y, patch_t **pl, int *num, boolean *on, int width)
+void STlib_initNum(st_number_t *n, int x, int y, patch_t **pl, int *num, dboolean *on, int width)
 {
     n->x = x;
     n->y = y;
@@ -203,7 +203,7 @@ void STlib_drawNum(st_number_t *n)
     {
         if (SHORT(n->p[0]->height) == 6 && !STYSNUM0)
         {
-            if (graphicdetail == LOW)
+            if (r_detail == lowdetail)
                 STlib_drawLowNum(0, 160, 47, x - w, n->y);
             else
                 STlib_drawHighNum(0, 160, 47, x - w, n->y);
@@ -218,7 +218,7 @@ void STlib_drawNum(st_number_t *n)
         x -= w;
         if (SHORT(n->p[0]->height) == 6 && !STYSNUM0)
         {
-            if (graphicdetail == LOW)
+            if (r_detail == lowdetail)
                 STlib_drawLowNum(num % 10, 160, 47, x, n->y);
             else
                 STlib_drawHighNum(num % 10, 160, 47, x, n->y);
@@ -295,7 +295,7 @@ void STlib_updateNum(st_number_t *n)
 }
 
 void STlib_initPercent(st_percent_t *p, int x, int y, patch_t **pl,
-                       int *num, boolean *on, patch_t *percent)
+                       int *num, dboolean *on, patch_t *percent)
 {
     STlib_initNum(&p->n, x, y, pl, num, on, 3);
     p->p = percent;
@@ -309,7 +309,7 @@ void STlib_updatePercent(st_percent_t *per, int refresh)
     STlib_updateNum(&per->n);
 }
 
-void STlib_initMultIcon(st_multicon_t *i, int x, int y, patch_t **il, int *inum, boolean *on)
+void STlib_initMultIcon(st_multicon_t *i, int x, int y, patch_t **il, int *inum, dboolean *on)
 {
     i->x = x;
     i->y = y;
@@ -319,58 +319,33 @@ void STlib_initMultIcon(st_multicon_t *i, int x, int y, patch_t **il, int *inum,
     i->p = il;
 }
 
-void STlib_updateMultIcon(st_multicon_t *mi, boolean refresh)
+void STlib_updateMultIcon(st_multicon_t *mi, dboolean refresh)
 {
-    int         w;
-    int         h;
-    int         x;
-    int         y;
-
     if (*mi->on && (mi->oldinum != *mi->inum || refresh) && *mi->inum != -1)
     {
-        if (mi->oldinum != -1)
-        {
-            x = mi->x - SHORT(mi->p[mi->oldinum]->leftoffset);
-            y = mi->y - SHORT(mi->p[mi->oldinum]->topoffset);
-            w = SHORT(mi->p[mi->oldinum]->width);
-            h = SHORT(mi->p[mi->oldinum]->height);
-        }
         V_DrawPatch(mi->x, mi->y, FG, mi->p[*mi->inum]);
         mi->oldinum = *mi->inum;
     }
 }
 
-void STlib_updateArmsIcon(st_multicon_t *mi, boolean refresh, int i)
+void STlib_updateArmsIcon(st_multicon_t *mi, dboolean refresh, int i)
 {
-    int         w;
-    int         h;
-    int         x;
-    int         y;
-
     if (*mi->on && (mi->oldinum != *mi->inum || refresh) && *mi->inum != -1)
     {
-        if (mi->oldinum != -1)
-        {
-            x = mi->x - SHORT(mi->p[mi->oldinum]->leftoffset);
-            y = mi->y - SHORT(mi->p[mi->oldinum]->topoffset);
-            w = SHORT(mi->p[mi->oldinum]->width);
-            h = SHORT(mi->p[mi->oldinum]->height);
-
-        }
         if (STYSNUM0)
             V_DrawPatch(mi->x, mi->y, FG, mi->p[*mi->inum]);
         else
         {
-            if (graphicdetail == LOW)
-                STlib_drawLowNum(i + 2, *mi->inum ? 160 : 93, 47, mi->x, mi->y);
+            if (r_detail == lowdetail)
+                STlib_drawLowNum(i + 2, (*mi->inum ? 160 : 93), 47, mi->x, mi->y);
             else
-                STlib_drawHighNum(i + 2, *mi->inum ? 160 : 93, 47, mi->x, mi->y);
+                STlib_drawHighNum(i + 2, (*mi->inum ? 160 : 93), 47, mi->x, mi->y);
         }
         mi->oldinum = *mi->inum;
     }
 }
 
-void STlib_initBinIcon(st_binicon_t *b, int x, int y, patch_t *i, boolean *val, boolean *on)
+void STlib_initBinIcon(st_binicon_t *b, int x, int y, patch_t *i, dboolean *val, dboolean *on)
 {
     b->x = x;
     b->y = y;
@@ -380,20 +355,10 @@ void STlib_initBinIcon(st_binicon_t *b, int x, int y, patch_t *i, boolean *val, 
     b->p = i;
 }
 
-void STlib_updateBinIcon(st_binicon_t *bi, boolean refresh)
+void STlib_updateBinIcon(st_binicon_t *bi, dboolean refresh)
 {
-    int         x;
-    int         y;
-    int         w;
-    int         h;
-
     if (*bi->on && (bi->oldval != *bi->val || refresh))
     {
-        x = bi->x - SHORT(bi->p->leftoffset);
-        y = bi->y - SHORT(bi->p->topoffset);
-        w = SHORT(bi->p->width);
-        h = SHORT(bi->p->height);
-
         if (*bi->val)
             V_DrawPatch(bi->x, bi->y, FG, bi->p);
 
@@ -401,20 +366,10 @@ void STlib_updateBinIcon(st_binicon_t *bi, boolean refresh)
     }
 }
 
-void STlib_updateBigBinIcon(st_binicon_t *bi, boolean refresh)
+void STlib_updateBigBinIcon(st_binicon_t *bi, dboolean refresh)
 {
-    int         x;
-    int         y;
-    int         w;
-    int         h;
-
     if (*bi->on && (bi->oldval != *bi->val || refresh))
     {
-        x = bi->x - SHORT(bi->p->leftoffset);
-        y = bi->y - SHORT(bi->p->topoffset);
-        w = SHORT(bi->p->width);
-        h = SHORT(bi->p->height);
-
         if (*bi->val)
             V_DrawBigPatch(bi->x, bi->y, FG, bi->p);
 

@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -77,18 +77,16 @@ typedef enum
     CF_NOCLIP           = 1,
     // No damage, no health loss.
     CF_GODMODE          = 2,
-    // Not really a cheat, just a debug aid.
-    CF_NOMOMENTUM       = 4,
 
-    CF_NOTARGET         = 8,
+    CF_NOTARGET         = 4,
 
-    CF_MYPOS            = 16,
+    CF_MYPOS            = 8,
 
-    CF_ALLMAP           = 32,
+    CF_ALLMAP           = 16,
 
-    CF_ALLMAP_THINGS    = 64,
+    CF_ALLMAP_THINGS    = 32,
 
-    CF_CHOPPERS         = 128
+    CF_CHOPPERS         = 64
 } cheat_t;
 
 //
@@ -111,6 +109,12 @@ typedef struct player_s
     // bounded/scaled total momentum.
     fixed_t             bob;
 
+    // killough 10/98: used for realistic bobbing (i.e. not simply overall speed)
+    // mo->momx and mo->momy represent true momenta experienced by player.
+    // This only represents the thrust that the player applies himself.
+    // This avoids anomalies with such things as BOOM ice and conveyors.
+    fixed_t             momx, momy;     // killough 10/98
+
     // This is only used between levels,
     // mo->health is used during levels.
     int                 health;
@@ -122,11 +126,9 @@ typedef struct player_s
     int                 powers[NUMPOWERS];
     int                 cards[NUMCARDS];
     int                 neededcard;
-    int                 neededcardtics;
-    boolean             backpack;
+    int                 neededcardflash;
+    dboolean            backpack;
 
-    // Frags, kills of other players.
-    int                 frags[MAXPLAYERS];
     weapontype_t        readyweapon;
 
     // Is wp_nochange if not changing.
@@ -154,6 +156,7 @@ typedef struct player_s
 
     // Hint messages.
     char                *message;
+    char                *altmsg;
 
     // For screen flashing (red or bright).
     int                 damagecount;
@@ -177,14 +180,27 @@ typedef struct player_s
     pspdef_t            psprites[NUMPSPRITES];
 
     // True if secret level has been done.
-    boolean             didsecret;
+    dboolean            didsecret;
 
     weapontype_t        preferredshotgun;
     int                 shotguns;
     weapontype_t        fistorchainsaw;
-    int                 invulnbeforechoppers;
-    int                 chainsawbeforechoppers;
+    dboolean            invulnbeforechoppers;
+    dboolean            chainsawbeforechoppers;
     weapontype_t        weaponbeforechoppers;
+
+    // [AM] Previous position of viewz before think.
+    //      Used to interpolate between camera positions.
+    angle_t             oldviewz;
+
+    // For playerstats cmd
+    int                 damageinflicted;
+    int                 damagereceived;
+    int                 cheated;
+    int                 shotshit;
+    int                 shotsfired;
+    int                 deaths;
+    int                 mobjcount[NUMMOBJTYPES];
 } player_t;
 
 //
@@ -193,14 +209,11 @@ typedef struct player_s
 //
 typedef struct
 {
-    boolean             in;             // whether the player is in game
-
     // Player stats, kills, collected items etc.
     int                 skills;
     int                 sitems;
     int                 ssecret;
     int                 stime;
-    int                 frags[4];
     int                 score;          // current score on entry, modified on return
 } wbplayerstruct_t;
 
@@ -209,7 +222,7 @@ typedef struct
     int                 epsd;           // episode # (0-2)
 
     // if true, splash the secret level
-    boolean             didsecret;
+    dboolean            didsecret;
 
     // previous and next levels, origin 0
     int                 last;
@@ -218,7 +231,6 @@ typedef struct
     int                 maxkills;
     int                 maxitems;
     int                 maxsecret;
-    int                 maxfrags;
 
     // the par time
     int                 partime;

@@ -1,37 +1,37 @@
 /*
 ========================================================================
 
-                               DOOM RETRO
+                               DOOM Retro
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright (C) 2013-2015 Brad Harding.
+  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright © 2013-2016 Brad Harding.
 
-  DOOM RETRO is a fork of CHOCOLATE DOOM by Simon Howard.
-  For a complete list of credits, see the accompanying AUTHORS file.
+  DOOM Retro is a fork of Chocolate DOOM.
+  For a list of credits, see the accompanying AUTHORS file.
 
-  This file is part of DOOM RETRO.
+  This file is part of DOOM Retro.
 
-  DOOM RETRO is free software: you can redistribute it and/or modify it
+  DOOM Retro is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by the
   Free Software Foundation, either version 3 of the License, or (at your
   option) any later version.
 
-  DOOM RETRO is distributed in the hope that it will be useful, but
+  DOOM Retro is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM RETRO. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
   permission. All other trademarks are the property of their respective
-  holders. DOOM RETRO is in no way affiliated with nor endorsed by
-  id Software LLC.
+  holders. DOOM Retro is in no way affiliated with nor endorsed by
+  id Software.
 
 ========================================================================
 */
@@ -39,16 +39,16 @@
 #if !defined(__P_SPEC__)
 #define __P_SPEC__
 
-//
-// End-level timer (-TIMER option)
-//
-extern boolean  levelTimer;
-extern int      levelTimeCount;
+//jff 2/23/98 identify the special classes that can share sectors
+typedef enum
+{
+    floor_special,
+    ceiling_special,
+    lighting_special
+} special_e;
 
-extern boolean  *isliquid;
-
-// Define values for map objects
-#define MO_TELEPORTMAN          14
+extern dboolean *isliquid;
+extern dboolean *isteleport;
 
 // at game start
 void P_InitPicAnims(void);
@@ -59,10 +59,12 @@ void P_SpawnSpecials(void);
 // every tic
 void P_UpdateSpecials(void);
 
-boolean P_CheckTag(line_t *line);
+dboolean P_SectorActive(special_e t, sector_t *sec);
+
+dboolean P_CheckTag(line_t *line);
 
 // when needed
-boolean P_UseSpecialLine(mobj_t *thing, line_t *line, int side);
+dboolean P_UseSpecialLine(mobj_t *thing, line_t *line, int side);
 
 void P_ShootSpecialLine(mobj_t *thing, line_t *line);
 
@@ -80,21 +82,36 @@ fixed_t P_FindLowestFloorSurrounding(sector_t *sec);
 fixed_t P_FindHighestFloorSurrounding(sector_t *sec);
 
 fixed_t P_FindNextHighestFloor(sector_t *sec, int currentheight);
+fixed_t P_FindNextLowestFloor(sector_t *sec, int currentheight);
 
 fixed_t P_FindLowestCeilingSurrounding(sector_t *sec);
 fixed_t P_FindHighestCeilingSurrounding(sector_t *sec);
 
+fixed_t P_FindNextLowestCeiling(sector_t *sec, int currentheight); // jff 2/04/98
+
+fixed_t P_FindNextHighestCeiling(sector_t *sec, int currentheight); // jff 2/04/98
+
+fixed_t P_FindShortestTextureAround(int secnum); // jff 2/04/98
+
+fixed_t P_FindShortestUpperAround(int secnum); // jff 2/04/98
+
+sector_t *P_FindModelFloorSector(fixed_t floordestheight, int secnum); //jff 02/04/98
+
+sector_t *P_FindModelCeilingSector(fixed_t ceildestheight, int secnum); //jff 02/04/98
+
 int P_FindSectorFromLineTag(const line_t *line, int start);
 int P_FindLineFromLineTag(const line_t *line, int start);
 
-int P_FindMinSurroundingLight(sector_t *sector, int max);
+int P_FindMinSurroundingLight(sector_t *sector, int min);
+
+dboolean P_CanUnlockGenDoor(line_t *line, player_t *player);
 
 sector_t *getNextSector(line_t *line, sector_t *sec);
 
 //
 // SPECIAL
 //
-int EV_DoDonut(line_t *line);
+dboolean EV_DoDonut(line_t *line);
 
 //
 // P_LIGHTS
@@ -155,6 +172,9 @@ int EV_StartLightStrobing(line_t *line);
 int EV_TurnTagLightsOff(line_t *line);
 
 int EV_LightTurnOn(line_t *line, int bright);
+
+void EV_LightTurnOnPartway(line_t *line, fixed_t level);        // killough 10/10/98
+void EV_LightByAdjacentSectors(sector_t *sector, fixed_t level);
 
 void T_Glow(glow_t *g);
 void P_SpawnGlowingLight(sector_t *sector);
@@ -222,20 +242,28 @@ typedef enum
     in_stasis
 } plat_e;
 
+//jff 3/15/98 pure texture/type change for better generalized support
+typedef enum
+{
+    trigChangeOnly,
+    numChangeOnly
+} change_e;
+
 typedef enum
 {
     perpetualRaise,
     downWaitUpStay,
     raiseAndChange,
     raiseToNearestAndChange,
-    blazeDWUS
+    blazeDWUS,
+    genLift,            // jff added to support generalized Plat types
+    genPerpetual,
+    toggleUpDn
 } plattype_e;
 
 typedef struct plat_s
 {
     thinker_t          thinker;
-    struct plat_s       *next;
-    struct plat_s      *prev;
     sector_t           *sector;
     fixed_t            speed;
     fixed_t            low;
@@ -244,15 +272,24 @@ typedef struct plat_s
     int                count;
     plat_e             status;
     plat_e             oldstatus;
-    boolean            crush;
+    dboolean           crush;
     int                tag;
     plattype_e         type;
+
+    struct platlist_s  *list;   // killough
 } plat_t;
 
-#define PLATWAIT                3
-#define PLATSPEED               FRACUNIT
+// New limit-free plat structure -- killough
+typedef struct platlist_s
+{
+    plat_t             *plat;
+    struct platlist_s  *next, **prev;
+} platlist_t;
 
-extern plat_t *activeplatshead;
+#define PLATWAIT       3
+#define PLATSPEED      FRACUNIT
+
+extern platlist_t      *activeplats;
 
 void T_PlatRaise(plat_t *plat);
 
@@ -260,7 +297,8 @@ int EV_DoPlat(line_t *line, plattype_e type, int amount);
 
 void P_AddActivePlat(plat_t *plat);
 void P_RemoveActivePlat(plat_t *plat);
-int EV_StopPlat(line_t *line);
+void P_RemoveAllActivePlats(void);
+dboolean EV_StopPlat(line_t *line);
 void P_ActivateInStasis(int tag);
 
 //
@@ -275,7 +313,17 @@ typedef enum
     doorRaiseIn5Mins,
     doorBlazeRaise,
     doorBlazeOpen,
-    doorBlazeClose
+    doorBlazeClose,
+
+    //jff 02/05/98 add generalized door types
+    genRaise,
+    genBlazeRaise,
+    genOpen,
+    genBlazeOpen,
+    genClose,
+    genBlazeClose,
+    genCdO,
+    genBlazeCdO
 } vldoor_e;
 
 typedef struct
@@ -291,9 +339,16 @@ typedef struct
 
     // tics to wait at the top
     int         topwait;
+
     // (keep in case a door going down is reset)
     // when it reaches 0, start going down
     int         topcountdown;
+
+    //jff 1/31/98 keep track of line door is triggered by
+    line_t      *line;
+
+    //killough 10/98: sector tag for gradual lighting effects
+    int         lighttag;
 } vldoor_t;
 
 #define VDOORSPEED              FRACUNIT * 2
@@ -301,9 +356,9 @@ typedef struct
 
 void EV_VerticalDoor(line_t *line, mobj_t *thing);
 
-int EV_DoDoor(line_t *line, vldoor_e type);
+dboolean EV_DoDoor(line_t *line, vldoor_e type);
 
-int EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing);
+dboolean EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing);
 
 void T_VerticalDoor(vldoor_t *door);
 void P_SpawnDoorCloseIn30(sector_t *sec);
@@ -317,44 +372,67 @@ typedef enum
 {
     lowerToFloor,
     raiseToHighest,
+    lowerToLowest,
+    lowerToMaxFloor,
     lowerAndCrush,
     crushAndRaise,
     fastCrushAndRaise,
-    silentCrushAndRaise
+    silentCrushAndRaise,
+
+    //jff 02/04/98 add types for generalized ceiling mover
+    genCeiling,
+    genCeilingChg,
+    genCeilingChg0,
+    genCeilingChgT,
+
+    //jff 02/05/98 add types for generalized ceiling mover
+    genCrusher,
+    genSilentCrusher
 } ceiling_e;
 
 typedef struct ceiling_s
 {
-    thinker_t           thinker;
-    struct ceiling_s    *next;
-    struct ceiling_s    *prev;
-    ceiling_e           type;
-    sector_t            *sector;
-    fixed_t             bottomheight;
-    fixed_t             topheight;
-    fixed_t             speed;
-    boolean             crush;
+    thinker_t                   thinker;
+    ceiling_e                   type;
+    sector_t                    *sector;
+    fixed_t                     bottomheight;
+    fixed_t                     topheight;
+    fixed_t                     speed;
+    fixed_t                     oldspeed;
+    dboolean                    crush;
+
+    //jff 02/04/98 add these to support ceiling changers
+    int                         newspecial;
+    short                       texture;
 
     // 1 = up, 0 = waiting, -1 = down
-    int                 direction;
+    int                         direction;
 
     // ID
-    int                 tag;
-    int                 olddirection;
+    int                         tag;
+    int                         olddirection;
+    struct ceilinglist_s        *list;          // jff 2/22/98 copied from killough's plats
 } ceiling_t;
+
+typedef struct ceilinglist_s
+{
+    ceiling_t                   *ceiling;
+    struct ceilinglist_s        *next, **prev;
+} ceilinglist_t;
 
 #define CEILSPEED               FRACUNIT
 #define CEILWAIT                150
 
-extern ceiling_t        *activeceilingshead;
+extern ceilinglist_t            *activeceilings;
 
-int EV_DoCeiling(line_t *line, ceiling_e type);
+dboolean EV_DoCeiling(line_t *line, ceiling_e type);
 
 void T_MoveCeiling(ceiling_t *ceiling);
-void P_AddActiveCeiling(ceiling_t *c);
-void P_RemoveActiveCeiling(ceiling_t *c);
-int EV_CeilingCrushStop(line_t *line);
-int P_ActivateInStasisCeiling(line_t *line);
+void P_AddActiveCeiling(ceiling_t *ceiling);
+void P_RemoveActiveCeiling(ceiling_t *ceiling);
+void P_RemoveAllActiveCeilings(void);
+dboolean EV_CeilingCrushStop(line_t *line);
+dboolean P_ActivateInStasisCeiling(line_t *line);
 
 //
 // P_FLOOR
@@ -376,6 +454,15 @@ typedef enum
     // raise floor to next highest surrounding floor
     raiseFloorToNearest,
 
+    //jff 02/03/98 lower floor to next lowest neighbor
+    lowerFloorToNearest,
+
+    //jff 02/03/98 lower floor 24 absolute
+    lowerFloor24,
+
+    //jff 02/03/98 lower floor 32 absolute
+    lowerFloor32Turbo,
+
     // raise floor to shortest height texture around it
     raiseToTexture,
 
@@ -384,6 +471,10 @@ typedef enum
     lowerAndChange,
 
     raiseFloor24,
+
+    //jff 02/03/98 raise floor 32 absolute
+    raiseFloor32Turbo,
+
     raiseFloor24AndChange,
     raiseFloorCrush,
 
@@ -392,8 +483,22 @@ typedef enum
     donutRaise,
     raiseFloor512,
 
-    buildStair
+    //jff 02/04/98  add types for generalized floor mover
+    genFloor,
+    genFloorChg,
+    genFloorChg0,
+    genFloorChgT,
+
+    buildStair,
+    genBuildStair
 } floor_e;
+
+typedef enum
+{
+    elevateUp,
+    elevateDown,
+    elevateCurrent
+} elevator_e;
 
 typedef enum
 {
@@ -405,16 +510,28 @@ typedef struct
 {
     thinker_t   thinker;
     floor_e     type;
-    boolean     crush;
+    dboolean    crush;
     sector_t    *sector;
     int         direction;
     int         newspecial;
     short       texture;
     fixed_t     floordestheight;
     fixed_t     speed;
-    boolean     stopsound;
+    dboolean    stopsound;
 } floormove_t;
 
+typedef struct
+{
+    thinker_t   thinker;
+    elevator_e  type;
+    sector_t    *sector;
+    int         direction;
+    fixed_t     floordestheight;
+    fixed_t     ceilingdestheight;
+    fixed_t     speed;
+} elevator_t;
+
+#define ELEVATORSPEED           (FRACUNIT * 4)
 #define FLOORSPEED              FRACUNIT
 
 typedef enum
@@ -424,20 +541,300 @@ typedef enum
     pastdest
 } result_e;
 
-result_e T_MovePlane(sector_t *sector, fixed_t speed, fixed_t dest, boolean crush,
+result_e T_MovePlane(sector_t *sector, fixed_t speed, fixed_t dest, dboolean crush,
     int floorOrCeiling, int direction);
-
-boolean EV_BuildStairs(line_t *line, stair_e type);
-
-boolean EV_DoFloor(line_t *line, floor_e floortype);
-
+dboolean EV_BuildStairs(line_t *line, stair_e type);
+dboolean EV_DoFloor(line_t *line, floor_e floortype);
+dboolean EV_DoChange(line_t *line, change_e changetype);
+dboolean EV_DoElevator(line_t *line, elevator_e elevtype);
 void T_MoveFloor(floormove_t *floor);
+void T_MoveElevator(elevator_t *elevator);
 
-void P_InitAnimatedLiquids(void);
+// killough 3/7/98: Add generalized scroll effects
+typedef struct
+{
+    thinker_t   thinker;        // Thinker structure for scrolling
+    fixed_t     dx, dy;         // (dx,dy) scroll speeds
+    int         affectee;       // Number of affected sidedef, sector, tag, or whatever
+    int         control;        // Control sector (-1 if none) used to control scrolling
+    fixed_t     last_height;    // Last known height of control sector
+    fixed_t     vdx, vdy;       // Accumulated velocity if accelerative
+    int         accel;          // Whether it's accelerative
+    enum
+    {
+        sc_side,
+        sc_floor,
+        sc_ceiling,
+        sc_carry,
+        sc_carry_ceiling        // killough 4/11/98: carry objects hanging on ceilings
+    } type;                     // Type of scroll effect
+} scroll_t;
+
+void T_Scroll(scroll_t *);
+
+// phares 3/20/98: added new model of Pushers for push/pull effects
+
+typedef struct
+{
+    thinker_t   thinker;        // Thinker structure for Pusher
+    enum
+    {
+        p_push,
+        p_pull,
+        p_wind,
+        p_current
+    } type;
+    mobj_t      *source;        // Point source if point pusher
+    int         x_mag;          // X Strength
+    int         y_mag;          // Y Strength
+    int         magnitude;      // Vector strength for point pusher
+    int         radius;         // Effective radius for point pusher
+    int         x;              // X of point source if point pusher
+    int         y;              // Y of point source if point pusher
+    int         affectee;       // Number of affected sector
+} pusher_t;
+
+void T_Pusher(pusher_t *);      // phares 3/20/98: Push thinker
+mobj_t *P_GetPushThing(int);
 
 //
 // P_TELEPT
 //
-boolean EV_Teleport(line_t *line, int side, mobj_t *thing);
+dboolean EV_Teleport(line_t *line, int side, mobj_t *thing);
+dboolean EV_SilentTeleport(line_t *line, int side, mobj_t *thing);
+dboolean EV_SilentLineTeleport(line_t *line, int side, mobj_t *thing, dboolean reverse);
 
+//jff 3/14/98 add bits and shifts for generalized sector types
+
+#define DAMAGE_MASK     0x60
+#define DAMAGE_SHIFT    5
+#define SECRET_MASK     0x80
+#define SECRET_SHIFT    7
+#define FRICTION_MASK   0x100
+#define FRICTION_SHIFT  8
+#define PUSH_MASK       0x200
+#define PUSH_SHIFT      9
+
+// jff 02/04/98 Define masks, shifts, for fields in
+// generalized linedef types
+#define GenFloorBase          0x6000
+#define GenCeilingBase        0x4000
+#define GenDoorBase           0x3c00
+#define GenLockedBase         0x3800
+#define GenLiftBase           0x3400
+#define GenStairsBase         0x3000
+#define GenCrusherBase        0x2F80
+
+#define TriggerType           0x0007
+#define TriggerTypeShift      0
+
+// define masks and shifts for the floor type fields
+#define FloorCrush            0x1000
+#define FloorChange           0x0c00
+#define FloorTarget           0x0380
+#define FloorDirection        0x0040
+#define FloorModel            0x0020
+#define FloorSpeed            0x0018
+
+#define FloorCrushShift           12
+#define FloorChangeShift          10
+#define FloorTargetShift           7
+#define FloorDirectionShift        6
+#define FloorModelShift            5
+#define FloorSpeedShift            3
+
+// define masks and shifts for the ceiling type fields
+#define CeilingCrush          0x1000
+#define CeilingChange         0x0c00
+#define CeilingTarget         0x0380
+#define CeilingDirection      0x0040
+#define CeilingModel          0x0020
+#define CeilingSpeed          0x0018
+
+#define CeilingCrushShift         12
+#define CeilingChangeShift        10
+#define CeilingTargetShift         7
+#define CeilingDirectionShift      6
+#define CeilingModelShift          5
+#define CeilingSpeedShift          3
+
+// define masks and shifts for the lift type fields
+#define LiftTarget            0x0300
+#define LiftDelay             0x00c0
+#define LiftMonster           0x0020
+#define LiftSpeed             0x0018
+
+#define LiftTargetShift            8
+#define LiftDelayShift             6
+#define LiftMonsterShift           5
+#define LiftSpeedShift             3
+
+// define masks and shifts for the stairs type fields
+#define StairIgnore           0x0200
+#define StairDirection        0x0100
+#define StairStep             0x00c0
+#define StairMonster          0x0020
+#define StairSpeed            0x0018
+
+#define StairIgnoreShift           9
+#define StairDirectionShift        8
+#define StairStepShift             6
+#define StairMonsterShift          5
+#define StairSpeedShift            3
+
+// define masks and shifts for the crusher type fields
+#define CrusherSilent         0x0040
+#define CrusherMonster        0x0020
+#define CrusherSpeed          0x0018
+
+#define CrusherSilentShift         6
+#define CrusherMonsterShift        5
+#define CrusherSpeedShift          3
+
+// define masks and shifts for the door type fields
+#define DoorDelay             0x0300
+#define DoorMonster           0x0080
+#define DoorKind              0x0060
+#define DoorSpeed             0x0018
+
+#define DoorDelayShift             8
+#define DoorMonsterShift           7
+#define DoorKindShift              5
+#define DoorSpeedShift             3
+
+// define masks and shifts for the locked door type fields
+#define LockedNKeys           0x0200
+#define LockedKey             0x01c0
+#define LockedKind            0x0020
+#define LockedSpeed           0x0018
+
+#define LockedNKeysShift           9
+#define LockedKeyShift             6
+#define LockedKindShift            5
+#define LockedSpeedShift           3
+
+// define names for the TriggerType field of the general linedefs
+typedef enum
+{
+    WalkOnce,
+    WalkMany,
+    SwitchOnce,
+    SwitchMany,
+    GunOnce,
+    GunMany,
+    PushOnce,
+    PushMany
+} triggertype_e;
+
+// define names for the Speed field of the general linedefs
+typedef enum
+{
+    SpeedSlow,
+    SpeedNormal,
+    SpeedFast,
+    SpeedTurbo
+} motionspeed_e;
+
+// define names for the Target field of the general floor
+typedef enum
+{
+    FtoHnF,
+    FtoLnF,
+    FtoNnF,
+    FtoLnC,
+    FtoC,
+    FbyST,
+    Fby24,
+    Fby32
+} floortarget_e;
+
+// define names for the Changer Type field of the general floor
+typedef enum
+{
+    FNoChg,
+    FChgZero,
+    FChgTxt,
+    FChgTyp
+} floorchange_e;
+
+// define names for the Change Model field of the general floor
+typedef enum
+{
+    FTriggerModel,
+    FNumericModel
+} floormodel_t;
+
+// define names for the Target field of the general ceiling
+typedef enum
+{
+    CtoHnC,
+    CtoLnC,
+    CtoNnC,
+    CtoHnF,
+    CtoF,
+    CbyST,
+    Cby24,
+    Cby32
+} ceilingtarget_e;
+
+// define names for the Changer Type field of the general ceiling
+typedef enum
+{
+    CNoChg,
+    CChgZero,
+    CChgTxt,
+    CChgTyp
+} ceilingchange_e;
+
+// define names for the Change Model field of the general ceiling
+typedef enum
+{
+    CTriggerModel,
+    CNumericModel
+} ceilingmodel_t;
+
+// define names for the Target field of the general lift
+typedef enum
+{
+    F2LnF,
+    F2NnF,
+    F2LnC,
+    LnF2HnF
+} lifttarget_e;
+
+// define names for the door Kind field of the general ceiling
+typedef enum
+{
+    OdCDoor,
+    ODoor,
+    CdODoor,
+    CDoor
+} doorkind_e;
+
+// define names for the locked door Kind field of the general ceiling
+typedef enum
+{
+    AnyKey,
+    RCard,
+    BCard,
+    YCard,
+    RSkull,
+    BSkull,
+    YSkull,
+    AllKeys
+} keykind_e;
+
+dboolean EV_DoGenFloor(line_t *line);
+
+dboolean EV_DoGenCeiling(line_t *line);
+
+dboolean EV_DoGenLift(line_t *line);
+
+dboolean EV_DoGenStairs(line_t *line);
+
+dboolean EV_DoGenCrusher(line_t *line);
+
+dboolean EV_DoGenDoor(line_t *line);
+
+dboolean EV_DoGenLockedDoor(line_t *line);
 #endif
