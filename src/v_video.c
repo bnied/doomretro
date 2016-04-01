@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -69,8 +69,8 @@ extern dboolean r_translucency;
 //
 // V_CopyRect
 //
-void V_CopyRect(int srcx, int srcy, int srcscrn, int width, int height,
-                int destx, int desty, int destscrn)
+void V_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int destx, int desty,
+    int destscrn)
 {
     byte        *src;
     byte        *dest;
@@ -419,7 +419,8 @@ void V_DrawConsoleChar(int x, int y, patch_t *patch, int color1, int color2, dbo
                     {
                         if (*source)
                             if (italics)
-                                *(dest + italicize[height]) = color1;
+                                *(dest + italicize[height]) = (!tinttab ? color1 :
+                                    tinttab[(color1 << 8) + *(dest + italicize[height])]);
                             else
                                 *dest = (!tinttab ? color1 : tinttab[(color1 << 8) + *dest]);
                     }
@@ -733,7 +734,7 @@ void V_DrawAltHUDPatch(int x, int y, patch_t *patch, int from, int to)
 
     to <<= 8;
 
-    for (; col < w; col++, desttop++)
+    for (; col < w; ++col, ++desttop)
     {
         column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
 
@@ -742,7 +743,8 @@ void V_DrawAltHUDPatch(int x, int y, patch_t *patch, int from, int to)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + column->topdelta * SCREENWIDTH;
-            int         count = column->length;
+            byte        length = column->length;
+            byte        count = length;
 
             while (count--)
             {
@@ -751,7 +753,7 @@ void V_DrawAltHUDPatch(int x, int y, patch_t *patch, int from, int to)
                 *dest = tinttab60[(dot == from ? to : (dot << 8)) + *dest];
                 dest += SCREENWIDTH;
             }
-            column = (column_t *)((byte *)column + column->length + 4);
+            column = (column_t *)((byte *)column + length + 4);
         }
     }
 }

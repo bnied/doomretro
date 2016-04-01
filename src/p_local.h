@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,8 +36,8 @@
 ========================================================================
 */
 
-#if !defined(__P_LOCAL__)
-#define __P_LOCAL__
+#if !defined(__P_LOCAL_H__)
+#define __P_LOCAL_H__
 
 #include "d_main.h"
 #include "m_config.h"
@@ -78,8 +78,8 @@
 #define MOUSE_RIGHTBUTTON       2
 #define MOUSE_MIDDLEBUTTON      4
 
-#define MOUSE_WHEELUP           8
-#define MOUSE_WHEELDOWN         9
+#define MOUSE_WHEELUP           MAX_MOUSE_BUTTONS
+#define MOUSE_WHEELDOWN         (MAX_MOUSE_BUTTONS + 1)
 
 #define NEEDEDCARDFLASH         8
 
@@ -136,10 +136,10 @@ void P_SpawnPuff(fixed_t x, fixed_t y, fixed_t z, angle_t angle);
 void P_SpawnSmokeTrail(fixed_t x, fixed_t y, fixed_t z, angle_t angle);
 void P_SpawnBlood(fixed_t x, fixed_t y, fixed_t z, angle_t angle, int damage, mobj_t *target);
 void P_SpawnBloodSplat(fixed_t x, fixed_t y, int blood, int maxheight, mobj_t *target);
-void P_SpawnBloodSplat2(fixed_t x, fixed_t y, int blood, int maxheight, mobj_t *target);
 void P_NullBloodSplatSpawner(fixed_t x, fixed_t y, int blood, int maxheight, mobj_t *target);
 mobj_t *P_SpawnMissile(mobj_t *source, mobj_t *dest, mobjtype_t type);
 void P_SpawnPlayerMissile(mobj_t *source, mobjtype_t type);
+void P_InitExtraMobjs(void);
 
 //
 // P_ENEMY
@@ -256,6 +256,10 @@ extern mobj_t           **blocklinks;   // for thing chains
 //
 // P_INTER
 //
+
+#define BFGCELLS        40
+#define MAXHEALTH       100
+
 void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher);
 
 void P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, int damage);

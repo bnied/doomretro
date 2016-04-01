@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -190,7 +190,9 @@ void T_MoveFloor(floormove_t *floor)
     result_e    res = T_MovePlane(sec, floor->speed, floor->floordestheight,
                                   floor->crush, 0, floor->direction);
 
-    if (!(leveltime & 7) && sec->floorheight != floor->floordestheight)
+    if (!(leveltime & 7)
+        // [BH] don't make sound once floor is at its destination height
+        && sec->floorheight != floor->floordestheight)
         S_StartSectorSound(&sec->soundorg, sfx_stnmov);
 
     if (res == pastdest)
@@ -269,6 +271,7 @@ void T_MoveFloor(floormove_t *floor)
             }
         }
 
+        // [BH] don't make stop sound if floor already at its destination height
         if (floor->stopsound)
             S_StartSectorSound(&sec->soundorg, sfx_pstop);
     }
@@ -348,8 +351,7 @@ dboolean EV_DoFloor(line_t *line, floor_e floortype)
 
         // new floor thinker
         rtn = true;
-        floor = Z_Malloc(sizeof(*floor), PU_LEVSPEC, 0);
-        memset(floor, 0, sizeof(*floor));
+        floor = Z_Calloc(1, sizeof(*floor), PU_LEVSPEC, NULL);
         P_AddThinker(&floor->thinker);
         sec->floordata = floor;
         floor->thinker.function = T_MoveFloor;
@@ -533,8 +535,9 @@ dboolean EV_DoFloor(line_t *line, floor_e floortype)
 
         floor->stopsound = (floor->sector->floorheight != floor->floordestheight);
 
-        for (i = 0; i < floor->sector->linecount; i++)
-            floor->sector->lines[i]->flags &= ~ML_SECRET;
+        // [BH] floor is no longer secret
+        for (i = 0; i < sec->linecount; i++)
+            sec->lines[i]->flags &= ~ML_SECRET;
     }
     return rtn;
 }
@@ -642,8 +645,7 @@ dboolean EV_BuildStairs(line_t *line, stair_e type)
 
         // new floor thinker
         rtn = true;
-        floor = Z_Malloc(sizeof(*floor), PU_LEVSPEC, 0);
-        memset(floor, 0, sizeof(*floor));
+        floor = Z_Calloc(1, sizeof(*floor), PU_LEVSPEC, NULL);
         P_AddThinker(&floor->thinker);
         sec->floordata = floor;
         floor->thinker.function = T_MoveFloor;
@@ -711,8 +713,7 @@ dboolean EV_BuildStairs(line_t *line, stair_e type)
 
                 sec = tsec;
                 secnum = newsecnum;
-                floor = Z_Malloc(sizeof(*floor), PU_LEVSPEC, 0);
-                memset(floor, 0, sizeof(*floor));
+                floor = Z_Calloc(1, sizeof(*floor), PU_LEVSPEC, NULL);
                 P_AddThinker(&floor->thinker);
 
                 sec->floordata = floor;
@@ -762,7 +763,7 @@ dboolean EV_DoElevator(line_t *line, elevator_e elevtype)
 
         // create and initialize new elevator thinker
         rtn = true;
-        elevator = Z_Malloc(sizeof(*elevator), PU_LEVSPEC, 0);
+        elevator = Z_Calloc(1, sizeof(*elevator), PU_LEVSPEC, NULL);
         P_AddThinker(&elevator->thinker);
         sec->floordata = elevator;
         sec->ceilingdata = elevator;

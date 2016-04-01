@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,8 +36,8 @@
 ========================================================================
 */
 
-#if !defined(__R_DEFS__)
-#define __R_DEFS__
+#if !defined(__R_DEFS_H__)
+#define __R_DEFS_H__
 
 #include "p_mobj.h"
 
@@ -735,6 +735,7 @@ typedef struct msecnode_s
     struct msecnode_s   *m_tnext;       // next msecnode_t for this thing
     struct msecnode_s   *m_sprev;       // prev msecnode_t for this sector
     struct msecnode_s   *m_snext;       // next msecnode_t for this sector
+    dboolean            visited;        // killough 4/4/98, 4/7/98: used in search algorithms
 } msecnode_t;
 
 //
@@ -749,7 +750,7 @@ typedef struct
 
     angle_t             angle;
 
-    fixed_t             length;
+    int64_t             length;
 
     side_t              *sidedef;
     line_t              *linedef;
@@ -957,15 +958,19 @@ typedef struct visplane_s
     int                 maxx;
     fixed_t             height;
     fixed_t             xoffs, yoffs;   // killough 2/28/98: Support scrolling flats
+
     // leave pads for [minx-1]/[maxx+1]
     unsigned short      pad1;
+
     // Here lies the rub for all
     //  dynamic resize/change of resolution.
     unsigned short      top[SCREENWIDTH];
+
     unsigned short      pad2;
     unsigned short      pad3;
-    // See above.
+
     unsigned short      bottom[SCREENWIDTH];
+
     unsigned short      pad4;
 
     sector_t            *sector;        // [BH] Support animated liquid sectors

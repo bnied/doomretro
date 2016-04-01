@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -42,10 +42,6 @@
 #include "s_sound.h"
 #include "z_zone.h"
 
-//
-// CEILINGS
-//
-
 // the list of ceilings moving currently, including crushers
 ceilinglist_t   *activeceilings;
 
@@ -69,7 +65,9 @@ void T_MoveCeiling(ceiling_t *ceiling)
             res = T_MovePlane(ceiling->sector, ceiling->speed, ceiling->topheight, false, 1,
                 ceiling->direction);
 
-            if (!(leveltime & 7) && ceiling->sector->ceilingheight != ceiling->topheight)
+            if (!(leveltime & 7)
+                // [BH] don't make sound once ceiling is at its destination height
+                && ceiling->sector->ceilingheight != ceiling->topheight)
                 switch (ceiling->type)
                 {
                     case silentCrushAndRaise:
@@ -121,7 +119,9 @@ void T_MoveCeiling(ceiling_t *ceiling)
             res = T_MovePlane(ceiling->sector, ceiling->speed, ceiling->bottomheight,
                 ceiling->crush, 1, ceiling->direction);
 
-            if (!(leveltime & 7) && ceiling->sector->ceilingheight != ceiling->bottomheight)
+            if (!(leveltime & 7)
+                // [BH] don't make sound once ceiling is at its destination height
+                && ceiling->sector->ceilingheight != ceiling->bottomheight)
                 switch (ceiling->type)
                 {
                     case silentCrushAndRaise:
@@ -178,28 +178,25 @@ void T_MoveCeiling(ceiling_t *ceiling)
                         break;
                 }
             }
-            else
+            else if (res == crushed)
             {
-                if (res == crushed)
+                switch (ceiling->type)
                 {
-                    switch (ceiling->type)
-                    {
-                        // jff 02/08/98 slow down slow crushers on obstacle
-                        case genCrusher:
-                        case genSilentCrusher:
-                            if (ceiling->oldspeed < CEILSPEED * 3)
-                                ceiling->speed = CEILSPEED / 8;
-                            break;
-
-                        case silentCrushAndRaise:
-                        case crushAndRaise:
-                        case lowerAndCrush:
+                    // jff 02/08/98 slow down slow crushers on obstacle
+                    case genCrusher:
+                    case genSilentCrusher:
+                        if (ceiling->oldspeed < CEILSPEED * 3)
                             ceiling->speed = CEILSPEED / 8;
-                            break;
+                        break;
 
-                        default:
-                            break;
-                    }
+                    case silentCrushAndRaise:
+                    case crushAndRaise:
+                    case lowerAndCrush:
+                        ceiling->speed = CEILSPEED / 8;
+                        break;
+
+                    default:
+                        break;
                 }
             }
             break;
@@ -212,6 +209,7 @@ void T_MoveCeiling(ceiling_t *ceiling)
 //
 dboolean EV_DoCeiling(line_t *line, ceiling_e type)
 {
+    int         i;
     int         secnum = -1;
     dboolean    rtn = false;
     sector_t    *sec;
@@ -235,10 +233,9 @@ dboolean EV_DoCeiling(line_t *line, ceiling_e type)
         if (P_SectorActive(ceiling_special, sec))
             continue;
 
-        // new door thinker
+        // new ceiling thinker
         rtn = true;
-        ceiling = Z_Malloc(sizeof(*ceiling), PU_LEVSPEC, 0);
-        memset(ceiling, 0, sizeof(*ceiling));
+        ceiling = Z_Calloc(1, sizeof(*ceiling), PU_LEVSPEC, NULL);
         P_AddThinker(&ceiling->thinker);
         sec->ceilingdata = ceiling;
         ceiling->thinker.function = T_MoveCeiling;
@@ -291,6 +288,10 @@ dboolean EV_DoCeiling(line_t *line, ceiling_e type)
         ceiling->tag = sec->tag;
         ceiling->type = type;
         P_AddActiveCeiling(ceiling);
+
+        // [BH] ceiling is no longer secret
+        for (i = 0; i < sec->linecount; i++)
+            sec->lines[i]->flags &= ~ML_SECRET;
     }
     return rtn;
 }
@@ -301,9 +302,8 @@ dboolean EV_DoCeiling(line_t *line, ceiling_e type)
 //
 void P_AddActiveCeiling(ceiling_t *ceiling)
 {
-    ceilinglist_t       *list;
+    ceilinglist_t       *list = malloc(sizeof(*list));
 
-    list = malloc(sizeof(*list));
     list->ceiling = ceiling;
     ceiling->list = list;
     if ((list->next = activeceilings))

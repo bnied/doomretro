@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -39,9 +39,6 @@
 #if defined(WIN32)
 
 #include <stdio.h>
-
-#define WIN32_LEAN_AND_MEAN
-
 #include <windows.h>
 
 #include "i_system.h"
@@ -92,13 +89,13 @@ static wad_file_t *W_Win32_OpenFile(char *path)
     MultiByteToWideChar(CP_OEMCP, 0, path, strlen(path) + 1, wpath, sizeof(wpath));
 
     handle = CreateFileW(wpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-                         FILE_ATTRIBUTE_NORMAL, NULL);
+        FILE_ATTRIBUTE_NORMAL, NULL);
 
     if (handle == INVALID_HANDLE_VALUE)
         return NULL;
 
     // Create a new win32_wad_file_t to hold the file handle.
-    result = Z_Malloc(sizeof(win32_wad_file_t), PU_STATIC, 0);
+    result = Z_Malloc(sizeof(win32_wad_file_t), PU_STATIC, NULL);
     result->wad.file_class = &win32_wad_file;
     result->wad.length = GetFileLength(handle);
     result->handle = handle;

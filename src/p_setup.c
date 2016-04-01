@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,6 +36,7 @@
 ========================================================================
 */
 
+#include <ctype.h>
 #include <math.h>
 #include <time.h>
 
@@ -59,23 +60,31 @@
 
 #define MAPINFO_SCRIPT_NAME     "MAPINFO"
 
+#define NUMLIQUIDS              256
+
 #define MCMD_AUTHOR             1
-#define MCMD_MUSIC              2
-#define MCMD_NEXT               3
-#define MCMD_PAR                4
-#define MCMD_SECRETNEXT         5
-#define MCMD_SKY1               6
-#define MCMD_TITLEPATCH         7
+#define MCMD_LIQUID             2
+#define MCMD_MUSIC              3
+#define MCMD_NEXT               4
+#define MCMD_NOLIQUID           5
+#define MCMD_PAR                6
+#define MCMD_PISTOLSTART        7
+#define MCMD_SECRETNEXT         8
+#define MCMD_SKY1               9
+#define MCMD_TITLEPATCH         10
 
 typedef struct mapinfo_s mapinfo_t;
 
 struct mapinfo_s
 {
     char        author[128];
+    int         liquid[NUMLIQUIDS];
     int         music;
     char        name[128];
     int         next;
+    int         noliquid[NUMLIQUIDS];
     int         par;
+    dboolean    pistolstart;
     int         secretnext;
     int         sky1texture;
     int         sky1scrolldelta;
@@ -160,9 +169,12 @@ static mapinfo_t mapinfo[99];
 static char *mapcmdnames[] =
 {
     "AUTHOR",
+    "LIQUID",
     "MUSIC",
     "NEXT",
+    "NOLIQUID",
     "PAR",
+    "PISTOLSTART",
     "SECRETNEXT",
     "SKY1",
     "TITLEPATCH",
@@ -172,9 +184,12 @@ static char *mapcmdnames[] =
 static int mapcmdids[] =
 {
     MCMD_AUTHOR,
+    MCMD_LIQUID,
     MCMD_MUSIC,
     MCMD_NEXT,
+    MCMD_NOLIQUID,
     MCMD_PAR,
+    MCMD_PISTOLSTART,
     MCMD_SECRETNEXT,
     MCMD_SKY1,
     MCMD_TITLEPATCH
@@ -1630,7 +1645,7 @@ static int P_GroupLines(void)
 
     // allocate line tables for each sector
     {
-        line_t  **linebuffer = Z_Malloc(total * sizeof(line_t *), PU_LEVEL, 0);
+        line_t  **linebuffer = Z_Malloc(total * sizeof(line_t *), PU_LEVEL, NULL);
 
         for (i = 0, sector = sectors; i < numsectors; i++, sector++)
         {
@@ -1780,13 +1795,13 @@ static void P_CalcSegsLength(void)
     for (i = 0; i < numsegs; i++)
     {
         seg_t   *li = segs + i;
-        fixed_t dx = li->v2->x - li->v1->x;
-        fixed_t dy = li->v2->y - li->v1->y;
+        int64_t dx = (int64_t)li->v2->x - li->v1->x;
+        int64_t dy = (int64_t)li->v2->y - li->v1->y;
 
-        li->length = (fixed_t)sqrt((double)dx * dx + (double)dy * dy);
+        li->length = (int64_t)sqrt((double)dx * dx + (double)dy * dy);
 
         // [crispy] re-calculate angle used for rendering
-        li->angle = R_PointToAngle2(li->v1->x, li->v1->y, li->v2->x, li->v2->y);
+        li->angle = R_PointToAngleEx2(li->v1->x, li->v1->y, li->v2->x, li->v2->y);
     }
 }
 
@@ -1813,8 +1828,11 @@ void P_MapName(int ep, int map)
     switch (gamemission)
     {
         case doom:
-            M_snprintf(mapnum, sizeof(mapnum), "E%iM%i", ep, map);
-            if (W_CheckMultipleLumps(mapnum) > 1 && dehcount == 1 && !chex)
+            M_snprintf(mapnum, sizeof(mapnum), "E%iM%i%s", ep, map, (E1M8B && ep == 1 && map == 8 ?
+                "B" : ""));
+            if (*mapinfoname)
+                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
+            else if (W_CheckMultipleLumps(mapnum) > 1 && dehcount == 1 && !chex)
             {
                 mapnumonly = true;
                 M_StringCopy(maptitle, mapnum, sizeof(maptitle));
@@ -1822,15 +1840,15 @@ void P_MapName(int ep, int map)
                 M_snprintf(automaptitle, sizeof(automaptitle), "%s: %s",
                     leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
-            else if (mapinfoname[0])
-                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else
                 M_StringCopy(maptitle, *mapnames[(ep - 1) * 9 + map - 1], sizeof(maptitle));
             break;
 
         case doom2:
             M_snprintf(mapnum, sizeof(mapnum), "MAP%02i", map);
-            if (W_CheckMultipleLumps(mapnum) > 1 && (!nerve || map > 9) && dehcount == 1)
+            if (*mapinfoname)
+                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
+            else if (W_CheckMultipleLumps(mapnum) > 1 && (!nerve || map > 9) && dehcount == 1)
             {
                 mapnumonly = true;
                 M_StringCopy(maptitle, mapnum, sizeof(maptitle));
@@ -1838,8 +1856,6 @@ void P_MapName(int ep, int map)
                 M_snprintf(automaptitle, sizeof(automaptitle), "%s: %s",
                     leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
-            else if (mapinfoname[0])
-                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else
                 M_StringCopy(maptitle, (bfgedition ? *mapnames2_bfg[map - 1] :
                     *mapnames2[map - 1]), sizeof(maptitle));
@@ -1847,7 +1863,7 @@ void P_MapName(int ep, int map)
 
         case pack_nerve:
             M_snprintf(mapnum, sizeof(mapnum), "MAP%02i", map);
-            if (mapinfoname[0])
+            if (*mapinfoname)
                 M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else
                 M_StringCopy(maptitle, *mapnamesn[map - 1], sizeof(maptitle));
@@ -1855,7 +1871,9 @@ void P_MapName(int ep, int map)
 
         case pack_plut:
             M_snprintf(mapnum, sizeof(mapnum), "MAP%02i", map);
-            if (W_CheckMultipleLumps(mapnum) > 1 && dehcount == 1)
+            if (*mapinfoname)
+                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
+            else if (W_CheckMultipleLumps(mapnum) > 1 && dehcount == 1)
             {
                 mapnumonly = true;
                 M_StringCopy(maptitle, mapnum, sizeof(maptitle));
@@ -1863,15 +1881,15 @@ void P_MapName(int ep, int map)
                 M_snprintf(automaptitle, sizeof(automaptitle), "%s: %s",
                     leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
-            else if (mapinfoname[0])
-                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else
                 M_StringCopy(maptitle, *mapnamesp[map - 1], sizeof(maptitle));
             break;
 
         case pack_tnt:
             M_snprintf(mapnum, sizeof(mapnum), "MAP%02i", map);
-            if (W_CheckMultipleLumps(mapnum) > 1 && dehcount == 1)
+            if (*mapinfoname)
+                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
+            else if (W_CheckMultipleLumps(mapnum) > 1 && dehcount == 1)
             {
                 mapnumonly = true;
                 M_StringCopy(maptitle, mapnum, sizeof(maptitle));
@@ -1879,8 +1897,6 @@ void P_MapName(int ep, int map)
                 M_snprintf(automaptitle, sizeof(automaptitle), "%s: %s",
                     leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
-            else if (mapinfoname[0])
-                M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else
                 M_StringCopy(maptitle, *mapnamest[map - 1], sizeof(maptitle));
             break;
@@ -1888,6 +1904,20 @@ void P_MapName(int ep, int map)
         default:
             break;
     }
+
+    if (strlen(maptitle) >= 4)
+        if (M_StringStartsWith(uppercase(maptitle), "MAP") && isdigit(maptitle[3]))
+        {
+            maptitle[0] = 'M';
+            maptitle[1] = 'A';
+            maptitle[2] = 'P';
+        }
+        else if (toupper(maptitle[0]) == 'E' && isdigit(maptitle[1]) && toupper(maptitle[2]) == 'M'
+            && isdigit(maptitle[3]))
+        {
+            maptitle[0] = 'E';
+            maptitle[2] = 'M';
+        }
 
     if (!mapnumonly)
     {
@@ -1927,12 +1957,13 @@ static mapformat_t P_CheckMapFormat(int lumpnum)
     int         b;
 
     if ((b = lumpnum + ML_NODES) < numlumps && (nodes = W_CacheLumpNum(b, PU_CACHE))
-        && W_LumpLength(b) > 0)
+        && W_LumpLength(b))
     {
         if (!memcmp(nodes, "xNd4\0\0\0\0", 8))
             format = DEEPBSP;
-        else if (!memcmp(nodes, "XNOD", 4))
-                format = ZDBSPX;
+        else if (!memcmp(nodes, "XNOD", 4) && !W_LumpLength(lumpnum + ML_SEGS)
+            && W_LumpLength(lumpnum + ML_NODES) >= 12)
+            format = ZDBSPX;
         else if (!memcmp(nodes, "ZNOD", 4))
             I_Error("Compressed ZDoom nodes are not supported.");
     }
@@ -1944,7 +1975,6 @@ static mapformat_t P_CheckMapFormat(int lumpnum)
 }
 
 extern dboolean idclev;
-extern dboolean oldweaponsowned[];
 
 //
 // P_SetupLevel
@@ -1955,6 +1985,7 @@ void P_SetupLevel(int ep, int map)
     int         lumpnum;
 
     totalkills = totalitems = totalsecret = 0;
+    memset(monstercount, 0, sizeof(int) * NUMMOBJTYPES);
     wminfo.partime = 0;
     players[0].killcount = players[0].secretcount = players[0].itemcount = 0;
 
@@ -2062,6 +2093,10 @@ void P_SetupLevel(int ep, int map)
     r_bloodsplats_total = 0;
     memset(bloodsplats, 0, sizeof(mobj_t *) * r_bloodsplats_max);
 
+    P_SetLiquids();
+    P_GetMapLiquids((ep - 1) * 10 + map);
+    P_GetMapNoLiquids((ep - 1) * 10 + map);
+
     P_LoadThings(lumpnum + ML_THINGS);
 
     P_InitCards(&players[0]);
@@ -2077,8 +2112,12 @@ void P_SetupLevel(int ep, int map)
     S_Start();
 }
 
+int     liquidlumps = 0;
+int     noliquidlumps = 0;
+
 static void InitMapInfo(void)
 {
+    int         i;
     int         episode;
     int         map;
     int         mapmax = 1;
@@ -2099,6 +2138,12 @@ static void InitMapInfo(void)
     info->sky1texture = 0;
     info->sky1scrolldelta = 0;
     info->titlepatch = 0;
+
+    for (i = 0; i < NUMLIQUIDS; ++i)
+    {
+        info->liquid[i] = -1;
+        info->noliquid[i] = -1;
+    }
 
     SC_Open(MAPINFO_SCRIPT_NAME);
     while (SC_GetString())
@@ -2153,9 +2198,19 @@ static void InitMapInfo(void)
                         M_StringCopy(info->author, sc_String, sizeof(info->author));
                         break;
 
+                    case MCMD_LIQUID:
+                    {
+                        int     lump;
+
+                        SC_MustGetString();
+                        if ((lump = R_CheckFlatNumForName(sc_String)) >= 0)
+                            info->liquid[liquidlumps++] = lump;
+                        break;
+                    }
+
                     case MCMD_MUSIC:
                         SC_MustGetString();
-                        info->music = W_GetNumForName(sc_String);
+                        info->music = W_CheckNumForName(sc_String);
                         break;
 
                     case MCMD_NEXT:
@@ -2183,9 +2238,23 @@ static void InitMapInfo(void)
                         break;
                     }
 
+                    case MCMD_NOLIQUID:
+                    {
+                        int     lump;
+
+                        SC_MustGetString();
+                        if ((lump = R_CheckFlatNumForName(sc_String)) >= 0)
+                            info->noliquid[noliquidlumps++] = lump;
+                        break;
+                    }
+
                     case MCMD_PAR:
                         SC_MustGetNumber();
                         info->par = sc_Number;
+                        break;
+
+                    case MCMD_PISTOLSTART:
+                        info->pistolstart = true;
                         break;
 
                     case MCMD_SECRETNEXT:
@@ -2215,14 +2284,14 @@ static void InitMapInfo(void)
 
                     case MCMD_SKY1:
                         SC_MustGetString();
-                        info->sky1texture = R_TextureNumForName(sc_String);
+                        info->sky1texture = R_CheckTextureNumForName(sc_String);
                         SC_MustGetNumber();
                         info->sky1scrolldelta = sc_Number << 8;
                         break;
 
                     case MCMD_TITLEPATCH:
                         SC_MustGetString();
-                        info->titlepatch = W_GetNumForName(sc_String);
+                        info->titlepatch = W_CheckNumForName(sc_String);
                         break;
                 }
         }
@@ -2239,7 +2308,17 @@ static int QualifyMap(int map)
 
 char *P_GetMapAuthor(int map)
 {
-    return (MAPINFO ? mapinfo[QualifyMap(map)].author : "");
+    return (MAPINFO && mapinfo[QualifyMap(map)].author[0] ? mapinfo[QualifyMap(map)].author :
+        (breach && map == 1 ? "Alun \"Viggles\" Bestor" :
+        (E1M8B && map == 8 ? "John Romero" : "")));
+}
+
+void P_GetMapLiquids(int map)
+{
+    int i = 0;
+
+    for (i = 0; i < liquidlumps; ++i)
+        isliquid[mapinfo[QualifyMap(map)].liquid[i]] = true;
 }
 
 int P_GetMapMusic(int map)
@@ -2249,7 +2328,7 @@ int P_GetMapMusic(int map)
 
 char *P_GetMapName(int map)
 {
-    return (MAPINFO ? mapinfo[QualifyMap(map)].name : "");
+    return (MAPINFO ? mapinfo[QualifyMap(map)].name : (E1M8B && map == 8 ? "Tech Gone Bad" : ""));
 }
 
 int P_GetMapNext(int map)
@@ -2257,9 +2336,22 @@ int P_GetMapNext(int map)
     return (MAPINFO ? mapinfo[QualifyMap(map)].next : 0);
 }
 
+void P_GetMapNoLiquids(int map)
+{
+    int i = 0;
+
+    for (i = 0; i < noliquidlumps; ++i)
+        isliquid[mapinfo[QualifyMap(map)].noliquid[i]] = false;
+}
+
 int P_GetMapPar(int map)
 {
     return (MAPINFO ? mapinfo[QualifyMap(map)].par : 0);
+}
+
+dboolean P_GetMapPistolStart(int map)
+{
+    return (MAPINFO ? mapinfo[QualifyMap(map)].pistolstart : false);
 }
 
 int P_GetMapSecretNext(int map)
@@ -2287,8 +2379,8 @@ int P_GetMapTitlePatch(int map)
 //
 void P_Init(void)
 {
-    InitMapInfo();
     P_InitSwitchList();
     P_InitPicAnims();
+    InitMapInfo();
     R_InitSprites(sprnames);
 }

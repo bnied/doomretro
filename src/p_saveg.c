@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -53,7 +53,6 @@
 
 FILE    *save_stream;
 int     savegamelength;
-dboolean savegame_error;
 
 void P_SpawnShadow(mobj_t *actor);
 
@@ -94,16 +93,14 @@ static byte saveg_read8(void)
 {
     byte        result;
 
-    if (fread(&result, 1, 1, save_stream) < 1)
-        savegame_error = true;
+    fread(&result, 1, 1, save_stream);
 
     return result;
 }
 
 static void saveg_write8(byte value)
 {
-    if (fwrite(&value, 1, 1, save_stream) < 1)
-        savegame_error = true;
+    fwrite(&value, 1, 1, save_stream);
 }
 
 static short saveg_read16(void)
@@ -647,8 +644,8 @@ static void saveg_read_player_t(player_t *str)
     // int armorpoints
     str->armorpoints = saveg_read32();
 
-    // int armortype
-    str->armortype = saveg_read32();
+    // armortype_t armortype
+    str->armortype = (armortype_t)saveg_read_enum();
 
     // int powers[NUMPOWERS]
     for (i = 0; i < NUMPOWERS; ++i)
@@ -777,6 +774,10 @@ static void saveg_read_player_t(player_t *str)
 
     // int deaths
     str->deaths = saveg_read32();
+
+    // int mobjcount[NUMMOBJTYPES];
+    for (i = 0; i < NUMMOBJTYPES; ++i)
+        str->mobjcount[i] = saveg_read32();
 }
 
 static void saveg_write_player_t(player_t *str)
@@ -819,8 +820,8 @@ static void saveg_write_player_t(player_t *str)
     // int armorpoints
     saveg_write32(str->armorpoints);
 
-    // int armortype
-    saveg_write32(str->armortype);
+    // armortype_t armortype
+    saveg_write_enum(str->armortype);
 
     // int powers[NUMPOWERS]
     for (i = 0; i < NUMPOWERS; ++i)
@@ -944,6 +945,10 @@ static void saveg_write_player_t(player_t *str)
 
     // int deaths
     saveg_write32(str->deaths);
+
+    // int mobjcount[NUMMOBJTYPES]
+    for (i = 0; i < NUMMOBJTYPES; ++i)
+        saveg_write32(str->mobjcount[i]);
 }
 
 //

@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,12 +36,14 @@
 ========================================================================
 */
 
-#if !defined(__G_GAME__)
-#define __G_GAME__
+#if !defined(__G_GAME_H__)
+#define __G_GAME_H__
 
 #include "doomdef.h"
 #include "d_event.h"
 #include "d_ticcmd.h"
+
+#define NUMKEYS         256
 
 //
 // GAME
@@ -77,6 +79,8 @@ dboolean G_Responder(event_t *ev);
 
 void G_ScreenShot(void);
 void I_ToggleWidescreen(dboolean toggle);
+
+void G_SetMovementSpeed(int scale);
 
 extern dboolean canmodify;
 extern dboolean flag667;

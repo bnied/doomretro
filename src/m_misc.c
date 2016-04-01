@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -40,7 +40,6 @@
 #include <stdarg.h>
 
 #if defined(WIN32)
-#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <io.h>
 #if defined(_MSC_VER)
@@ -53,8 +52,14 @@
 
 #include "doomdef.h"
 #include "m_fixed.h"
+#include "m_misc.h"
 #include "i_system.h"
 #include "z_zone.h"
+
+#if defined(__MACOSX__)
+#include "version.h"
+#import <Cocoa/Cocoa.h>
+#endif
 
 #if !defined(MAX_PATH)
 #define MAX_PATH        260
@@ -63,7 +68,7 @@
 //
 // Create a directory
 //
-void M_MakeDirectory(char *path)
+void M_MakeDirectory(const char *path)
 {
 #if defined(WIN32)
     mkdir(path);
@@ -73,7 +78,7 @@ void M_MakeDirectory(char *path)
 }
 
 // Check if a file exists
-dboolean M_FileExists(char *filename)
+dboolean M_FileExists(const char *filename)
 {
     FILE        *fstream;
 
@@ -130,26 +135,61 @@ char *M_ExtractFolder(char *path)
     char        *pos;
     char        *folder;
 
-    if (!path[0])
+    if (!*path)
         return "";
 
-    folder = (char *)malloc(MAX_PATH);
+    folder = malloc(MAX_PATH);
 
     M_StringCopy(folder, path, MAX_PATH);
 
-    pos = strrchr(folder, '\\');
+    pos = strrchr(folder, DIR_SEPARATOR);
     if (pos)
         *pos = '\0';
 
     return folder;
 }
 
+char *M_GetAppDataFolder(void)
+{
+    //On OSX, store generated application files in ~/Library/Application Support/DOOM Retro.
+#if defined(__MACOSX__)
+    NSFileManager      *manager = [NSFileManager defaultManager];
+    NSURL              *baseAppSupportURL = [manager URLsForDirectory: NSApplicationSupportDirectory
+                           inDomains: NSUserDomainMask].firstObject;
+    NSURL              *appSupportURL = [baseAppSupportURL URLByAppendingPathComponent:
+                           @PACKAGE_NAME];
+
+    return appSupportURL.fileSystemRepresentation;
+#else
+    // On Windows and Linux, store generated files in the same folder as the executable.
+    // TODO: on Windows this should probably use %APPDATA%/PACKAGE_NAME,
+    // and on Unix it should probably use somewhere within ~.
+    return M_GetExecutableFolder();
+#endif
+}
+
+char *M_GetResourceFolder(void)
+{
+#if defined(__MACOSX__)
+    // On OSX, load resources from the Contents/Resources folder within the application bundle.
+    NSURL       *resourceURL = [NSBundle mainBundle].resourceURL;
+
+    return resourceURL.fileSystemRepresentation;
+#else
+    // On Windows and Linux, load resources from the same folder as the executable.
+    return M_GetExecutableFolder();
+#endif
+}
+
 char *M_GetExecutableFolder(void)
 {
 #if defined(WIN32)
     char        *pos;
-    char        *folder = (char *)malloc(MAX_PATH);
+    char        *folder = malloc(MAX_PATH);
     TCHAR       buffer[MAX_PATH];
+
+    if (!folder)
+        return NULL;
 
     GetModuleFileName(NULL, buffer, MAX_PATH);
     M_StringCopy(folder, buffer, MAX_PATH);
@@ -169,10 +209,8 @@ char *M_GetExecutableFolder(void)
 //
 dboolean M_WriteFile(char *name, void *source, int length)
 {
-    FILE        *handle;
+    FILE        *handle = fopen(name, "wb");
     int         count;
-
-    handle = fopen(name, "wb");
 
     if (!handle)
         return false;
@@ -191,11 +229,11 @@ dboolean M_WriteFile(char *name, void *source, int length)
 //
 int M_ReadFile(char *name, byte **buffer)
 {
-    FILE        *handle;
-    int         count, length;
+    FILE        *handle = fopen(name, "rb");
+    int         count;
+    int         length;
     byte        *buf;
 
-    handle = fopen(name, "rb");
     if (!handle)
     {
         I_Error("Couldn't read file %s", name);
@@ -221,11 +259,10 @@ int M_ReadFile(char *name, byte **buffer)
 // concatenated together.
 char *M_StringJoin(char *s, ...)
 {
-    char *result, *v;
-    va_list args;
-    size_t result_len;
-
-    result_len = strlen(s) + 1;
+    char        *result;
+    char        *v;
+    va_list     args;
+    size_t      result_len = strlen(s) + 1;
 
     va_start(args, s);
     for (;;)
@@ -286,10 +323,8 @@ char *M_TempFile(char *s)
 
 dboolean M_StrToInt(const char *str, int *result)
 {
-    return (sscanf(str, " 0x%2x", result) == 1
-            || sscanf(str, " 0X%2x", result) == 1
-            || sscanf(str, " 0%3o", result) == 1
-            || sscanf(str, " %10d", result) == 1);
+    return (sscanf(str, " 0x%2x", result) == 1 || sscanf(str, " 0X%2x", result) == 1
+        || sscanf(str, " 0%3o", result) == 1 || sscanf(str, " %10d", result) == 1);
 }
 
 //
@@ -299,13 +334,10 @@ dboolean M_StrToInt(const char *str, int *result)
 //
 char *M_StrCaseStr(char *haystack, char *needle)
 {
-    unsigned int        haystack_len;
-    unsigned int        needle_len;
+    unsigned int        haystack_len = strlen(haystack);
+    unsigned int        needle_len = strlen(needle);
     unsigned int        len;
     unsigned int        i;
-
-    haystack_len = strlen(haystack);
-    needle_len = strlen(needle);
 
     if (haystack_len < needle_len)
         return NULL;
@@ -321,11 +353,10 @@ char *M_StrCaseStr(char *haystack, char *needle)
 
 char *stristr(char *ch1, char *ch2)
 {
-    char        *chN1, *chN2;
+    char        *chN1 = strdup(ch1);
+    char        *chN2 = strdup(ch2);
     char        *chRet = NULL;
 
-    chN1 = strdup(ch1);
-    chN2 = strdup(ch2);
     if (chN1 && chN2)
     {
         char    *chNdx = chN1;
@@ -345,6 +376,7 @@ char *stristr(char *ch1, char *ch2)
         if (chNdx)
             chRet = ch1 + (chNdx - chN1);
     }
+
     free(chN1);
     free(chN2);
 
@@ -380,13 +412,14 @@ dboolean M_StringCompare(const char *str1, const char *str2)
 // Returns true if 's' begins with the specified prefix.
 dboolean M_StringStartsWith(char *s, char *prefix)
 {
-    return (strlen(s) > strlen(prefix) && strncasecmp(s, prefix, strlen(prefix)) == 0);
+    return (strlen(s) > strlen(prefix) && !strncasecmp(s, prefix, strlen(prefix)));
 }
 
 // Returns true if 's' ends with the specified suffix.
 dboolean M_StringEndsWith(char *s, char *suffix)
 {
-    return (strlen(s) >= strlen(suffix) && !M_StringCompare(s + strlen(s) - strlen(suffix), suffix) == 0);
+    return (strlen(s) >= strlen(suffix) && M_StringCompare(s + strlen(s) - strlen(suffix),
+        suffix));
 }
 
 // Safe, portable vsnprintf().
@@ -395,9 +428,7 @@ int M_vsnprintf(char *buf, size_t buf_len, const char *s, va_list args)
     int result;
 
     if (buf_len < 1)
-    {
         return 0;
-    }
 
     // Windows (and other OSes?) has a vsnprintf() that doesn't always
     // append a trailing \0. So we must do it, and write into a buffer
@@ -491,6 +522,26 @@ char *titlecase(const char *str)
     return newstr;
 }
 
+char *formatsize(const char *str)
+{
+    char        *newstr = strdup(str);
+    size_t      len = strlen(newstr);
+
+    if (len > 1)
+    {
+        size_t  i;
+
+        for (i = 1; i < len; ++i)
+            if (newstr[i] == 'x')
+            {
+                newstr[i] = 215;
+                break;
+            }
+    }
+
+    return newstr;
+}
+
 char *commify(int value)
 {
     char        result[64];
@@ -569,25 +620,6 @@ char *removespaces(const char *input)
     return p;
 }
 
-char *removenewlines(const char *input)
-{
-    char        *p = malloc(strlen(input) + 1);
-
-    if (p)
-    {
-        char    *p2 = p;
-
-        while (*input != '\0')
-            if (*input != '\n')
-                *p2++ = *input++;
-            else
-                ++input;
-        *p2 = '\0';
-    }
-
-    return p;
-}
-
 char *makevalidfilename(const char *input)
 {
     char        *newstr = strdup(input);
@@ -635,21 +667,42 @@ static const char       *sizes[] = { "MB", "KB", " bytes" };
 
 char *convertsize(const int size)
 {
-    char        *result = (char *)malloc(sizeof(char) * 20);
-    int         multiplier = 1024ULL * 1024ULL;
-    int         i;
+    char        *result = malloc(20 * sizeof(char));
 
-    for (i = 0; i < sizeof(sizes) / sizeof(*sizes); i++, multiplier /= 1024)
+    if (result)
     {
-        if (size < multiplier)
-            continue;
-        if (!(size % multiplier))
-            M_snprintf(result, 20, "%s%s", commify(size / multiplier), sizes[i]);
-        else
-            M_snprintf(result, 20, "%.2f%s", (float)size / multiplier, sizes[i]);
-        return result;
+        int         multiplier = 1024ULL * 1024ULL;
+        int         i;
+
+        for (i = 0; i < sizeof(sizes) / sizeof(*sizes); i++, multiplier /= 1024)
+        {
+            if (size < multiplier)
+                continue;
+            if (!(size % multiplier))
+                M_snprintf(result, 20, "%s%s", commify(size / multiplier), sizes[i]);
+            else
+                M_snprintf(result, 20, "%.2f%s", (float)size / multiplier, sizes[i]);
+            return result;
+        }
+        strcpy(result, "0");
     }
-    strcpy(result, "0");
+
+    return result;
+}
+
+char *striptrailingzero(float value, int precision)
+{
+    char        *result = malloc(100 * sizeof(char));
+
+    if (result)
+    {
+        size_t  len;
+
+        M_snprintf(result, 100, "%.*f", (precision == 2 ? 2 : (value != floor(value))), value);
+        len = strlen(result);
+        if (len >= 4 && result[len - 3] == '.' && result[len - 1] == '0')
+            result[len - 1] = '\0';
+    }
 
     return result;
 }

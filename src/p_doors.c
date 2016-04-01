@@ -1,7 +1,7 @@
-﻿/*
+/*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
@@ -47,6 +47,7 @@
 #include "s_sound.h"
 #include "z_zone.h"
 
+extern dboolean r_hud;
 extern dboolean r_liquid_bob;
 extern char     *playername;
 
@@ -126,7 +127,7 @@ void T_VerticalDoor(vldoor_t *door)
 
                 if (door->lighttag)
                     EV_LightTurnOnPartway(door->line, level);
-                else
+                else if (!P_SectorHasLightSpecial(door->sector))
                     EV_LightByAdjacentSectors(door->sector, level);
             }
 
@@ -172,6 +173,7 @@ void T_VerticalDoor(vldoor_t *door)
                     case genBlazeClose:                         // DO NOT GO BACK UP!
                         break;
 
+                    // [BH] play correct sound when raising fast doors
                     case doorBlazeRaise:
                         door->direction = 1;
                         S_StartSectorSound(&door->sector->soundorg, sfx_bdopn);
@@ -198,7 +200,7 @@ void T_VerticalDoor(vldoor_t *door)
 
                 if (door->lighttag)
                     EV_LightTurnOnPartway(door->line, level);
-                else
+                else if (!P_SectorHasLightSpecial(door->sector))
                     EV_LightByAdjacentSectors(door->sector, level);
             }
 
@@ -251,9 +253,11 @@ dboolean EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
         case S1_Door_Blue_OpenStay_Fast:
             if (player->cards[it_bluecard] <= 0 && player->cards[it_blueskull] <= 0)
             {
+                // [BH] display player message distinguishing between keycard and skull key
+                // [BH] flash needed key on hud
                 if (player->cards[it_bluecard] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_bluecard)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_bluecard))
                     {
                         player->neededcard = it_bluecard;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -264,7 +268,7 @@ dboolean EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                 }
                 else if (player->cards[it_blueskull] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_blueskull)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_blueskull))
                     {
                         player->neededcard = it_blueskull;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -273,7 +277,7 @@ dboolean EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                         (M_StringCompare(playername, playername_default) ? "" : "s"), "skull key");
                     HU_PlayerMessage(buffer, true);
                 }
-                S_StartSound(player->mo, sfx_noway);
+                S_StartSound(player->mo, sfx_noway);    //  [BH] use sfx_noway instead of sfx_oof
                 return false;
             }
             break;
@@ -282,9 +286,11 @@ dboolean EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
         case S1_Door_Red_OpenStay_Fast:
             if (player->cards[it_redcard] <= 0 && player->cards[it_redskull] <= 0)
             {
+                // [BH] display player message distinguishing between keycard and skull key
+                // [BH] flash needed key on hud
                 if (player->cards[it_redcard] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_redcard)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_redcard))
                     {
                         player->neededcard = it_redcard;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -295,7 +301,7 @@ dboolean EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                 }
                 else if (player->cards[it_redskull] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_redskull)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_redskull))
                     {
                         player->neededcard = it_redskull;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -304,7 +310,7 @@ dboolean EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                         (M_StringCompare(playername, playername_default) ? "" : "s"), "skull key");
                     HU_PlayerMessage(buffer, true);
                 }
-                S_StartSound(player->mo, sfx_noway);
+                S_StartSound(player->mo, sfx_noway);    //  [BH] use sfx_noway instead of sfx_oof
                 return false;
             }
             break;
@@ -313,9 +319,11 @@ dboolean EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
         case S1_Door_Yellow_OpenStay_Fast:
             if (player->cards[it_yellowcard] <= 0 && player->cards[it_yellowskull] <= 0)
             {
+                // [BH] display player message distinguishing between keycard and skull key
+                // [BH] flash needed key on hud
                 if (player->cards[it_yellowcard] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_yellowcard)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_yellowcard))
                     {
                         player->neededcard = it_yellowcard;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -326,7 +334,7 @@ dboolean EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                 }
                 else if (player->cards[it_yellowskull] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_yellowskull)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_yellowskull))
                     {
                         player->neededcard = it_yellowskull;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -335,7 +343,7 @@ dboolean EV_DoLockedDoor(line_t *line, vldoor_e type, mobj_t *thing)
                         (M_StringCompare(playername, playername_default) ? "" : "s"), "skull key");
                     HU_PlayerMessage(buffer, true);
                 }
-                S_StartSound(player->mo, sfx_noway);
+                S_StartSound(player->mo, sfx_noway);    //  [BH] use sfx_noway instead of sfx_oof
                 return false;
             }
             break;
@@ -360,7 +368,7 @@ dboolean EV_DoDoor(line_t *line, vldoor_e type)
 
         // new door thinker
         rtn = true;
-        door = Z_Malloc(sizeof(*door), PU_LEVSPEC, 0);
+        door = Z_Calloc(1, sizeof(*door), PU_LEVSPEC, NULL);
         P_AddThinker(&door->thinker);
         sec->ceilingdata = door;
 
@@ -382,20 +390,23 @@ dboolean EV_DoDoor(line_t *line, vldoor_e type)
                 door->topheight -= 4 * FRACUNIT;
                 door->direction = -1;
                 door->speed = VDOORSPEED * 4;
-                S_StartSectorSound(&door->sector->soundorg, sfx_bdcls);
+                if (sec->ceilingheight != sec->floorheight)
+                    S_StartSectorSound(&door->sector->soundorg, sfx_bdcls);
                 break;
 
             case doorClose:
                 door->topheight = P_FindLowestCeilingSurrounding(sec);
                 door->topheight -= 4 * FRACUNIT;
                 door->direction = -1;
-                S_StartSectorSound(&door->sector->soundorg, sfx_dorcls);
+                if (sec->ceilingheight != sec->floorheight)
+                    S_StartSectorSound(&door->sector->soundorg, sfx_dorcls);
                 break;
 
             case doorClose30ThenOpen:
                 door->topheight = sec->ceilingheight;
                 door->direction = -1;
-                S_StartSectorSound(&door->sector->soundorg, sfx_dorcls);
+                if (sec->ceilingheight != sec->floorheight)
+                    S_StartSectorSound(&door->sector->soundorg, sfx_dorcls);
                 break;
 
             case doorBlazeRaise:
@@ -445,9 +456,11 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
 
             if (player->cards[it_bluecard] <= 0 && player->cards[it_blueskull] <= 0)
             {
+                // [BH] display player message distinguishing between keycard and skull key
+                // [BH] flash needed key on hud
                 if (player->cards[it_bluecard] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_bluecard)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_bluecard))
                     {
                         player->neededcard = it_bluecard;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -458,7 +471,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                 }
                 else if (player->cards[it_blueskull] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_blueskull)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_blueskull))
                     {
                         player->neededcard = it_blueskull;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -467,7 +480,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                         (M_StringCompare(playername, playername_default) ? "" : "s"), "skull key");
                     HU_PlayerMessage(buffer, true);
                 }
-                S_StartSound(player->mo, sfx_noway);
+                S_StartSound(player->mo, sfx_noway);    //  [BH] use sfx_noway instead of sfx_oof
                 return;
             }
             break;
@@ -479,9 +492,11 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
 
             if (player->cards[it_yellowcard] <= 0 && player->cards[it_yellowskull] <= 0)
             {
+                // [BH] display player message distinguishing between keycard and skull key
+                // [BH] flash needed key on hud
                 if (player->cards[it_yellowcard] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_yellowcard)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_yellowcard))
                     {
                         player->neededcard = it_yellowcard;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -492,7 +507,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                 }
                 else if (player->cards[it_yellowskull] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_yellowskull)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_yellowskull))
                     {
                         player->neededcard = it_yellowskull;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -501,7 +516,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                         (M_StringCompare(playername, playername_default) ? "" : "s"), "skull key");
                     HU_PlayerMessage(buffer, true);
                 }
-                S_StartSound(player->mo, sfx_noway);
+                S_StartSound(player->mo, sfx_noway);    //  [BH] use sfx_noway instead of sfx_oof
                 return;
             }
             break;
@@ -513,9 +528,11 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
 
             if (player->cards[it_redcard] <= 0 && player->cards[it_redskull] <= 0)
             {
+                // [BH] display player message distinguishing between keycard and skull key
+                // [BH] flash needed key on hud
                 if (player->cards[it_redcard] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_redcard)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_redcard))
                     {
                         player->neededcard = it_redcard;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -526,7 +543,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                 }
                 else if (player->cards[it_redskull] == CARDNOTFOUNDYET)
                 {
-                    if (!player->neededcardflash || player->neededcard != it_redskull)
+                    if (r_hud && (!player->neededcardflash || player->neededcard != it_redskull))
                     {
                         player->neededcard = it_redskull;
                         player->neededcardflash = NEEDEDCARDFLASH;
@@ -535,7 +552,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                         (M_StringCompare(playername, playername_default) ? "" : "s"), "skull key");
                     HU_PlayerMessage(buffer, true);
                 }
-                S_StartSound(player->mo, sfx_noway);
+                S_StartSound(player->mo, sfx_noway);    //  [BH] use sfx_noway instead of sfx_oof
                 return;
             }
             break;
@@ -545,7 +562,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
     if (line->sidenum[1] == NO_INDEX)           // killough
     {
         S_StartSound(player->mo, sfx_noway);    // killough 3/20/98
-        return;
+        return;                                 //  [BH] use sfx_noway instead of sfx_oof
     }
 
     sec = sides[line->sidenum[1]].sector;
@@ -564,6 +581,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                 {
                     door->direction = 1;        // go back up
 
+                    // [BH] play correct door sound
                     if (door->type == doorBlazeRaise)
                         S_StartSectorSound(&door->sector->soundorg, sfx_bdopn);
                     else
@@ -578,6 +596,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
                     {
                         door->direction = -1;   // start going down immediately
 
+                        // [BH] play correct door sound
                         if (door->type == doorBlazeRaise)
                             S_StartSectorSound(&door->sector->soundorg, sfx_bdcls);
                         else
@@ -610,7 +629,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
     }
 
     // new door thinker
-    door = Z_Malloc(sizeof(*door), PU_LEVSPEC, 0);
+    door = Z_Calloc(1, sizeof(*door), PU_LEVSPEC, NULL);
     P_AddThinker(&door->thinker);
     sec->ceilingdata = door;
     door->thinker.function = T_VerticalDoor;
@@ -660,6 +679,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
     // find the top and bottom of the movement range
     door->topheight = P_FindLowestCeilingSurrounding(sec) - 4 * FRACUNIT;
 
+    // [BH] door is no longer secret
     for (i = 0; i < sec->linecount; i++)
         sec->lines[i]->flags &= ~ML_SECRET;
 }
@@ -669,7 +689,7 @@ void EV_VerticalDoor(line_t *line, mobj_t *thing)
 //
 void P_SpawnDoorCloseIn30(sector_t *sec)
 {
-    vldoor_t    *door = Z_Malloc(sizeof(*door), PU_LEVSPEC, 0);
+    vldoor_t    *door = Z_Calloc(1, sizeof(*door), PU_LEVSPEC, NULL);
 
     P_AddThinker(&door->thinker);
 
@@ -682,8 +702,8 @@ void P_SpawnDoorCloseIn30(sector_t *sec)
     door->type = doorNormal;
     door->speed = VDOORSPEED;
     door->topcountdown = 30 * TICRATE;
-    door->line = NULL;          // jff 1/31/98 remember line that triggered us
-    door->lighttag = 0;         // killough 10/98: no lighting changes
+    door->line = NULL;  // jff 1/31/98 remember line that triggered us
+    door->lighttag = 0; // killough 10/98: no lighting changes
 }
 
 //
@@ -691,7 +711,7 @@ void P_SpawnDoorCloseIn30(sector_t *sec)
 //
 void P_SpawnDoorRaiseIn5Mins(sector_t *sec)
 {
-    vldoor_t    *door = Z_Malloc(sizeof(*door), PU_LEVSPEC, 0);
+    vldoor_t    *door = Z_Calloc(1, sizeof(*door), PU_LEVSPEC, NULL);
 
     P_AddThinker(&door->thinker);
 

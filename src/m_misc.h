@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,8 +36,8 @@
 ========================================================================
 */
 
-#if !defined(__M_MISC__)
-#define __M_MISC__
+#if !defined(__M_MISC_H__)
+#define __M_MISC_H__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,11 +46,23 @@
 
 dboolean M_WriteFile(char *name, void *source, int length);
 int M_ReadFile(char *name, byte **buffer);
-void M_MakeDirectory(char *dir);
+void M_MakeDirectory(const char *dir);
 char *M_TempFile(char *s);
-dboolean M_FileExists(char *file);
+dboolean M_FileExists(const char *file);
 long M_FileLength(FILE *handle);
 char *M_ExtractFolder(char *path);
+
+// Returns the file system location where application resource files are located.
+// On Windows and Linux, this is the folder in which doomretro.exe is located;
+// on OSX, this is the Contents/Resources folder within the application bundle.
+char *M_GetResourceFolder(void);
+
+// Returns the file system location where generated application
+// data (configuration files, logs, savegames etc.) should be saved.
+// On Windows and Linux, this is the folder in which doomretro.exe is located;
+// on OSX, this is ~/Library/Application Support/DOOM Retro/.
+char *M_GetAppDataFolder(void);
+
 char *M_GetExecutableFolder(void);
 dboolean M_StrToInt(const char *str, int *result);
 char *M_StrCaseStr(char *haystack, char *needle);
@@ -66,15 +78,16 @@ dboolean M_StringCompare(const char *str1, const char *str2);
 char *uppercase(const char *str);
 char *lowercase(const char *str);
 char *titlecase(const char *str);
+char *formatsize(const char *str);
 char *commify(int value);
 dboolean wildcard(char *input, char *pattern);
 int gcd(int a, int b);
 char *removespaces(const char *input);
-char *removenewlines(const char *input);
 char *makevalidfilename(const char *input);
 const char *leafname(const char *path);
 char *removeext(const char *file);
 dboolean isvowel(const char ch);
 char *convertsize(const int size);
+char *striptrailingzero(float value, int precision);
 
 #endif

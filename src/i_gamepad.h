@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,10 +36,12 @@
 ========================================================================
 */
 
-#if !defined(__I_GAMEPAD__)
-#define __I_GAMEPAD__
+#if !defined(__I_GAMEPAD_H__)
+#define __I_GAMEPAD_H__
 
 #include <math.h>
+
+#include "doomtype.h"
 
 #define GAMEPAD_DPAD_UP                 0x0001
 #define GAMEPAD_DPAD_DOWN               0x0002
@@ -79,11 +81,11 @@
 #define gamepadthumbRXright             pow((gamepadthumbRX - gamepadrightdeadzone) /\
                                         ((float)SHRT_MAX - gamepadrightdeadzone), 3.0f)
 
-#define GP_SENSITIVITY_OFFSET           1.0f
-#define GP_SENSITIVITY_FACTOR           3.0f
+#define GP_SENSITIVITY_OFFSET           0.2f
+#define GP_SENSITIVITY_FACTOR           4.0f
 
-int damagevibrationtics;
-int weaponvibrationtics;
+extern int      damagevibrationtics;
+extern int      weaponvibrationtics;
 
 extern int      gamepadbuttons;
 extern short    gamepadthumbLX;
@@ -93,24 +95,9 @@ extern dboolean vibrate;
 extern int      currentmotorspeed;
 extern int      idlemotorspeed;
 extern int      restoremotorspeed;
-
-extern int      gamepadalwaysrun;
-extern int      gamepadautomap;
-extern int      gamepadfire;
-extern int      gamepadleftdeadzone;
-extern int      gamepadrightdeadzone;
-extern int      gamepadmenu;
-extern int      gamepadnextweapon;
-extern int      gamepadprevweapon;
-extern int      gamepadrun;
-extern int      gamepaduse;
-extern int      gamepadweapon1;
-extern int      gamepadweapon2;
-extern int      gamepadweapon3;
-extern int      gamepadweapon4;
-extern int      gamepadweapon5;
-extern int      gamepadweapon6;
-extern int      gamepadweapon7;
+extern float    gamepadsensitivity;
+extern short    gamepadleftdeadzone;
+extern short    gamepadrightdeadzone;
 
 extern int      gp_sensitivity;
 extern dboolean gp_swapthumbsticks;
@@ -126,5 +113,6 @@ void I_PollThumbs_XInput_LeftHanded(short LX, short LY, short RX, short RY);
 void I_PollThumbs_XInput_RightHanded(short LX, short LY, short RX, short RY);
 void XInputVibration(int motorspeed);
 void (*gamepadfunc)(void);
+void I_SetGamepadSensitivity(int value);
 
 #endif

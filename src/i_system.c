@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -42,7 +42,6 @@
 #include <string.h>
 
 #if defined(WIN32)
-#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
 void I_ShutdownWindows32(void);
@@ -69,7 +68,6 @@ void I_ShutdownWindows32(void);
 #include "z_zone.h"
 
 extern dboolean vid_widescreen;
-extern dboolean r_hud;
 extern dboolean returntowidescreen;
 
 #if defined(WIN32)
@@ -105,7 +103,7 @@ void I_PrintWindowsVersion(void)
             strcpy(bits, (Wow64Process ? " (64-bit)" : " (32-bit)"));
         }
 
-        ZeroMemory(&info, sizeof(&info));
+        ZeroMemory(&info, sizeof(OSVERSIONINFOEXW));
         info.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOEXW);
 
         pRtlGetVersion((PRTL_OSVERSIONINFOEXW)&info);

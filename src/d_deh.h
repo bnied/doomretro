@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,21 +36,21 @@
 ========================================================================
 */
 
-#if !defined(__D_DEH__)
-#define __D_DEH__
+#if !defined(__D_DEH_H__)
+#define __D_DEH_H__
 
 #include "doomtype.h"
 
 typedef enum
 {
-    p_GOTARMOR = 17, p_GOTMEGA, p_GOTHTHBONUS, p_GOTARMBONUS, p_GOTSTIM, p_GOTMEDINEED,
+    p_GOTARMOR = 33, p_GOTMEGA, p_GOTHTHBONUS, p_GOTARMBONUS, p_GOTSTIM, p_GOTMEDINEED,
     p_GOTMEDINEED2, p_GOTMEDIKIT, p_GOTSUPER, p_GOTBLUECARD, p_GOTYELWCARD, p_GOTREDCARD,
-    p_GOTBLUESKUL, p_GOTYELWSKUL, p_GOTREDSKULL, p_GOTINVUL, p_GOTBERSERK, p_GOTINVIS, p_GOTSUIT,
-    p_GOTMAP, p_GOTVISOR, p_GOTCLIP, p_GOTCLIPX2, p_GOTHALFCLIP, p_GOTCLIPBOX, p_GOTROCKET,
-    p_GOTROCKETX2, p_GOTROCKBOX, p_GOTCELL, p_GOTCELLX2, p_GOTCELLBOX, p_GOTSHELLS, p_GOTSHELLSX2,
-    p_GOTSHELLBOX, p_GOTBACKPACK, p_GOTBFG9000, p_GOTCHAINGUN, p_GOTCHAINSAW, p_GOTLAUNCHER,
-    p_GOTMSPHERE, p_GOTPLASMA, p_GOTSHOTGUN, p_GOTSHOTGUN2, p_PD_BLUEO, p_PD_REDO, p_PD_YELLOWO,
-    p_PD_BLUEK, p_PD_REDK, p_PD_YELLOWK
+    p_GOTBLUESKUL, p_GOTYELWSKUL, p_GOTREDSKUL, p_GOTREDSKULL, p_GOTINVUL, p_GOTBERSERK,
+    p_GOTINVIS, p_GOTSUIT, p_GOTMAP, p_GOTVISOR, p_GOTCLIP, p_GOTCLIPX2, p_GOTHALFCLIP,
+    p_GOTCLIPBOX, p_GOTROCKET, p_GOTROCKETX2, p_GOTROCKBOX, p_GOTCELL, p_GOTCELLX2, p_GOTCELLBOX,
+    p_GOTSHELLS, p_GOTSHELLSX2, p_GOTSHELLBOX, p_GOTBACKPACK, p_GOTBFG9000, p_GOTCHAINGUN,
+    p_GOTCHAINSAW, p_GOTLAUNCHER, p_GOTMSPHERE, p_GOTPLASMA, p_GOTSHOTGUN, p_GOTSHOTGUN2,
+    p_PD_BLUEO, p_PD_REDO, p_PD_YELLOWO, p_PD_BLUEK, p_PD_REDK, p_PD_YELLOWK
 } pickupmessage_t;
 
 typedef struct
@@ -98,6 +98,7 @@ extern char     *s_GOTYELWCARD;
 extern char     *s_GOTREDCARD;
 extern char     *s_GOTBLUESKUL;
 extern char     *s_GOTYELWSKUL;
+extern char     *s_GOTREDSKUL;
 extern char     *s_GOTREDSKULL;
 
 extern char     *s_GOTINVUL;
@@ -149,6 +150,7 @@ extern char     *s_PD_ALL6;
 
 extern char     *s_GGSAVED;
 extern char     *s_GGLOADED;
+extern char     *s_GGAUTOLOADED;
 extern char     *s_GSCREENSHOT;
 
 extern char     *s_ALWAYSRUNOFF;
@@ -221,10 +223,10 @@ extern char     *s_HUSTR_28;
 extern char     *s_HUSTR_29;
 extern char     *s_HUSTR_30;
 extern char     *s_HUSTR_31;
-extern char     *s_HUSTR_32;
 extern char     *s_HUSTR_31_BFG;
+extern char     *s_HUSTR_32;
 extern char     *s_HUSTR_32_BFG;
-extern char     *s_HUSTR_33_BFG;
+extern char     *s_HUSTR_33;
 extern char     *s_PHUSTR_1;
 extern char     *s_PHUSTR_2;
 extern char     *s_PHUSTR_3;
@@ -330,6 +332,12 @@ extern char     *s_STSTR_GODON;
 extern char     *s_STSTR_GODOFF;
 extern char     *s_STSTR_NMON;
 extern char     *s_STSTR_NMOFF;
+extern char     *s_STSTR_PSON;
+extern char     *s_STSTR_PSOFF;
+extern char     *s_STSTR_FMON;
+extern char     *s_STSTR_FMOFF;
+extern char     *s_STSTR_RMON;
+extern char     *s_STSTR_RMOFF;
 
 extern char     *s_E1TEXT;
 extern char     *s_E2TEXT;

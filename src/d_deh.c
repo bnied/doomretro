@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -64,9 +64,9 @@ typedef struct
     FILE        *f;
 } DEHFILE;
 
-dboolean addtocount;
-int     dehcount = 0;
-dboolean dehacked = false;
+dboolean        addtocount;
+int             dehcount = 0;
+dboolean        dehacked = false;
 
 // killough 10/98: emulate IO whether input really comes from a file or not
 
@@ -165,6 +165,7 @@ char    *s_GOTYELWCARD = GOTYELWCARD;
 char    *s_GOTREDCARD = GOTREDCARD;
 char    *s_GOTBLUESKUL = GOTBLUESKUL;
 char    *s_GOTYELWSKUL = GOTYELWSKUL;
+char    *s_GOTREDSKUL = GOTREDSKULL;
 char    *s_GOTREDSKULL = GOTREDSKULL;
 
 char    *s_GOTINVUL = GOTINVUL;
@@ -216,6 +217,7 @@ char    *s_PD_ALL6 = "";
 
 char    *s_GGSAVED = GGSAVED;
 char    *s_GGLOADED = "";
+char    *s_GGAUTOLOADED = "";
 char    *s_GSCREENSHOT = GSCREENSHOT;
 
 char    *s_ALWAYSRUNOFF = "";
@@ -290,10 +292,10 @@ char    *s_HUSTR_28 = HUSTR_28;
 char    *s_HUSTR_29 = HUSTR_29;
 char    *s_HUSTR_30 = HUSTR_30;
 char    *s_HUSTR_31 = HUSTR_31;
-char    *s_HUSTR_32 = HUSTR_32;
 char    *s_HUSTR_31_BFG = "";
+char    *s_HUSTR_32 = HUSTR_32;
 char    *s_HUSTR_32_BFG = "";
-char    *s_HUSTR_33_BFG = "";
+char    *s_HUSTR_33 = "";
 char    *s_PHUSTR_1 = PHUSTR_1;
 char    *s_PHUSTR_2 = PHUSTR_2;
 char    *s_PHUSTR_3 = PHUSTR_3;
@@ -424,6 +426,12 @@ char    *s_STSTR_GODON = "";
 char    *s_STSTR_GODOFF = "";
 char    *s_STSTR_NMON = "";
 char    *s_STSTR_NMOFF = "";
+char    *s_STSTR_PSON = "";
+char    *s_STSTR_PSOFF = "";
+char    *s_STSTR_FMON = "";
+char    *s_STSTR_FMOFF = "";
+char    *s_STSTR_RMON = "";
+char    *s_STSTR_RMOFF = "";
 
 char    *s_E1TEXT = E1TEXT;
 char    *s_E2TEXT = E2TEXT;
@@ -627,6 +635,7 @@ deh_strs deh_strlookup[] =
     { &s_GOTREDCARD,           "GOTREDCARD",           false },
     { &s_GOTBLUESKUL,          "GOTBLUESKUL",          false },
     { &s_GOTYELWSKUL,          "GOTYELWSKUL",          false },
+    { &s_GOTREDSKUL,           "GOTREDSKUL",           false },
     { &s_GOTREDSKULL,          "GOTREDSKULL",          false },
 
     { &s_GOTINVUL,             "GOTINVUL",             false },
@@ -678,6 +687,7 @@ deh_strs deh_strlookup[] =
 
     { &s_GGSAVED,              "GGSAVED",              false },
     { &s_GGLOADED,             "GGLOADED",             false },
+    { &s_GGAUTOLOADED,         "GGAUTOLOADED",         false },
     { &s_GSCREENSHOT,          "GSCREENSHOT",          false },
 
     { &s_ALWAYSRUNOFF,         "ALWAYSRUNOFF",         false },
@@ -752,10 +762,10 @@ deh_strs deh_strlookup[] =
     { &s_HUSTR_29,             "HUSTR_29",             false },
     { &s_HUSTR_30,             "HUSTR_30",             false },
     { &s_HUSTR_31,             "HUSTR_31",             false },
-    { &s_HUSTR_32,             "HUSTR_32",             false },
     { &s_HUSTR_31_BFG,         "HUSTR_31_BFG",         false },
+    { &s_HUSTR_32,             "HUSTR_32",             false },
     { &s_HUSTR_32_BFG,         "HUSTR_32_BFG",         false },
-    { &s_HUSTR_33_BFG,         "HUSTR_33_BFG",         false },
+    { &s_HUSTR_33,             "HUSTR_33",             false },
     { &s_PHUSTR_1,             "PHUSTR_1",             false },
     { &s_PHUSTR_2,             "PHUSTR_2",             false },
     { &s_PHUSTR_3,             "PHUSTR_3",             false },
@@ -883,6 +893,12 @@ deh_strs deh_strlookup[] =
     { &s_STSTR_GODOFF,         "STSTR_GODOFF",         false },
     { &s_STSTR_NMON,           "STSTR_NMON",           false },
     { &s_STSTR_NMOFF,          "STSTR_NMOFF",          false },
+    { &s_STSTR_PSON,           "STSTR_PSON",           false },
+    { &s_STSTR_PSOFF,          "STSTR_PSOFF",          false },
+    { &s_STSTR_FMON,           "STSTR_FMON",           false },
+    { &s_STSTR_FMOFF,          "STSTR_FMOFF",          false },
+    { &s_STSTR_RMON,           "STSTR_RMON",           false },
+    { &s_STSTR_RMOFF,          "STSTR_RMOFF",          false },
 
     { &s_E1TEXT,               "E1TEXT",               false },
     { &s_E2TEXT,               "E2TEXT",               false },
@@ -1151,7 +1167,7 @@ char **mapnames2_bfg[] =     // DOOM 2 map names.
     &s_HUSTR_30,
     &s_HUSTR_31_BFG,
     &s_HUSTR_32_BFG,
-    &s_HUSTR_33_BFG
+    &s_HUSTR_33
 };
 
 char **mapnamesp[] =    // Plutonia WAD map names.
@@ -1276,7 +1292,7 @@ typedef struct
 // killough 8/9/98: make DEH_BLOCKMAX self-adjusting
 #define DEH_BLOCKMAX    (sizeof(deh_blocks) / sizeof(*deh_blocks))      // size of array
 #define DEH_MAXKEYLEN   32      // as much of any key as we'll look at
-#define DEH_MOBJINFOMAX 27      // number of ints in the mobjinfo_t structure (!)
+#define DEH_MOBJINFOMAX 28      // number of ints in the mobjinfo_t structure (!)
 
 // Put all the block header values, and the function to be called when that
 // one is encountered, in this array:
@@ -1314,6 +1330,7 @@ static char *deh_mobjinfo[DEH_MOBJINFOMAX] =
     "ID #",                     // .doomednum
     "Initial frame",            // .spawnstate
     "Hit points",               // .spawnhealth
+    "Gib health",               // .gibhealth
     "First moving frame",       // .seestate
     "Alert sound",              // .seesound
     "Reaction time",            // .reactiontime
@@ -1334,7 +1351,7 @@ static char *deh_mobjinfo[DEH_MOBJINFOMAX] =
     "Missile damage",           // .damage
     "Action sound",             // .activesound
     "Bits",                     // .flags
-    "Bits2",                    // .flags2
+    "Retro Bits",               // .flags2
     "Respawn frame",            // .raisestate
     "Frames",                   // .frames
     "Blood"                     // .blood
@@ -1349,6 +1366,7 @@ static char *deh_mobjinfo[DEH_MOBJINFOMAX] =
 //
 // Convert array to struct to allow multiple values, make array size variable
 #define DEH_MOBJFLAGMAX (sizeof(deh_mobjflags) / sizeof(*deh_mobjflags))
+#define DEH_MOBJFLAG2MAX (sizeof(deh_mobjflags2) / sizeof(*deh_mobjflags2))
 
 struct deh_mobjflags_s
 {
@@ -1399,6 +1417,37 @@ static const struct deh_mobjflags_s deh_mobjflags[] =
     { "BOUNCES",      MF_BOUNCES      },    // bounces off floors, ceilings and maybe walls
     { "FRIEND",       MF_FRIEND       },    // a friend of the player(s) (MBF)
     { "TRANSLUCENT",  MF_TRANSLUCENT  }     // apply translucency to sprite (BOOM)
+};
+
+static const struct deh_mobjflags_s deh_mobjflags2[] =
+{
+    { "TRANSLUCENT",               MF2_TRANSLUCENT               },
+    { "TRANSLUCENT_REDONLY",       MF2_TRANSLUCENT_REDONLY       },
+    { "TRANSLUCENT_GREENONLY",     MF2_TRANSLUCENT_GREENONLY     },
+    { "TRANSLUCENT_BLUEONLY",      MF2_TRANSLUCENT_BLUEONLY      },
+    { "TRANSLUCENT_33",            MF2_TRANSLUCENT_33            },
+    { "TRANSLUCENT_50",            MF2_TRANSLUCENT_50            },
+    { "TRANSLUCENT_REDWHITEONLY",  MF2_TRANSLUCENT_REDWHITEONLY  },
+    { "TRANSLUCENT_REDTOGREEN_33", MF2_TRANSLUCENT_REDTOGREEN_33 },
+    { "TRANSLUCENT_REDTOBLUE_33",  MF2_TRANSLUCENT_REDTOBLUE_33  },
+    { "TRANSLUCENT_BLUE_33",       MF2_TRANSLUCENT_BLUE_33       },
+    { "REDTOGREEN",                MF2_TRANSLUCENT               },
+    { "GREENTORED",                MF2_GREENTORED                },
+    { "REDTOBLUE",                 MF2_REDTOBLUE                 },
+    { "FLOATBOB",                  MF2_FLOATBOB                  },
+    { "MIRRORED",                  MF2_MIRRORED                  },
+    { "FALLING",                   MF2_FALLING                   },
+    { "ONMOBJ",                    MF2_ONMOBJ                    },
+    { "PASSMOBJ",                  MF2_PASSMOBJ                  },
+    { "RESURRECTING",              MF2_RESURRECTING              },
+    { "NOFOOTCLIP",                MF2_NOFOOTCLIP                },
+    { "NOLIQUIDBOB",               MF2_NOLIQUIDBOB               },
+    { "FEETARECLIPPED",            MF2_FEETARECLIPPED            },
+    { "SHADOW",                    MF2_SHADOW                    },
+    { "BLOOD",                     MF2_BLOOD                     },
+    { "DONOTMAP",                  MF2_DONOTMAP                  },
+    { "SMOKETRAIL",                MF2_SMOKETRAIL                },
+    { "CRUSHABLE",                 MF2_CRUSHABLE                 }
 };
 
 // STATE - Dehacked block name = "Frame" and "Pointer"
@@ -1531,94 +1580,94 @@ static char *deh_misc[] =
 // FRAME nnn = PointerMnemonic
 
 // External references to action functions scattered about the code
-extern void A_Light0();
-extern void A_WeaponReady();
-extern void A_Lower();
-extern void A_Raise();
-extern void A_Punch();
-extern void A_ReFire();
-extern void A_FirePistol();
-extern void A_Light1();
-extern void A_FireShotgun();
-extern void A_Light2();
-extern void A_FireShotgun2();
-extern void A_CheckReload();
-extern void A_OpenShotgun2();
-extern void A_LoadShotgun2();
-extern void A_CloseShotgun2();
-extern void A_FireCGun();
-extern void A_GunFlash();
-extern void A_FireMissile();
-extern void A_Saw();
-extern void A_FirePlasma();
-extern void A_BFGsound();
-extern void A_FireBFG();
-extern void A_BFGSpray();
-extern void A_Explode();
-extern void A_Pain();
-extern void A_PlayerScream();
-extern void A_Fall();
-extern void A_XScream();
-extern void A_Look();
-extern void A_Chase();
-extern void A_FaceTarget();
-extern void A_PosAttack();
-extern void A_Scream();
-extern void A_SPosAttack();
-extern void A_VileChase();
-extern void A_VileStart();
-extern void A_VileTarget();
-extern void A_VileAttack();
-extern void A_StartFire();
-extern void A_Fire();
-extern void A_FireCrackle();
-extern void A_Tracer();
-extern void A_SkelWhoosh();
-extern void A_SkelFist();
-extern void A_SkelMissile();
-extern void A_FatRaise();
-extern void A_FatAttack1();
-extern void A_FatAttack2();
-extern void A_FatAttack3();
-extern void A_BossDeath();
-extern void A_CPosAttack();
-extern void A_CPosRefire();
-extern void A_TroopAttack();
-extern void A_SargAttack();
-extern void A_HeadAttack();
-extern void A_BruisAttack();
-extern void A_SkullAttack();
-extern void A_Metal();
-extern void A_SpidRefire();
-extern void A_BabyMetal();
-extern void A_BspiAttack();
-extern void A_Hoof();
-extern void A_CyberAttack();
-extern void A_PainAttack();
-extern void A_PainDie();
-extern void A_KeenDie();
-extern void A_BrainPain();
-extern void A_BrainScream();
-extern void A_BrainDie();
-extern void A_BrainAwake();
-extern void A_BrainSpit();
-extern void A_SpawnSound();
-extern void A_SpawnFly();
-extern void A_BrainExplode();
-extern void A_Detonate();
-extern void A_Mushroom();
-extern void A_SkullPop();
-extern void A_Die();
-extern void A_Spawn();
-extern void A_Turn();
-extern void A_Face();
-extern void A_Scratch();
-extern void A_PlaySound();
-extern void A_RandomJump();
-extern void A_LineEffect();
-extern void A_FireOldBFG();
-extern void A_BetaSkullAttack();
-extern void A_Stop();
+void A_Light0(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_WeaponReady(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Lower(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Raise(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Punch(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_ReFire(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FirePistol(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Light1(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireShotgun(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Light2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireShotgun2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_CheckReload(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_OpenShotgun2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_LoadShotgun2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_CloseShotgun2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireCGun(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_GunFlash(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireMissile(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Saw(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FirePlasma(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BFGsound(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireBFG(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BFGSpray(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Explode(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Pain(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_PlayerScream(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Fall(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_XScream(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Look(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Chase(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FaceTarget(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_PosAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Scream(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SPosAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_VileChase(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_VileStart(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_VileTarget(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_VileAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_StartFire(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Fire(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireCrackle(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Tracer(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SkelWhoosh(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SkelFist(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SkelMissile(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FatRaise(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FatAttack1(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FatAttack2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FatAttack3(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BossDeath(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_CPosAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_CPosRefire(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_TroopAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SargAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_HeadAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BruisAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SkullAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Metal(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SpidRefire(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BabyMetal(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BspiAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Hoof(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_CyberAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_PainAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_PainDie(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_KeenDie(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainPain(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainScream(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainDie(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainAwake(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainSpit(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SpawnSound(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SpawnFly(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainExplode(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Detonate(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Mushroom(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SkullPop(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Die(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Spawn(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Turn(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Face(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Scratch(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_PlaySound(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_RandomJump(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_LineEffect(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireOldBFG(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BetaSkullAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Stop(mobj_t *actor, player_t *player, pspdef_t *psp);
 
 typedef struct
 {
@@ -1628,98 +1677,98 @@ typedef struct
 
 static const deh_bexptr deh_bexptrs[] =
 {
-  { A_Light0,          "A_Light0"          },
-  { A_WeaponReady,     "A_WeaponReady"     },
-  { A_Lower,           "A_Lower"           },
-  { A_Raise,           "A_Raise"           },
-  { A_Punch,           "A_Punch"           },
-  { A_ReFire,          "A_ReFire"          },
-  { A_FirePistol,      "A_FirePistol"      },
-  { A_Light1,          "A_Light1"          },
-  { A_FireShotgun,     "A_FireShotgun"     },
-  { A_Light2,          "A_Light2"          },
-  { A_FireShotgun2,    "A_FireShotgun2"    },
-  { A_CheckReload,     "A_CheckReload"     },
-  { A_OpenShotgun2,    "A_OpenShotgun2"    },
-  { A_LoadShotgun2,    "A_LoadShotgun2"    },
-  { A_CloseShotgun2,   "A_CloseShotgun2"   },
-  { A_FireCGun,        "A_FireCGun"        },
-  { A_GunFlash,        "A_GunFlash"        },
-  { A_FireMissile,     "A_FireMissile"     },
-  { A_Saw,             "A_Saw"             },
-  { A_FirePlasma,      "A_FirePlasma"      },
-  { A_BFGsound,        "A_BFGsound"        },
-  { A_FireBFG,         "A_FireBFG"         },
-  { A_BFGSpray,        "A_BFGSpray"        },
-  { A_Explode,         "A_Explode"         },
-  { A_Pain,            "A_Pain"            },
-  { A_PlayerScream,    "A_PlayerScream"    },
-  { A_Fall,            "A_Fall"            },
-  { A_XScream,         "A_XScream"         },
-  { A_Look,            "A_Look"            },
-  { A_Chase,           "A_Chase"           },
-  { A_FaceTarget,      "A_FaceTarget"      },
-  { A_PosAttack,       "A_PosAttack"       },
-  { A_Scream,          "A_Scream"          },
-  { A_SPosAttack,      "A_SPosAttack"      },
-  { A_VileChase,       "A_VileChase"       },
-  { A_VileStart,       "A_VileStart"       },
-  { A_VileTarget,      "A_VileTarget"      },
-  { A_VileAttack,      "A_VileAttack"      },
-  { A_StartFire,       "A_StartFire"       },
-  { A_Fire,            "A_Fire"            },
-  { A_FireCrackle,     "A_FireCrackle"     },
-  { A_Tracer,          "A_Tracer"          },
-  { A_SkelWhoosh,      "A_SkelWhoosh"      },
-  { A_SkelFist,        "A_SkelFist"        },
-  { A_SkelMissile,     "A_SkelMissile"     },
-  { A_FatRaise,        "A_FatRaise"        },
-  { A_FatAttack1,      "A_FatAttack1"      },
-  { A_FatAttack2,      "A_FatAttack2"      },
-  { A_FatAttack3,      "A_FatAttack3"      },
-  { A_BossDeath,       "A_BossDeath"       },
-  { A_CPosAttack,      "A_CPosAttack"      },
-  { A_CPosRefire,      "A_CPosRefire"      },
-  { A_TroopAttack,     "A_TroopAttack"     },
-  { A_SargAttack,      "A_SargAttack"      },
-  { A_HeadAttack,      "A_HeadAttack"      },
-  { A_BruisAttack,     "A_BruisAttack"     },
-  { A_SkullAttack,     "A_SkullAttack"     },
-  { A_Metal,           "A_Metal"           },
-  { A_SpidRefire,      "A_SpidRefire"      },
-  { A_BabyMetal,       "A_BabyMetal"       },
-  { A_BspiAttack,      "A_BspiAttack"      },
-  { A_Hoof,            "A_Hoof"            },
-  { A_CyberAttack,     "A_CyberAttack"     },
-  { A_PainAttack,      "A_PainAttack"      },
-  { A_PainDie,         "A_PainDie"         },
-  { A_KeenDie,         "A_KeenDie"         },
-  { A_BrainPain,       "A_BrainPain"       },
-  { A_BrainScream,     "A_BrainScream"     },
-  { A_BrainDie,        "A_BrainDie"        },
-  { A_BrainAwake,      "A_BrainAwake"      },
-  { A_BrainSpit,       "A_BrainSpit"       },
-  { A_SpawnSound,      "A_SpawnSound"      },
-  { A_SpawnFly,        "A_SpawnFly"        },
-  { A_BrainExplode,    "A_BrainExplode"    },
-  { A_Detonate,        "A_Detonate"        },   // killough 8/9/98
-  { A_Mushroom,        "A_Mushroom"        },   // killough 10/98
-  { A_SkullPop,        "A_SkullPop"        },
-  { A_Die,             "A_Die"             },   // killough 11/98
-  { A_Spawn,           "A_Spawn"           },   // killough 11/98
-  { A_Turn,            "A_Turn"            },   // killough 11/98
-  { A_Face,            "A_Face"            },   // killough 11/98
-  { A_Scratch,         "A_Scratch"         },   // killough 11/98
-  { A_PlaySound,       "A_PlaySound"       },   // killough 11/98
-  { A_RandomJump,      "A_RandomJump"      },   // killough 11/98
-  { A_LineEffect,      "A_LineEffect"      },   // killough 11/98
+    { A_Light0,          "A_Light0"          },
+    { A_WeaponReady,     "A_WeaponReady"     },
+    { A_Lower,           "A_Lower"           },
+    { A_Raise,           "A_Raise"           },
+    { A_Punch,           "A_Punch"           },
+    { A_ReFire,          "A_ReFire"          },
+    { A_FirePistol,      "A_FirePistol"      },
+    { A_Light1,          "A_Light1"          },
+    { A_FireShotgun,     "A_FireShotgun"     },
+    { A_Light2,          "A_Light2"          },
+    { A_FireShotgun2,    "A_FireShotgun2"    },
+    { A_CheckReload,     "A_CheckReload"     },
+    { A_OpenShotgun2,    "A_OpenShotgun2"    },
+    { A_LoadShotgun2,    "A_LoadShotgun2"    },
+    { A_CloseShotgun2,   "A_CloseShotgun2"   },
+    { A_FireCGun,        "A_FireCGun"        },
+    { A_GunFlash,        "A_GunFlash"        },
+    { A_FireMissile,     "A_FireMissile"     },
+    { A_Saw,             "A_Saw"             },
+    { A_FirePlasma,      "A_FirePlasma"      },
+    { A_BFGsound,        "A_BFGsound"        },
+    { A_FireBFG,         "A_FireBFG"         },
+    { A_BFGSpray,        "A_BFGSpray"        },
+    { A_Explode,         "A_Explode"         },
+    { A_Pain,            "A_Pain"            },
+    { A_PlayerScream,    "A_PlayerScream"    },
+    { A_Fall,            "A_Fall"            },
+    { A_XScream,         "A_XScream"         },
+    { A_Look,            "A_Look"            },
+    { A_Chase,           "A_Chase"           },
+    { A_FaceTarget,      "A_FaceTarget"      },
+    { A_PosAttack,       "A_PosAttack"       },
+    { A_Scream,          "A_Scream"          },
+    { A_SPosAttack,      "A_SPosAttack"      },
+    { A_VileChase,       "A_VileChase"       },
+    { A_VileStart,       "A_VileStart"       },
+    { A_VileTarget,      "A_VileTarget"      },
+    { A_VileAttack,      "A_VileAttack"      },
+    { A_StartFire,       "A_StartFire"       },
+    { A_Fire,            "A_Fire"            },
+    { A_FireCrackle,     "A_FireCrackle"     },
+    { A_Tracer,          "A_Tracer"          },
+    { A_SkelWhoosh,      "A_SkelWhoosh"      },
+    { A_SkelFist,        "A_SkelFist"        },
+    { A_SkelMissile,     "A_SkelMissile"     },
+    { A_FatRaise,        "A_FatRaise"        },
+    { A_FatAttack1,      "A_FatAttack1"      },
+    { A_FatAttack2,      "A_FatAttack2"      },
+    { A_FatAttack3,      "A_FatAttack3"      },
+    { A_BossDeath,       "A_BossDeath"       },
+    { A_CPosAttack,      "A_CPosAttack"      },
+    { A_CPosRefire,      "A_CPosRefire"      },
+    { A_TroopAttack,     "A_TroopAttack"     },
+    { A_SargAttack,      "A_SargAttack"      },
+    { A_HeadAttack,      "A_HeadAttack"      },
+    { A_BruisAttack,     "A_BruisAttack"     },
+    { A_SkullAttack,     "A_SkullAttack"     },
+    { A_Metal,           "A_Metal"           },
+    { A_SpidRefire,      "A_SpidRefire"      },
+    { A_BabyMetal,       "A_BabyMetal"       },
+    { A_BspiAttack,      "A_BspiAttack"      },
+    { A_Hoof,            "A_Hoof"            },
+    { A_CyberAttack,     "A_CyberAttack"     },
+    { A_PainAttack,      "A_PainAttack"      },
+    { A_PainDie,         "A_PainDie"         },
+    { A_KeenDie,         "A_KeenDie"         },
+    { A_BrainPain,       "A_BrainPain"       },
+    { A_BrainScream,     "A_BrainScream"     },
+    { A_BrainDie,        "A_BrainDie"        },
+    { A_BrainAwake,      "A_BrainAwake"      },
+    { A_BrainSpit,       "A_BrainSpit"       },
+    { A_SpawnSound,      "A_SpawnSound"      },
+    { A_SpawnFly,        "A_SpawnFly"        },
+    { A_BrainExplode,    "A_BrainExplode"    },
+    { A_Detonate,        "A_Detonate"        },   // killough 8/9/98
+    { A_Mushroom,        "A_Mushroom"        },   // killough 10/98
+    { A_SkullPop,        "A_SkullPop"        },
+    { A_Die,             "A_Die"             },   // killough 11/98
+    { A_Spawn,           "A_Spawn"           },   // killough 11/98
+    { A_Turn,            "A_Turn"            },   // killough 11/98
+    { A_Face,            "A_Face"            },   // killough 11/98
+    { A_Scratch,         "A_Scratch"         },   // killough 11/98
+    { A_PlaySound,       "A_PlaySound"       },   // killough 11/98
+    { A_RandomJump,      "A_RandomJump"      },   // killough 11/98
+    { A_LineEffect,      "A_LineEffect"      },   // killough 11/98
 
-  { A_FireOldBFG,      "A_FireOldBFG"      },   // killough 7/19/98: classic BFG firing function
-  { A_BetaSkullAttack, "A_BetaSkullAttack" },   // killough 10/98: beta lost souls attacked
-  { A_Stop,            "A_Stop"            },   //                 different
+    { A_FireOldBFG,      "A_FireOldBFG"      },   // killough 7/19/98: classic BFG firing function
+    { A_BetaSkullAttack, "A_BetaSkullAttack" },   // killough 10/98: beta lost souls attacked
+    { A_Stop,            "A_Stop"            },   //                 different
 
-  // This NULL entry must be the last in the list
-  { NULL,              "A_NULL"            }    // Ty 05/16/98
+    // This NULL entry must be the last in the list
+    { NULL,              "A_NULL"            }    // Ty 05/16/98
 };
 
 // to hold startup code pointers from INFO.C
@@ -1728,7 +1777,7 @@ static actionf_t deh_codeptr[NUMSTATES];
 dboolean CheckPackageWADVersion(void)
 {
     DEHFILE     infile, *filein = &infile;
-    char        inbuffer[DEH_BUFFERMAX];
+    char        inbuffer[32];
     int         i;
 
     for (i = 0; i < numlumps; ++i)
@@ -1776,13 +1825,13 @@ void ProcessDehFile(char *filename, int lumpnum)
     if (filename)
     {
         if (!(infile.f = fopen(filename, "rt")))
-            return;     // should be checked up front anyway
+            return;             // should be checked up front anyway
         infile.lump = NULL;
         C_Output("Parsed DeHackEd%s file %s.",
             (M_StringEndsWith(uppercase(filename), "BEX") ? " with BOOM extensions" : ""),
             uppercase(filename));
     }
-    else        // DEH file comes from lump indicated by third argument
+    else                        // DEH file comes from lump indicated by second argument
     {
         infile.size = W_LumpLength(lumpnum);
         infile.inp = infile.lump = W_CacheLumpNum(lumpnum, PU_STATIC);
@@ -1922,8 +1971,8 @@ void deh_procBexCodePointers(DEHFILE *fpin, char *line)
     // for this one, we just read 'em until we hit a blank line
     while (!dehfeof(fpin) && *inbuffer && *inbuffer != ' ')
     {
-        int     i = 0;                          // looper
-        dboolean found = false;                  // know if we found this one during lookup or not
+        int             i = 0;                  // looper
+        dboolean        found = false;          // know if we found this one during lookup or not
 
         if (!dehfgets(inbuffer, sizeof(inbuffer), fpin))
             break;
@@ -2034,14 +2083,7 @@ void deh_procThing(DEHFILE *fpin, char *line)
             if (!M_StringCompare(key, deh_mobjinfo[ix]))
                 continue;
 
-            if (!M_StringCompare(key, "Bits"))
-            {
-                pix = (int *)&mobjinfo[indexnum];
-                pix[ix] = (int)value;
-                if (M_StringCompare(key, "Height"))
-                    mobjinfo[indexnum].projectilepassheight = 0;
-            }
-            else
+            if (M_StringCompare(key, "Bits"))
             {
                 // bit set
                 // e6y: Correction of wrong processing of Bits parameter if its value is equal to
@@ -2081,6 +2123,48 @@ void deh_procThing(DEHFILE *fpin, char *line)
                         C_Output("Bits = 0x%08lX = %ld.", value, value);
                     mobjinfo[indexnum].flags = value; // e6y
                 }
+            }
+            else if (M_StringCompare(key, "Retro Bits"))
+            {
+                // bit set
+                if (bGetData == 1)
+                    mobjinfo[indexnum].flags2 = value;
+                else
+                {
+                    // figure out what the bits are
+                    value = 0;
+
+                    for (; (strval = strtok(strval, ",+| \t\f\r")); strval = NULL)
+                    {
+                        size_t  iy;
+
+                        for (iy = 0; iy < DEH_MOBJFLAG2MAX; iy++)
+                        {
+                            if (!M_StringCompare(strval, deh_mobjflags2[iy].name))
+                                continue;
+                            if (devparm)
+                                C_Output("ORed value 0x%08lx %s.", deh_mobjflags2[iy].value,
+                                    strval);
+
+                            value |= deh_mobjflags[iy].value;
+                            break;
+                        }
+                        if (iy >= DEH_MOBJFLAG2MAX)
+                            C_Warning("Could not find bit mnemonic \"%s\".", strval);
+                    }
+
+                    // Don't worry about conversion -- simply print values
+                    if (devparm)
+                        C_Output("Bits = 0x%08lX = %ld.", value, value);
+                    mobjinfo[indexnum].flags2 = value;
+                }
+            }
+            else
+            {
+                pix = (int *)&mobjinfo[indexnum];
+                pix[ix] = (int)value;
+                if (M_StringCompare(key, "Height"))
+                    mobjinfo[indexnum].projectilepassheight = 0;
             }
             if (devparm)
                 C_Output("Assigned %d to %s (%d) at index %d.", (int)value, key, indexnum, ix);
@@ -2166,6 +2250,13 @@ void deh_procFrame(DEHFILE *fpin, char *line)
             if (devparm)
                 C_Output(" - misc2 = %ld", value);
             states[indexnum].misc2 = value;                     // long
+            states[indexnum].dehacked = dehacked = !BTSX;
+        }
+        else if (M_StringCompare(key, "translucent"))           // Translucent
+        {
+            if (devparm)
+                C_Output(" - translucent = %ld", value);
+            states[indexnum].translucent = !!value;             // dboolean
             states[indexnum].dehacked = dehacked = !BTSX;
         }
         else
@@ -2905,7 +2996,7 @@ void deh_procText(DEHFILE *fpin, char *line)
                     C_Output("Changing name of sfx from %s to %*s",
                         S_sfx[i].name, usedlen, &inbuffer[fromlen]);
 
-                M_StringCopy(S_sfx[i].name, &inbuffer[fromlen], 9);
+                strncpy(S_sfx[i].name, &inbuffer[fromlen], 9);
                 found = true;
                 break;          // only one matches, quit early
             }
@@ -2954,9 +3045,7 @@ void deh_procError(DEHFILE *fpin, char *line)
     char        inbuffer[DEH_BUFFERMAX];
 
     strncpy(inbuffer, line, DEH_BUFFERMAX);
-    if (!M_StringStartsWith(inbuffer, "Patch File for DeHackEd")
-        && !M_StringStartsWith(inbuffer, "Doom version")
-        && !M_StringStartsWith(inbuffer, "Patch format"))
+    if (devparm)
         C_Warning("Ignoring \"%s\".", inbuffer);
     return;
 }
@@ -3106,6 +3195,15 @@ dboolean deh_procStringSub(char *key, char *lookfor, char *newstring)
             if (M_StrCaseStr(deh_strlookup[i].lookup, "HUSTR"))
                 addtocount = true;
 
+            // [BH] allow either GOTREDSKUL or GOTREDSKULL
+            if (M_StringCompare(deh_strlookup[i].lookup, "GOTREDSKUL")
+                && !deh_strlookup[p_GOTREDSKULL].assigned)
+            {
+                s_GOTREDSKULL = s_GOTREDSKUL;
+                deh_strlookup[p_GOTREDSKULL].assigned = true;
+                return true;
+            }
+
             break;
         }
     }
@@ -3159,7 +3257,7 @@ void lfstrip(char *s)    // strip the \r and/or \n off of a line
 {
     char        *p = s + strlen(s);
 
-    while (p > s && (*--p=='\r' || *p=='\n'))
+    while (p > s && (*--p == '\r' || *p == '\n'))
         *p = 0;
 }
 
@@ -3220,7 +3318,9 @@ int deh_GetData(char *s, char *k, long *l, char **strval)
             break;
         buffer[i] = *t;                 // copy it
     }
-    buffer[--i] = '\0';                 // terminate the key before the '='
+    if (isspace(buffer[i - 1]))
+        --i;
+    buffer[i] = '\0';                   // terminate the key before the '='
     if (!*t)                            // end of string with no equal sign
         okrc = false;
     else

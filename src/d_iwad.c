@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -77,9 +77,6 @@ static void AddIWADDir(char *dir)
 // of installed IWAD files. The registry is inspected to find special
 // keys installed by the Windows installers for various CD versions
 // of DOOM. From these keys we can deduce where to find an IWAD.
-
-#define WIN32_LEAN_AND_MEAN
-
 #include <windows.h>
 
 typedef struct
@@ -534,12 +531,15 @@ extern char     *pwadfile;
 //
 void D_SetSaveGameFolder(void)
 {
-    char *iwad_name = SaveGameIWADName();
+    char        *iwad_name = SaveGameIWADName();
+    char        *appdatafolder = M_GetAppDataFolder();
 
     if (!iwad_name)
         iwad_name = "unknown.wad";
 
-    savegamefolder = M_StringJoin(M_GetExecutableFolder(), DIR_SEPARATOR_S, "savegames",
+    M_MakeDirectory(appdatafolder);
+    
+    savegamefolder = M_StringJoin(appdatafolder, DIR_SEPARATOR_S, "savegames",
         DIR_SEPARATOR_S, NULL);
     M_MakeDirectory(savegamefolder);
 

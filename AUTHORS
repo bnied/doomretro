@@ -1,6 +1,6 @@
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
@@ -62,12 +62,15 @@ Contributors (Bug Reports, Feature Suggestions and/or Code)
 Alex Mayfield ("AlexMax")
 Alexandre-Xavier Labonté-Lamoureux ("AXDOOMER")
 Alexey Lysiuk ("alexey.lysiuk")
+Alun Bestor ("viggles")
 Andrew Stine ("Linguica")
 "AnotherLife"/"VGA"
+"arneolavhal"
 "Brewtal_Legend"
 "Da Werecat"
 Dani Ventas
 Darren Mason
+"duganchen"
 Fabian Greffrath
 "Hoodie"
 Iain Macfarlane
@@ -78,7 +81,10 @@ Jonathan Bergeron ("LazyLazurus")
 Jonathan Dowland ("jmtd")
 "kb1"
 "L3gend"
+Luis Antonio
 Luke Jones ("Luke-Nukem")
+"Manuel-K"
+Mike Swanson ("chungy")
 "Noxat"
 Ronald Lasmanowicz ("derek57")
 "ryan-sg"
@@ -87,6 +93,13 @@ Simon Howard ("Fraggle")
 Claude Freeman ("ConSiGno"/"sneakernets")
 "TheLonerD"
 "vesperas"
+
+
+Bundled Content
+---------------
+
+BREACH.WAD
+    Alun Bestor ("viggles")
 
 
 Code Also Utilized From

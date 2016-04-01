@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,8 +36,8 @@
 ========================================================================
 */
 
-#if !defined(__D_STATE__)
-#define __D_STATE__
+#if !defined(__DOOMSTAT_H__)
+#define __DOOMSTAT_H__
 
 // We need globally shared data structures,
 //  for defining the global state variables.
@@ -51,6 +51,8 @@
 // Command line parameters.
 //
 extern  dboolean        nomonsters;     // checkparm of -nomonsters
+extern  dboolean        respawnparm;    // checkparm of -respawn
+extern  dboolean        pistolstart;    // [BH] checkparm of -pistolstart
 extern  dboolean        fastparm;       // checkparm of -fast
 
 extern  dboolean        devparm;        // DEBUG: launched with -devparm
@@ -89,6 +91,7 @@ extern int              gamemap;
 extern dboolean         nerve;
 extern dboolean         bfgedition;
 
+extern dboolean         breach;
 extern dboolean         chex;
 extern dboolean         chexdeh;
 extern dboolean         hacx;
@@ -100,6 +103,7 @@ extern dboolean         BTSXE2B;
 extern dboolean         BTSXE3;
 extern dboolean         BTSXE3A;
 extern dboolean         BTSXE3B;
+extern dboolean         E1M8B;
 
 extern dboolean         DMENUPIC;
 extern dboolean         FREEDOOM;
@@ -129,9 +133,6 @@ extern dboolean         STCFN121;
 extern dboolean         STYSNUM0;
 extern dboolean         TITLEPIC;
 extern dboolean         WISCRT2;
-
-// Nightmare mode flag, single player.
-extern dboolean         respawnmonsters;
 
 // -------------------------
 // Internal parameters for sound rendering.
@@ -164,6 +165,7 @@ extern dboolean         viewactive;
 extern int              totalkills;
 extern int              totalitems;
 extern int              totalsecret;
+extern int              monstercount[NUMMOBJTYPES];
 
 // Timer, for scores.
 extern int              levelstarttic;  // gametic at level start
@@ -199,10 +201,6 @@ extern wbstartstruct_t  wminfo;
 
 // File handling stuff.
 extern char             *savegamefolder;
-extern char             basedefault[1024];
-
-// if true, load all graphics at level load
-extern dboolean         precache;
 
 // wipegamestate can be set to -1
 //  to force a wipe on the next draw
@@ -210,7 +208,6 @@ extern gamestate_t      wipegamestate;
 
 extern int              m_sensitivity;
 extern int              gp_sensitivity;
-extern float            gamepadsensitivityf;
 
 // Needed to store the number of the dummy sky flat.
 // Used for rendering,

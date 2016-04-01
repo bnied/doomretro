@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -47,6 +47,7 @@
 #include "i_swap.h"
 #include "i_system.h"
 #include "m_misc.h"
+#include "m_random.h"
 #include "p_local.h"
 #include "s_sound.h"
 #include "SDL.h"
@@ -80,6 +81,7 @@ dboolean F_CastResponder(event_t *ev);
 void F_CastDrawer(void);
 
 void WI_checkForAccelerate(void);    // killough 3/28/98: used to
+void A_RandomJump(mobj_t *actor, player_t *player, pspdef_t *psp);
 extern int acceleratestage;          // accelerate intermission screens
 static int midstage;                 // whether we're in "mid-stage"
 
@@ -236,7 +238,7 @@ void F_Ticker(void)
             {
                 finalecount = 0;
                 finalestage = 1;
-                wipegamestate = (gamestate_t)(-1);      // force a wipe
+                wipegamestate = GS_NONE;        // force a wipe
                 if (gameepisode == 3)
                     S_StartMusic(mus_bunny);
             }
@@ -413,18 +415,18 @@ static castinfo_t castorder[] =
     { NULL,          0            }
 };
 
-int     castnum;
-int     casttics;
-state_t *caststate;
-int     castrot;
-dboolean castdeath;
-dboolean castdeathflip;
-int     castframes;
-int     castonmelee;
-dboolean castattacking;
-dboolean firstevent;
+int             castnum;
+int             casttics;
+state_t         *caststate;
+int             castrot;
+dboolean        castdeath;
+dboolean        castdeathflip;
+int             castframes;
+int             castonmelee;
+dboolean        castattacking;
+dboolean        firstevent;
 
-extern char *playername;
+extern char     *playername;
 
 //
 // F_StartCast
@@ -432,7 +434,7 @@ extern char *playername;
 void F_StartCast(void)
 {
     firstevent = true;
-    wipegamestate = (gamestate_t)(-1);  // force a screen wipe
+    wipegamestate = GS_NONE;    // force a screen wipe
     castnum = 0;
     caststate = &states[mobjinfo[castorder[castnum].type].seestate];
     casttics = caststate->tics;
@@ -453,9 +455,6 @@ void F_StartCast(void)
 //
 void F_CastTicker(void)
 {
-    int st;
-    int sfx;
-
     if (--casttics > 0)
         return;                         // not time to change state yet
 
@@ -474,86 +473,55 @@ void F_CastTicker(void)
     }
     else
     {
+        int     st;
+        int     sfx = 0;
+
         // just advance to next state in animation
-        if (caststate == &states[S_PLAY_ATK1])
+        if (!castdeath && caststate == &states[S_PLAY_ATK1])
             goto stopattack;            // Oh, gross hack!
-        st = caststate->nextstate;
+        if (caststate->action == A_RandomJump && M_Random() < caststate->misc2)
+            st = caststate->misc1;
+        else
+            st = caststate->nextstate;
         caststate = &states[st];
         castframes++;
 
         // sound hacks....
         switch (st)
         {
-            case S_PLAY_ATK1:
-                sfx = sfx_dshtgn;
-                break;
-            case S_POSS_ATK2:
-                sfx = sfx_pistol;
-                break;
-            case S_SPOS_ATK2:
-                sfx = sfx_shotgn;
-                break;
-            case S_VILE_ATK2:
-                sfx = sfx_vilatk;
-                break;
-            case S_SKEL_FIST2:
-                sfx = sfx_skeswg;
-                break;
-            case S_SKEL_FIST4:
-                sfx = sfx_skepch;
-                break;
-            case S_SKEL_MISS2:
-                sfx = sfx_skeatk;
-                break;
+            case S_PLAY_ATK1:  sfx = sfx_dshtgn; break;
+            case S_POSS_ATK2:  sfx = sfx_pistol; break;
+            case S_SPOS_ATK2:  sfx = sfx_shotgn; break;
+            case S_VILE_ATK2:  sfx = sfx_vilatk; break;
+            case S_SKEL_FIST2: sfx = sfx_skeswg; break;
+            case S_SKEL_FIST4: sfx = sfx_skepch; break;
+            case S_SKEL_MISS2: sfx = sfx_skeatk; break;
             case S_FATT_ATK8:
             case S_FATT_ATK5:
-            case S_FATT_ATK2:
-                sfx = sfx_firsht;
-                break;
+            case S_FATT_ATK2:  sfx = sfx_firsht; break;
             case S_CPOS_ATK2:
             case S_CPOS_ATK3:
-            case S_CPOS_ATK4:
-                sfx = sfx_shotgn;
-                break;
-            case S_TROO_ATK3:
-                sfx = sfx_claw;
-                break;
-            case S_SARG_ATK2:
-                sfx = sfx_sgtatk;
-                break;
+            case S_CPOS_ATK4:  sfx = sfx_shotgn; break;
+            case S_TROO_ATK3:  sfx = sfx_claw;   break;
+            case S_SARG_ATK2:  sfx = sfx_sgtatk; break;
             case S_BOSS_ATK2:
             case S_BOS2_ATK2:
-            case S_HEAD_ATK2:
-                sfx = sfx_firsht;
-                break;
-            case S_SKULL_ATK2:
-                sfx = sfx_sklatk;
-                break;
+            case S_HEAD_ATK2:  sfx = sfx_firsht; break;
+            case S_SKULL_ATK2: sfx = sfx_sklatk; break;
             case S_SPID_ATK2:
-            case S_SPID_ATK3:
-                sfx = sfx_shotgn;
-                break;
-            case S_BSPI_ATK2:
-                sfx = sfx_plasma;
-                break;
+            case S_SPID_ATK3:  sfx = sfx_shotgn; break;
+            case S_BSPI_ATK2:  sfx = sfx_plasma; break;
             case S_CYBER_ATK2:
             case S_CYBER_ATK4:
-            case S_CYBER_ATK6:
-                sfx = sfx_rlaunc;
-                break;
-            case S_PAIN_ATK3:
-                sfx = sfx_sklatk;
-                break;
-            default:
-                sfx = 0;
-                break;
+            case S_CYBER_ATK6: sfx = sfx_rlaunc; break;
+            case S_PAIN_ATK3:  sfx = sfx_sklatk; break;
         }
 
         if (sfx)
             S_StartSound(NULL, sfx);
     }
 
-    if (castframes == 12)
+    if (!castdeath && castframes == 12)
     {
         // go into attack frame
         castattacking = true;
@@ -570,11 +538,10 @@ void F_CastTicker(void)
                 caststate = &states[mobjinfo[castorder[castnum].type].missilestate];
         }
         if (caststate == &states[S_PLAY_ATK1])
-            S_StartSound (NULL, sfx_dshtgn);
+            S_StartSound(NULL, sfx_dshtgn);
     }
 
     if (castattacking)
-    {
         if (castframes == 24 || caststate == &states[mobjinfo[castorder[castnum].type].seestate])
         {
 stopattack:
@@ -582,19 +549,26 @@ stopattack:
             castframes = 0;
             caststate = &states[mobjinfo[castorder[castnum].type].seestate];
         }
-    }
 
     casttics = caststate->tics;
     if (casttics == -1)
-        casttics = 15;
+    {
+        if (caststate->action == A_RandomJump)
+        {
+            if (M_Random() < caststate->misc2)
+                caststate = &states[caststate->misc1];
+            else
+                caststate = &states[caststate->nextstate];
+            casttics = caststate->tics;
+        }
+        if (casttics == -1)
+            casttics = 15;
+    }
 }
 
 //
 // F_CastResponder
 //
-
-extern int key_use;
-extern int key_fire;
 
 dboolean F_CastResponder(event_t *ev)
 {
@@ -614,8 +588,9 @@ dboolean F_CastResponder(event_t *ev)
     if (menuactive || paused || consoleactive)
         return false;
 
-    if (ev->type == ev_keydown && ev->data1 != key_use && ev->data1 != key_fire
-        && ev->data1 != KEY_LEFTARROW && ev->data1 != KEY_RIGHTARROW && ev->data1 != KEY_ENTER)
+    if (ev->type == ev_keydown && ev->data1 != key_use && ev->data1 != key_use2
+        && ev->data1 != key_fire && ev->data1 != KEY_LEFTARROW && ev->data1 != KEY_RIGHTARROW
+        && ev->data1 != KEY_ENTER)
         return false;
 
     if (ev->type == ev_keyup)
@@ -634,18 +609,12 @@ dboolean F_CastResponder(event_t *ev)
         // rotate (taken from Eternity Engine)
         if (ev->data1 == KEY_LEFTARROW)
         {
-            if (castrot == 14)
-                castrot = 0;
-            else
-                castrot += 2;
+            castrot = (castrot == 14 ? 0 : castrot + 2);
             return true;
         }
-        if (ev->data1 == KEY_RIGHTARROW)
+        else if (ev->data1 == KEY_RIGHTARROW)
         {
-            if (castrot == 0)
-                castrot = 14;
-            else
-                castrot -= 2;
+            castrot = (!castrot ? 014 : castrot - 2);
             return true;
         }
     }
@@ -660,6 +629,14 @@ dboolean F_CastResponder(event_t *ev)
         castdeathflip = rand() & 1;
     caststate = &states[mobjinfo[type].deathstate];
     casttics = caststate->tics;
+    if (casttics == -1 && caststate->action == A_RandomJump)
+    {
+        if (M_Random() < caststate->misc2)
+            caststate = &states [caststate->misc1];
+        else
+            caststate = &states [caststate->nextstate];
+        casttics = caststate->tics;
+    }
     castrot = 0;
     castframes = 0;
     castattacking = false;
@@ -745,7 +722,7 @@ void F_CastDrawer(void)
     if (sprframe->rotate)
         rot = castrot;
     lump = sprframe->lump[rot];
-    flip = (dboolean)(sprframe->flip & (1 << rot));
+    flip = !!(sprframe->flip & (1 << rot));
 
     patch = W_CacheLumpNum(lump + firstspritelump, PU_CACHE);
 
@@ -811,23 +788,16 @@ void F_CastDrawer(void)
 //
 void F_DrawPatchCol(int x, patch_t *patch, int col, fixed_t fracstep)
 {
-    column_t    *column;
-    byte        *source;
-    byte        *dest;
-    byte        *desttop;
-
-    column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
-
-    desttop = screens[0] + x;
+    column_t    *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
+    byte        *desttop = screens[0] + x;
 
     // step through the posts in a column
     while (column->topdelta != 0xff)
     {
-        int         count = (column->length << FRACBITS) / fracstep;
-        fixed_t     frac = 0;
-
-        source = (byte *)column + 3;
-        dest = desttop + column->topdelta * SCREENWIDTH;
+        int     count = (column->length << FRACBITS) / fracstep;
+        fixed_t frac = 0;
+        byte    *dest = desttop + column->topdelta * SCREENWIDTH;
+        byte    *source = (byte *)column + 3;
 
         while (count--)
         {
@@ -858,11 +828,7 @@ void F_BunnyScroll(void)
     p1 = W_CacheLumpName("PFUB2", PU_LEVEL);
     p2 = W_CacheLumpName("PFUB1", PU_LEVEL);
 
-    scrolled = ORIGINALWIDTH - ((signed int)finalecount - 230) / 2;
-    if (scrolled > ORIGINALWIDTH)
-        scrolled = ORIGINALWIDTH;
-    if (scrolled < 0)
-        scrolled = 0;
+    scrolled = BETWEEN(0, ORIGINALWIDTH - ((signed int)finalecount - 230) / 2, ORIGINALWIDTH);
 
     for (x = 0; x < ORIGINALWIDTH; x++)
     {

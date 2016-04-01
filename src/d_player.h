@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,8 +36,8 @@
 ========================================================================
 */
 
-#if !defined(__D_PLAYER__)
-#define __D_PLAYER__
+#if !defined(__D_PLAYER_H__)
+#define __D_PLAYER_H__
 
 // The player data structure depends on a number
 // of other structs: items (internal inventory),
@@ -54,6 +54,13 @@
 // is buffered within the player data struct,
 // as commands per game tick.
 #include "d_ticcmd.h"
+
+typedef enum
+{
+    NOARMOR             = 0,
+    GREENARMOR          = 1,
+    BLUEARMOR           = 2
+} armortype_t;
 
 //
 // Player states.
@@ -120,7 +127,7 @@ typedef struct player_s
     int                 health;
     int                 armorpoints;
     // Armor type is 0-2.
-    int                 armortype;
+    armortype_t         armortype;
 
     // Power ups. invinc and invis are tic counters.
     int                 powers[NUMPOWERS];

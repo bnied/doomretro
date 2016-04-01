@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,8 +36,8 @@
 ========================================================================
 */
 
-#if !defined(__P_SPEC__)
-#define __P_SPEC__
+#if !defined(__P_SPEC_H__)
+#define __P_SPEC_H__
 
 //jff 2/23/98 identify the special classes that can share sectors
 typedef enum
@@ -55,11 +55,13 @@ void P_InitPicAnims(void);
 
 // at map load
 void P_SpawnSpecials(void);
+void P_SetLiquids(void);
 
 // every tic
 void P_UpdateSpecials(void);
 
 dboolean P_SectorActive(special_e t, sector_t *sec);
+dboolean P_SectorHasLightSpecial(sector_t *sec);
 
 dboolean P_CheckTag(line_t *line);
 
@@ -216,16 +218,13 @@ typedef struct
     degenmobj_t *soundorg;
 } button_t;
 
-// max # of wall switches in a level
-#define MAXSWITCHES             100
-
 // 4 players, 4 buttons each at once, max.
 #define MAXBUTTONS              32
 
 // 1 second, in ticks.
 #define BUTTONTIME              35
 
-button_t buttonlist[MAXBUTTONS];
+extern button_t buttonlist[MAXBUTTONS];
 
 void P_ChangeSwitchTexture(line_t *line, int useAgain);
 
@@ -293,7 +292,7 @@ extern platlist_t      *activeplats;
 
 void T_PlatRaise(plat_t *plat);
 
-int EV_DoPlat(line_t *line, plattype_e type, int amount);
+dboolean EV_DoPlat(line_t *line, plattype_e type, int amount);
 
 void P_AddActivePlat(plat_t *plat);
 void P_RemoveActivePlat(plat_t *plat);
@@ -344,10 +343,10 @@ typedef struct
     // when it reaches 0, start going down
     int         topcountdown;
 
-    //jff 1/31/98 keep track of line door is triggered by
+    // jff 1/31/98 keep track of line door is triggered by
     line_t      *line;
 
-    //killough 10/98: sector tag for gradual lighting effects
+    // killough 10/98: sector tag for gradual lighting effects
     int         lighttag;
 } vldoor_t;
 

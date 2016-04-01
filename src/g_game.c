@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -89,7 +89,6 @@ gamestate_t     oldgamestate;
 gameaction_t    gameaction;
 gamestate_t     gamestate = GS_TITLESCREEN;
 skill_t         gameskill;
-dboolean        respawnmonsters;
 int             gameepisode;
 int             gamemap;
 
@@ -106,88 +105,24 @@ int             gametic = 0;
 int             gametime = 0;
 int             levelstarttic;          // gametic at level start
 int             totalkills, totalitems, totalsecret;    // for intermission
-
-dboolean        precache = true;        // if true, load all graphics at start
+int             monstercount[NUMMOBJTYPES];
 
 wbstartstruct_t wminfo;                 // parms for world map / intermission
 
-//
-// controls (have defaults)
-//
-int             key_automap = KEYAUTOMAP_DEFAULT;
-int             key_automap_clearmark = KEYAUTOMAPCLEARMARK_DEFAULT;
-int             key_automap_followmode = KEYAUTOMAPFOLLOWMODE_DEFAULT;
-int             key_automap_grid = KEYAUTOMAPGRID_DEFAULT;
-int             key_automap_mark = KEYAUTOMAPMARK_DEFAULT;
-int             key_automap_maxzoom = KEYAUTOMAPMAXZOOM_DEFAULT;
-int             key_automap_rotatemode = KEYAUTOMAPROTATEMODE_DEFAULT;
-int             key_automap_zoomin = KEYAUTOMAPZOOMIN_DEFAULT;
-int             key_automap_zoomout = KEYAUTOMAPZOOMOUT_DEFAULT;
-int             key_right = KEYRIGHT_DEFAULT;
-int             key_left = KEYLEFT_DEFAULT;
-int             key_up = KEYUP_DEFAULT;
-int             key_up2 = KEYUP2_DEFAULT;
-int             key_down = KEYDOWN_DEFAULT;
-int             key_down2 = KEYDOWN2_DEFAULT;
-int             key_strafeleft = KEYSTRAFELEFT_DEFAULT;
-int             key_strafeleft2 = KEYSTRAFELEFT2_DEFAULT;
-int             key_straferight = KEYSTRAFERIGHT_DEFAULT;
-int             key_straferight2 = KEYSTRAFERIGHT2_DEFAULT;
-int             key_fire = KEYFIRE_DEFAULT;
-int             key_use = KEYUSE_DEFAULT;
-int             key_strafe = KEYSTRAFE_DEFAULT;
-int             key_run = KEYRUN_DEFAULT;
-int             key_weapon1 = KEYWEAPON1_DEFAULT;
-int             key_weapon2 = KEYWEAPON2_DEFAULT;
-int             key_weapon3 = KEYWEAPON3_DEFAULT;
-int             key_weapon4 = KEYWEAPON4_DEFAULT;
-int             key_weapon5 = KEYWEAPON5_DEFAULT;
-int             key_weapon6 = KEYWEAPON6_DEFAULT;
-int             key_weapon7 = KEYWEAPON7_DEFAULT;
-int             key_prevweapon = KEYPREVWEAPON_DEFAULT;
-int             key_nextweapon = KEYNEXTWEAPON_DEFAULT;
-int             key_alwaysrun = KEYALWAYSRUN_DEFAULT;
-
-int             mousebfire = MOUSEFIRE_DEFAULT;
-int             mousebstrafe = MOUSESTRAFE_DEFAULT;
-int             mousebforward = MOUSEFORWARD_DEFAULT;
-int             mousebuse = MOUSEUSE_DEFAULT;
-int             mousebprevweapon = MOUSEPREVWEAPON_DEFAULT;
-int             mousebnextweapon = MOUSENEXTWEAPON_DEFAULT;
-
-int             gamepadalwaysrun = GAMEPADALWAYSRUN_DEFAULT;
-int             gamepadautomap = GAMEPADAUTOMAP_DEFAULT;
-int             gamepadautomapclearmark = GAMEPADAUTOMAPCLEARMARK_DEFAULT;
-int             gamepadautomapfollowmode = GAMEPADAUTOMAPFOLLOWMODE_DEFAULT;
-int             gamepadautomapgrid = GAMEPADAUTOMAPGRID_DEFAULT;
-int             gamepadautomapmark = GAMEPADAUTOMAPMARK_DEFAULT;
-int             gamepadautomapmaxzoom = GAMEPADAUTOMAPMAXZOOM_DEFAULT;
-int             gamepadautomaprotatemode = GAMEPADAUTOMAPROTATEMODE_DEFAULT;
-int             gamepadautomapzoomin = GAMEPADAUTOMAPZOOMIN_DEFAULT;
-int             gamepadautomapzoomout = GAMEPADAUTOMAPZOOMOUT_DEFAULT;
-int             gamepadfire = GAMEPADFIRE_DEFAULT;
-int             gamepadmenu = GAMEPADMENU_DEFAULT;
-int             gamepadleftdeadzone;
-int             gamepadrightdeadzone;
-int             gamepadnextweapon = GAMEPADNEXTWEAPON_DEFAULT;
-int             gamepadprevweapon = GAMEPADPREVWEAPON_DEFAULT;
-int             gamepadrun = GAMEPADRUN_DEFAULT;
-int             gamepaduse = GAMEPADUSE_DEFAULT;
-int             gamepadweapon1 = GAMEPADWEAPON_DEFAULT;
-int             gamepadweapon2 = GAMEPADWEAPON_DEFAULT;
-int             gamepadweapon3 = GAMEPADWEAPON_DEFAULT;
-int             gamepadweapon4 = GAMEPADWEAPON_DEFAULT;
-int             gamepadweapon5 = GAMEPADWEAPON_DEFAULT;
-int             gamepadweapon6 = GAMEPADWEAPON_DEFAULT;
-int             gamepadweapon7 = GAMEPADWEAPON_DEFAULT;
-
+dboolean        autoload = autoload_default;
 dboolean        gp_swapthumbsticks = gp_swapthumbsticks_default;
 dboolean        gp_vibrate = gp_vibrate_default;
 
 #define MAXPLMOVE       forwardmove[1]
 
-fixed_t         forwardmove[2] = { 0x19, 0x32 };
-fixed_t         sidemove[2] = { 0x18, 0x28 };
+#define FORWARDMOVE0    0x19
+#define FORWARDMOVE1    0x32
+
+#define SIDEMOVE0       0x18
+#define SIDEMOVE1       0x28
+
+fixed_t         forwardmove[2] = { FORWARDMOVE0, FORWARDMOVE1 };
+fixed_t         sidemove[2] = { SIDEMOVE0, SIDEMOVE1 };
 fixed_t         angleturn[3] = { 640, 1280, 320 };      // + slow turn
 fixed_t         gamepadangleturn[2] = { 640, 960 };
 
@@ -235,9 +170,8 @@ struct
 
 #define SLOWTURNTICS    6
 
-#define NUMKEYS         256
-
 dboolean        gamekeydown[NUMKEYS];
+char            gamekeyaction[NUMKEYS][256];
 static int      turnheld;                       // for accelerative turning
 
 static dboolean mousearray[MAX_MOUSE_BUTTONS + 1];
@@ -260,7 +194,7 @@ static int      dclicks2;
 static int      savegameslot;
 static char     savedescription[SAVESTRINGSIZE];
 
-dboolean        loadedgame = false;
+gameaction_t    loadaction = ga_nothing;
 
 extern dboolean alwaysrun;
 extern int      st_palette;
@@ -349,7 +283,8 @@ void G_BuildTiccmd(ticcmd_t *cmd)
 
     strafe = (gamekeydown[key_strafe] || mousebuttons[mousebstrafe]);
 
-    run = (!!(gamepadbuttons & gamepadrun) + gamekeydown[key_run] + alwaysrun == 1);
+    run = (!!(gamepadbuttons & gamepadrun) + gamekeydown[key_run] + !!mousebuttons[mousebrun]
+        + alwaysrun == 1);
 
     // use two stage accelerative turning
     // on the keyboard
@@ -373,13 +308,13 @@ void G_BuildTiccmd(ticcmd_t *cmd)
             cmd->angleturn -= angleturn[turnheld < SLOWTURNTICS ? 2 : run];
         else if (gamepadthumbRX > 0)
             cmd->angleturn -= (int)(gamepadangleturn[run] * gamepadthumbRXright
-                * gamepadsensitivityf);
+                * gamepadsensitivity);
 
         if (gamekeydown[key_left])
             cmd->angleturn += angleturn[turnheld < SLOWTURNTICS ? 2 : run];
         else if (gamepadthumbRX < 0)
             cmd->angleturn += (int)(gamepadangleturn[run] * gamepadthumbRXleft
-                * gamepadsensitivityf);
+                * gamepadsensitivity);
     }
 
     if (gamekeydown[key_up] || gamekeydown[key_up2])
@@ -410,7 +345,8 @@ void G_BuildTiccmd(ticcmd_t *cmd)
         if (mousebuttons[mousebfire] || gamekeydown[key_fire] || (gamepadbuttons & gamepadfire))
             cmd->buttons |= BT_ATTACK;
 
-        if (gamekeydown[key_use] || mousebuttons[mousebuse] || (gamepadbuttons & gamepaduse))
+        if (gamekeydown[key_use] || gamekeydown[key_use2] || mousebuttons[mousebuse]
+            || (gamepadbuttons & gamepaduse))
         {
             cmd->buttons |= BT_USE;
             dclicks = 0;        // clear double clicks if hit use button
@@ -523,6 +459,34 @@ void G_BuildTiccmd(ticcmd_t *cmd)
 }
 
 //
+// G_ResetPlayer
+// [BH] Reset player's health, armor, weapons and ammo
+//
+static void G_ResetPlayer(player_t *player)
+{
+    int     i;
+
+    player->health = initial_health;
+
+    player->armorpoints = 0;
+    player->armortype = NOARMOR;
+
+    player->readyweapon = player->pendingweapon = wp_pistol;
+    player->preferredshotgun = wp_shotgun;
+    player->fistorchainsaw = wp_fist;
+    player->shotguns = false;
+    memset(player->weaponowned, false, sizeof(player->weaponowned));
+    player->weaponowned[wp_fist] = true;
+    player->weaponowned[wp_pistol] = true;
+
+    memset(player->ammo, false, sizeof(player->ammo));
+    player->ammo[am_clip] = initial_bullets;
+    for (i = 0; i < NUMAMMO; ++i)
+        player->maxammo[i] = (gamemode == shareware && i == am_cell ? 0 : maxammo[i]);
+    player->backpack = false;
+}
+
+//
 // G_DoLoadLevel
 //
 void G_DoLoadLevel(void)
@@ -530,6 +494,7 @@ void G_DoLoadLevel(void)
     int         ep;
     int         map = (gameepisode - 1) * 10 + gamemap;
     char        *author = P_GetMapAuthor(map);
+    player_t    *p = &players[0];
 
     HU_DrawDisk();
 
@@ -564,7 +529,7 @@ void G_DoLoadLevel(void)
                 case 3:
                     skytexture = R_TextureNumForName("SKY3");
                     break;
-                case 4:                             // Special Edition sky
+                case 4:                         // Special Edition sky
                     skytexture = R_TextureNumForName("SKY4");
                     break;
             }
@@ -572,25 +537,27 @@ void G_DoLoadLevel(void)
 
     skyscrolldelta = P_GetMapSky1ScrollDelta(map);
 
-    respawnmonsters = (gameskill == sk_nightmare);
-
     levelstarttic = gametic;                    // for time calculation
 
     if (wipegamestate == GS_LEVEL)
-        wipegamestate = (gamestate_t)(-1);      // force a wipe
+        wipegamestate = GS_NONE;                // force a wipe
 
     gamestate = GS_LEVEL;
 
-    if (players[0].playerstate == PST_DEAD)
-        players[0].playerstate = PST_REBORN;
+    if (p->playerstate == PST_DEAD)
+        p->playerstate = PST_REBORN;
 
-    players[0].damageinflicted = 0;
-    players[0].damagereceived = 0;
-    players[0].cheated = 0;
-    players[0].shotshit = 0;
-    players[0].shotsfired = 0;
-    players[0].deaths = 0;
-    memset(players[0].mobjcount, 0, sizeof(players[0].mobjcount));
+    p->damageinflicted = 0;
+    p->damagereceived = 0;
+    p->cheated = 0;
+    p->shotshit = 0;
+    p->shotsfired = 0;
+    p->deaths = 0;
+    memset(p->mobjcount, 0, sizeof(p->mobjcount));
+
+    // [BH] Reset player's health, armor, weapons and ammo on pistol start
+    if (pistolstart || P_GetMapPistolStart(map))
+        G_ResetPlayer(p);
 
     M_ClearRandom();
 
@@ -604,7 +571,7 @@ void G_DoLoadLevel(void)
     ep = (gamemode == commercial ? (gamemission == pack_nerve ? 2 : 1) : gameepisode);
     P_MapName(ep, gamemap);
 
-    if (author[0])
+    if (*author)
         C_Print(titlestring, "%s by %s", mapnumandtitle, author);
     else
         C_Print(titlestring, mapnumandtitle);
@@ -645,7 +612,7 @@ void G_ToggleAlwaysRun(evtype_t type)
 
     if (!consoleactive)
         players[0].message = (alwaysrun ? s_ALWAYSRUNON : s_ALWAYSRUNOFF);
-    C_Input("%s %s", stringize(alwaysrun), (alwaysrun ? "on" : "off"));
+    C_StrCVAROutput(stringize(alwaysrun), (alwaysrun ? "on" : "off"));
     message_dontfuckwithme = true;
     if (menuactive)
     {
@@ -669,7 +636,7 @@ dboolean G_Responder(event_t *ev)
     // any other key pops up menu if on title screen
     if (gameaction == ga_nothing && gamestate == GS_TITLESCREEN)
     {
-        if (!menuactive
+        if (!menuactive && !consoleheight
             && ((ev->type == ev_keydown
                  && ev->data1 != KEY_PAUSE
                  && ev->data1 != KEY_RSHIFT
@@ -864,18 +831,9 @@ dboolean G_Responder(event_t *ev)
     return false;
 }
 
-char    savename[256];
-
-static byte saveg_read8(FILE *file)
-{
-    byte        result;
-
-    if (fread(&result, 1, 1, file) < 1)
-        return 0;
-    return result;
-}
-
 void D_Display(void);
+
+static char     savename[256];
 
 //
 // G_Ticker
@@ -899,28 +857,36 @@ void G_Ticker(void)
             case ga_loadlevel:
                 G_DoLoadLevel();
                 break;
-            case ga_reloadgame:
+
+            case ga_autoloadgame:
                 M_StringCopy(savename, P_SaveGameFile(quickSaveSlot), sizeof(savename));
                 G_DoLoadGame();
                 break;
+
             case ga_newgame:
                 G_DoNewGame();
                 break;
+
             case ga_loadgame:
                 G_DoLoadGame();
                 break;
+
             case ga_savegame:
                 G_DoSaveGame();
                 break;
+
             case ga_completed:
                 G_DoCompleted();
                 break;
+
             case ga_victory:
                 F_StartFinale();
                 break;
+
             case ga_worlddone:
                 G_DoWorldDone();
                 break;
+
             case ga_screenshot:
                 if ((usergame || gamestate == GS_LEVEL)
                     && !idbehold && !(players[0].cheats & CF_MYPOS))
@@ -946,8 +912,6 @@ void G_Ticker(void)
                 else
                     C_Warning("No screenshot was saved.");
                 gameaction = ga_nothing;
-                break;
-            case ga_nothing:
                 break;
         }
     }
@@ -1033,7 +997,7 @@ void G_Ticker(void)
 
 //
 // PLAYER STRUCTURE FUNCTIONS
-// also see P_SpawnPlayer in P_Mobj.c
+// also see P_SpawnPlayer in p_mobj.c
 //
 
 //
@@ -1052,6 +1016,7 @@ void G_PlayerFinishLevel(int player)
     p->damagecount = 0;                 // no palette changes
     p->bonuscount = 0;
 
+    // [BH] switch to chainsaw if player has it and ends map with fists selected
     if (p->readyweapon == wp_fist && p->weaponowned[wp_chainsaw])
         p->readyweapon = wp_chainsaw;
     p->fistorchainsaw = (p->weaponowned[wp_chainsaw] ? wp_chainsaw : wp_fist);
@@ -1064,22 +1029,17 @@ void G_PlayerFinishLevel(int player)
 //
 void G_PlayerReborn(void)
 {
-    player_t    *p;
+    player_t    *p = &players[0];
     int         i;
-    int         killcount;
-    int         itemcount;
-    int         secretcount;
+    int         killcount = p->killcount;
+    int         itemcount = p->itemcount;
+    int         secretcount = p->secretcount;
 
-    killcount = players[0].killcount;
-    itemcount = players[0].itemcount;
-    secretcount = players[0].secretcount;
-
-    p = &players[0];
     memset(p, 0, sizeof(*p));
 
-    players[0].killcount = killcount;
-    players[0].itemcount = itemcount;
-    players[0].secretcount = secretcount;
+    p->killcount = killcount;
+    p->itemcount = itemcount;
+    p->secretcount = secretcount;
 
     p->usedown = p->attackdown = true;          // don't do anything immediately
     p->playerstate = PST_LIVE;
@@ -1100,101 +1060,11 @@ void G_PlayerReborn(void)
 }
 
 //
-// G_CheckSpot
-// Returns false if the player cannot be respawned
-// at the given mapthing_t spot
-// because something is occupying it
-//
-void P_SpawnPlayer(mapthing_t *mthing);
-
-dboolean G_CheckSpot(int playernum, mapthing_t *mthing)
-{
-    fixed_t             x;
-    fixed_t             y;
-    subsector_t         *ss;
-    signed int          an;
-    mobj_t              *mo;
-    int                 i;
-    fixed_t             xa;
-    fixed_t             ya;
-    mobj_t              *player = players[playernum].mo;
-
-    flag667 = false;
-
-    if (!player)
-    {
-        // first spawn of level, before corpses
-        for (i = 0; i < playernum; ++i)
-            if (players[i].mo->x == mthing->x << FRACBITS
-                && players[i].mo->y == mthing->y << FRACBITS)
-                return false;
-        return true;
-    }
-
-    x = mthing->x << FRACBITS;
-    y = mthing->y << FRACBITS;
-
-    player->flags |=  MF_SOLID;
-    i = P_CheckPosition(player, x, y);
-    player->flags &= ~MF_SOLID;
-    if (!i)
-        return false;
-
-    // spawn a teleport fog
-    ss = R_PointInSubsector(x, y);
-
-    // This calculation overflows in Vanilla DOOM, but here we deliberately
-    // avoid integer overflow as it is undefined behavior, so the value of
-    // 'an' will always be positive.
-    an = (ANG45 >> ANGLETOFINESHIFT) * ((signed int)mthing->angle / 45);
-
-    xa = finecosine[an];
-    ya = finesine[an];
-
-    switch (an)
-    {
-        case 4096:      // -4096:
-            xa = finetangent[2048];
-            ya = finetangent[0];
-            break;
-        case 5120:     // -3072:
-            xa = finetangent[3072];
-            ya = finetangent[1024];
-            break;
-        case 6144:     // -2048:
-            xa = finesine[0];
-            ya = finetangent[2048];
-            break;
-        case 7168:     // -1024:
-            xa = finesine[1024];
-            ya = finetangent[3072];
-            break;
-        case 0:
-        case 1024:
-        case 2048:
-        case 3072:
-            xa = finecosine[an];
-            ya = finesine[an];
-            break;
-        default:
-            I_Error("G_CheckSpot: unexpected angle %d", an);
-    }
-
-    mo = P_SpawnMobj(x + 20 * xa, y + 20 * ya, ss->sector->floorheight, MT_TFOG);
-    mo->angle = mthing->angle;
-
-    if (players[0].viewz != 1)
-        S_StartSound(mo, sfx_telept);           // don't start sound on first frame
-
-    return true;
-}
-
-//
 // G_DoReborn
 //
 void G_DoReborn(void)
 {
-    gameaction = (quickSaveSlot < 0 ? ga_loadlevel : ga_reloadgame);
+    gameaction = (quickSaveSlot >= 0 && autoload && !pistolstart ? ga_autoloadgame : ga_loadlevel);
 }
 
 void G_ScreenShot(void)
@@ -1209,6 +1079,7 @@ int pars[5][10] =
     { 0,  30,  75, 120,  90, 165, 180, 180,  30, 165 },
     { 0,  90,  90,  90, 120,  90, 360, 240,  30, 170 },
     { 0,  90,  45,  90, 150,  90,  90, 165,  30, 135 },
+
     // [BH] Episode 4 Par Times
     { 0, 165, 255, 135, 150, 180, 390, 135, 360, 180 }
 };
@@ -1243,10 +1114,7 @@ void G_ExitLevel(void)
 void G_SecretExitLevel(void)
 {
     // IF NO WOLF3D LEVELS, NO SECRET EXIT!
-    if (gamemode == commercial && W_CheckNumForName("map31") < 0)
-        secretexit = false;
-    else
-        secretexit = true;
+    secretexit = !(gamemode == commercial && W_CheckNumForName("MAP31") < 0);
     gameaction = ga_completed;
 }
 
@@ -1257,10 +1125,10 @@ void ST_doRefresh(void);
 
 void G_DoCompleted(void)
 {
-    int         map = (gameepisode - 1) * 10 + gamemap;
-    int         nextmap = P_GetMapNext(map);
-    int         par = P_GetMapPar(map);
-    int         secretnextmap = P_GetMapSecretNext(map);
+    int map = (gameepisode - 1) * 10 + gamemap;
+    int nextmap = P_GetMapNext(map);
+    int par = P_GetMapPar(map);
+    int secretnextmap = P_GetMapSecretNext(map);
 
     gameaction = ga_nothing;
 
@@ -1485,7 +1353,6 @@ void G_DoWorldDone(void)
     gamestate = GS_LEVEL;
     gamemap = wminfo.next + 1;
     G_DoLoadLevel();
-    gameaction = ga_nothing;
     viewactive = true;
     markpointnum = 0;
 }
@@ -1506,8 +1373,9 @@ void G_LoadGame(char *name)
 
 void G_DoLoadGame(void)
 {
-    int         savedleveltime;
+    int savedleveltime = leveltime;
 
+    loadaction = gameaction;
     gameaction = ga_nothing;
 
     save_stream = fopen(savename, "rb");
@@ -1515,15 +1383,11 @@ void G_DoLoadGame(void)
     if (!save_stream)
         return;
 
-    savegame_error = false;
-
     if (!P_ReadSaveGameHeader(savedescription))
     {
         fclose(save_stream);
         return;
     }
-
-    savedleveltime = leveltime;
 
     // load a base level
     G_InitNew(gameskill, gameepisode, gamemap);
@@ -1555,8 +1419,6 @@ void G_DoLoadGame(void)
     // draw the pattern into the back screen
     R_FillBackScreen();
 
-    loadedgame = true;
-
     if (consoleactive)
     {
         C_Output("%s loaded.", uppercase(savename));
@@ -1566,16 +1428,17 @@ void G_DoLoadGame(void)
 
 void G_LoadedGameMessage(void)
 {
-    if (savedescription[0])
+    if (*savedescription)
     {
         static char     buffer[1024];
 
-        M_snprintf(buffer, sizeof(buffer), s_GGLOADED, titlecase(savedescription));
+        M_snprintf(buffer, sizeof(buffer), (loadaction == ga_autoloadgame ? s_GGAUTOLOADED :
+            s_GGLOADED), titlecase(savedescription));
         HU_PlayerMessage(buffer, false);
         message_dontfuckwithme = true;
     }
 
-    loadedgame = false;
+    loadaction = ga_nothing;
 }
 
 //
@@ -1594,11 +1457,8 @@ void G_SaveGame(int slot, char *description, char *name)
 
 void G_DoSaveGame(void)
 {
-    char        *savegame_file;
-    char        *temp_savegame_file;
-
-    temp_savegame_file = P_TempSaveGameFile();
-    savegame_file = (consoleactive ? savename : P_SaveGameFile(savegameslot));
+    char        *temp_savegame_file = P_TempSaveGameFile();
+    char        *savegame_file = (consoleactive ? savename : P_SaveGameFile(savegameslot));
 
     // Open the savegame file for writing. We write to a temporary file
     // and then rename it at the end if it was successfully written.
@@ -1607,45 +1467,49 @@ void G_DoSaveGame(void)
     save_stream = fopen(temp_savegame_file, "wb");
 
     if (!save_stream)
-        return;
-
-    savegame_error = false;
-
-    P_WriteSaveGameHeader(savedescription);
-
-    P_ArchivePlayers();
-    P_ArchiveWorld();
-    P_ArchiveThinkers();
-    P_ArchiveSpecials();
-    P_ArchiveMap();
-
-    P_WriteSaveGameEOF();
-
-    // Finish up, close the savegame file.
-    fclose(save_stream);
-
-    // Now rename the temporary savegame file to the actual savegame
-    // file, overwriting the old savegame if there was one there.
-    remove(savegame_file);
-    rename(temp_savegame_file, savegame_file);
-
-    if (consoleactive)
-        C_Output("%s saved.", uppercase(savename));
+    {
+        menuactive = false;
+        consoleheight = 1;
+        consoledirection = 1;
+        C_Warning("%s couldn't be saved.", uppercase(savename));
+    }
     else
     {
-        static char     buffer[1024];
+        P_WriteSaveGameHeader(savedescription);
 
-        M_snprintf(buffer, sizeof(buffer), s_GGSAVED, titlecase(savedescription));
-        HU_PlayerMessage(buffer, false);
-        message_dontfuckwithme = true;
-        S_StartSound(NULL, sfx_swtchx);
+        P_ArchivePlayers();
+        P_ArchiveWorld();
+        P_ArchiveThinkers();
+        P_ArchiveSpecials();
+        P_ArchiveMap();
+
+        P_WriteSaveGameEOF();
+
+        // Finish up, close the savegame file.
+        fclose(save_stream);
+
+        // Now rename the temporary savegame file to the actual savegame
+        // file, overwriting the old savegame if there was one there.
+        remove(savegame_file);
+        rename(temp_savegame_file, savegame_file);
+
+        if (consoleactive)
+            C_Output("%s saved.", uppercase(savename));
+        else
+        {
+            static char     buffer[1024];
+
+            M_snprintf(buffer, sizeof(buffer), s_GGSAVED, titlecase(savedescription));
+            HU_PlayerMessage(buffer, false);
+            message_dontfuckwithme = true;
+            S_StartSound(NULL, sfx_swtchx);
+        }
+
+        // draw the pattern into the back screen
+        R_FillBackScreen();
     }
 
     gameaction = ga_nothing;
-    M_StringCopy(savedescription, "", sizeof(savedescription));
-
-    // draw the pattern into the back screen
-    R_FillBackScreen();
 
     drawdisk = false;
 }
@@ -1702,32 +1566,45 @@ void G_DoNewGame(void)
     infight = false;
 }
 
-void G_SetFastParms(int fast_pending)
+void G_SetFastMonsters(dboolean toggle)
+{
+    int     i;
+
+    if (toggle)
+    {
+        for (i = S_SARG_RUN1; i <= S_SARG_PAIN2; ++i)
+            if (states[i].tics != 1)
+                states[i].tics >>= 1;
+
+        mobjinfo[MT_BRUISERSHOT].speed = 20 * FRACUNIT;
+        mobjinfo[MT_HEADSHOT].speed = 20 * FRACUNIT;
+        mobjinfo[MT_TROOPSHOT].speed = 20 * FRACUNIT;
+    }
+    else
+    {
+        for (i = S_SARG_RUN1; i <= S_SARG_PAIN2; ++i)
+            states[i].tics <<= 1;
+
+        mobjinfo[MT_BRUISERSHOT].speed = 15 * FRACUNIT;
+        mobjinfo[MT_HEADSHOT].speed = 10 * FRACUNIT;
+        mobjinfo[MT_TROOPSHOT].speed = 10 * FRACUNIT;
+    }
+}
+
+static void G_SetFastParms(int fast_pending)
 {
     static int  fast;
 
     if (fast != fast_pending)
-    {
-        int     i;
+        G_SetFastMonsters((fast = fast_pending));
+}
 
-        if ((fast = fast_pending))
-        {
-            for (i = S_SARG_RUN1; i <= S_SARG_PAIN2; ++i)
-                if (states[i].tics != 1)
-                    states[i].tics >>= 1;
-            mobjinfo[MT_BRUISERSHOT].speed = 20 * FRACUNIT;
-            mobjinfo[MT_HEADSHOT].speed = 20 * FRACUNIT;
-            mobjinfo[MT_TROOPSHOT].speed = 20 * FRACUNIT;
-        }
-        else
-        {
-            for (i = S_SARG_RUN1; i <= S_SARG_PAIN2; ++i)
-                states[i].tics <<= 1;
-            mobjinfo[MT_BRUISERSHOT].speed = 15 * FRACUNIT;
-            mobjinfo[MT_HEADSHOT].speed = 10 * FRACUNIT;
-            mobjinfo[MT_TROOPSHOT].speed = 10 * FRACUNIT;
-        }
-    }
+void G_SetMovementSpeed(int scale)
+{
+    forwardmove[0] = FORWARDMOVE0 * scale / 100;
+    forwardmove[1] = MIN(FORWARDMOVE1 * scale / 100, 127);
+    sidemove[0] = SIDEMOVE0 * scale / 100;
+    sidemove[1] = SIDEMOVE1 * scale / 100;
 }
 
 void G_InitNew(skill_t skill, int ep, int map)
@@ -1760,8 +1637,6 @@ void G_InitNew(skill_t skill, int ep, int map)
 
     if (map > 9 && gamemode != commercial)
         map = 9;
-
-    respawnmonsters = (skill == sk_nightmare);
 
     // [BH] Fix demon speed bug. See doomwiki.org/wiki/Demon_speed_bug.
     G_SetFastParms(fastparm || skill == sk_nightmare);

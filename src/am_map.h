@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,8 +36,8 @@
 ========================================================================
 */
 
-#if !defined(__AM_MAP__)
-#define __AM_MAP__
+#if !defined(__AM_MAP_H__)
+#define __AM_MAP_H__
 
 #include "d_event.h"
 #include "m_cheat.h"
@@ -73,39 +73,9 @@ void AM_Start(dboolean mainwindow);
 void AM_Stop(void);
 
 void AM_Init(void);
+void AM_SetColors(void);
 
 void D_PostEvent(event_t *ev);
-
-extern int      key_up;
-extern int      key_up2;
-extern int      key_down;
-extern int      key_down2;
-extern int      key_right;
-extern int      key_straferight;
-extern int      key_straferight2;
-extern int      key_left;
-extern int      key_strafeleft;
-extern int      key_strafeleft2;
-
-extern int      key_automap;
-extern int      key_automap_clearmark;
-extern int      key_automap_followmode;
-extern int      key_automap_grid;
-extern int      key_automap_mark;
-extern int      key_automap_maxzoom;
-extern int      key_automap_rotatemode;
-extern int      key_automap_zoomin;
-extern int      key_automap_zoomout;
-
-extern int      gamepadautomap;
-extern int      gamepadautomapclearmark;
-extern int      gamepadautomapfollowmode;
-extern int      gamepadautomapgrid;
-extern int      gamepadautomapmark;
-extern int      gamepadautomapmaxzoom;
-extern int      gamepadautomaprotatemode;
-extern int      gamepadautomapzoomin;
-extern int      gamepadautomapzoomout;
 
 extern byte     *tinttab60;
 extern byte     *tinttab80;

@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -60,7 +60,7 @@ struct _MEMFILE {
 // Open a memory area for reading
 MEMFILE *mem_fopen_read(void *buf, size_t buflen)
 {
-    MEMFILE     *file = Z_Malloc(sizeof(MEMFILE), PU_STATIC, 0);
+    MEMFILE     *file = Z_Malloc(sizeof(MEMFILE), PU_STATIC, NULL);
 
     file->buf = (unsigned char *) buf;
     file->buflen = buflen;
@@ -96,7 +96,7 @@ size_t mem_fread(void *buf, size_t size, size_t nmemb, MEMFILE *stream)
 // Open a memory area for writing
 MEMFILE *mem_fopen_write(void)
 {
-    MEMFILE     *file = Z_Malloc(sizeof(MEMFILE), PU_STATIC, 0);
+    MEMFILE     *file = Z_Malloc(sizeof(MEMFILE), PU_STATIC, NULL);
 
     file->alloced = 1024;
     file->buf = Z_Malloc(file->alloced, PU_STATIC, 0);
@@ -121,7 +121,7 @@ size_t mem_fwrite(const void *ptr, size_t size, size_t nmemb, MEMFILE *stream)
 
     while (bytes > stream->alloced - stream->position)
     {
-        unsigned char   *newbuf = Z_Malloc(stream->alloced * 2, PU_STATIC, 0);
+        unsigned char   *newbuf = Z_Malloc(stream->alloced * 2, PU_STATIC, NULL);
 
         memcpy(newbuf, stream->buf, stream->alloced);
         Z_Free(stream->buf);

@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,8 +36,8 @@
 ========================================================================
 */
 
-#if !defined(__S_SOUND__)
-#define __S_SOUND__
+#if !defined(__S_SOUND_H__)
+#define __S_SOUND_H__
 
 #include "p_mobj.h"
 #include "r_defs.h"
@@ -46,25 +46,25 @@
 extern int      snd_samplerate;
 extern dboolean s_randompitch;
 
-dboolean I_SDL_InitSound(void);
-void I_SDL_ShutdownSound(void);
-int I_SDL_GetSfxLumpNum(sfxinfo_t *sfx);
-void I_SDL_UpdateSoundParams(int handle, int vol, int sep);
-int I_SDL_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep, int pitch);
-void I_SDL_StopSound(int handle);
-dboolean I_SDL_SoundIsPlaying(int handle);
-void I_SDL_UpdateSound(void);
+dboolean I_InitSound(void);
+void I_ShutdownSound(void);
+int I_GetSfxLumpNum(sfxinfo_t *sfx);
+void I_UpdateSoundParams(int handle, int vol, int sep);
+int I_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep, int pitch);
+void I_StopSound(int handle);
+dboolean I_SoundIsPlaying(int handle);
+void I_UpdateSound(void);
 
-dboolean I_SDL_InitMusic(void);
-void I_SDL_ShutdownMusic(void);
-void I_SDL_SetMusicVolume(int volume);
-void I_SDL_PauseSong(void);
-void I_SDL_ResumeSong(void);
-void *I_SDL_RegisterSong(void *data, int len);
-void I_SDL_UnRegisterSong(void *handle);
-void I_SDL_PlaySong(void *handle, int looping);
-void I_SDL_StopSong(void);
-dboolean I_SDL_MusicIsPlaying(void);
+dboolean I_InitMusic(void);
+void I_ShutdownMusic(void);
+void I_SetMusicVolume(int volume);
+void I_PauseSong(void);
+void I_ResumeSong(void);
+void *I_RegisterSong(void *data, int len);
+void I_UnRegisterSong(void *handle);
+void I_PlaySong(void *handle, int looping);
+void I_StopSong(void);
+dboolean I_MusicIsPlaying(void);
 
 //
 // Initializes sound stuff, including volume

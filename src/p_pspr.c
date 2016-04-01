@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -80,6 +80,7 @@ void P_SetPsprite(player_t *player, int position, statenum_t stnum)
         }
 
         state = &states[stnum];
+        state->num = stnum;
         psp->state = state;
         psp->tics = state->tics;        // could be 0
 
@@ -89,6 +90,9 @@ void P_SetPsprite(player_t *player, int position, statenum_t stnum)
             psp->sx = state->misc1 << FRACBITS;
             psp->sy = state->misc2 << FRACBITS;
         }
+
+        if (state->dehacked)
+            weaponinfo[player->readyweapon].dehacked = true;
 
         // Call action routine.
         // Modified handling.
@@ -164,7 +168,8 @@ dboolean P_CheckAmmo(player_t *player)
         player->pendingweapon = wp_chainsaw;
     else if (player->weaponowned[wp_missile] && player->ammo[am_misl])
         player->pendingweapon = wp_missile;
-    else if (player->weaponowned[wp_bfg] && player->ammo[am_cell] >= bfgcells)
+    else if (player->weaponowned[wp_bfg] && (player->ammo[am_cell] >= bfgcells
+        || bfgcells != BFGCELLS))
         player->pendingweapon = wp_bfg;
     else
         // If everything fails.
@@ -217,8 +222,13 @@ void P_FireWeapon(player_t *player)
 
     if (centerweapon)
     {
-        player->psprites[ps_weapon].sx = 0;
-        player->psprites[ps_weapon].sy = WEAPONTOP;
+        pspdef_t        *psp = &player->psprites[ps_weapon];
+        state_t         *state = psp->state;
+
+        if (!state->misc1)
+            psp->sx = 0;
+        if (!state->misc2)
+            psp->sy = WEAPONTOP;
     }
 }
 
@@ -425,9 +435,9 @@ void A_Punch(mobj_t *actor, player_t *player, pspdef_t *psp)
     if (!player)
         return;
 
-    angle = actor->angle + ((P_Random() - P_Random()) << 18);
+    angle = actor->angle + ((M_Random() - M_Random()) << 18);
     slope = P_AimLineAttack(actor, angle, MELEERANGE);
-    damage = (P_Random() % 10 + 1) << 1;
+    damage = (M_Random() % 10 + 1) << 1;
 
     if (player->powers[pw_strength])
         damage *= 10;
@@ -448,8 +458,8 @@ void A_Punch(mobj_t *actor, player_t *player, pspdef_t *psp)
 //
 void A_Saw(mobj_t *actor, player_t *player, pspdef_t *psp)
 {
-    int         damage = 2 * (P_Random() % 10 + 1);
-    angle_t     angle = actor->angle + ((P_Random() - P_Random()) << 18);
+    int         damage = 2 * (M_Random() % 10 + 1);
+    angle_t     angle = actor->angle + ((M_Random() - M_Random()) << 18);
     int         slope = P_AimLineAttack(actor, angle, MELEERANGE + 1);
 
     // use meleerange + 1 so the puff doesn't skip the flash
@@ -526,30 +536,27 @@ void A_FireOldBFG(mobj_t *actor, player_t *player, pspdef_t *psp)
     do
     {
         mobj_t  *th;
-        angle_t an = actor->angle;
-        angle_t an1 = ((P_Random() & 127) - 64) * (ANG90 / 768) + an;
-        angle_t an2 = ((P_Random() & 127) - 64) * (ANG90 / 640) + ANG90;
-        fixed_t slope;
+        mobj_t  *mo = player->mo;
+        angle_t an = mo->angle;
+        angle_t an1 = ((M_Random() & 127) - 64) * (ANG90 / 768) + an;
+        angle_t an2 = ((M_Random() & 127) - 64) * (ANG90 / 640) + ANG90;
+        fixed_t slope = P_AimLineAttack(mo, an, 16 * 64 * FRACUNIT);
 
-        do
+        if (!linetarget)
+            slope = P_AimLineAttack(mo, an += 1 << 26, 16 * 64 * FRACUNIT);
+        if (!linetarget)
+            slope = P_AimLineAttack(mo, an -= 2 << 26, 16 * 64 * FRACUNIT);
+        if (!linetarget)
         {
-            slope = P_AimLineAttack(actor, an, 16 * 64 * FRACUNIT);
-            if (!linetarget)
-                slope = P_AimLineAttack(actor, an += 1 << 26, 16 * 64 * FRACUNIT);
-            if (!linetarget)
-                slope = P_AimLineAttack(actor, an -= 2 << 26, 16 * 64 * FRACUNIT);
-            if (!linetarget)
-            {
-                slope = 0;
-                an = actor->angle;
-            }
-        } while (!linetarget);
-        an1 += an - actor->angle;
+            slope = 0;
+            an = mo->angle;
+        }
+        an1 += an - mo->angle;
         an2 += tantoangle[slope >> DBITS];
 
-        th = P_SpawnMobj(actor->x, actor->y, actor->z + 62 * FRACUNIT
+        th = P_SpawnMobj(mo->x, mo->y, mo->z + 62 * FRACUNIT
             - player->psprites[ps_weapon].sy, type);
-        P_SetTarget(&th->target, actor);
+        P_SetTarget(&th->target, mo);
         th->angle = an1;
         th->momx = finecosine[an1 >> ANGLETOFINESHIFT] * 25;
         th->momy = finesine[an1 >> ANGLETOFINESHIFT] * 25;
@@ -568,7 +575,7 @@ void A_FirePlasma(mobj_t *actor, player_t *player, pspdef_t *psp)
 
     P_SubtractAmmo(player, 1);
 
-    P_SetPsprite(player, ps_flash, weaponinfo[player->readyweapon].flashstate + (P_Random() & 1));
+    P_SetPsprite(player, ps_flash, weaponinfo[player->readyweapon].flashstate + (M_Random() & 1));
 
     P_SpawnPlayerMissile(player->mo, MT_PLASMA);
 }
@@ -604,11 +611,11 @@ static void P_BulletSlope(mobj_t *mo)
 //
 void P_GunShot(mobj_t *actor, dboolean accurate)
 {
-    int         damage = 5 * (P_Random() % 3 + 1);
+    int         damage = 5 * (M_Random() % 3 + 1);
     angle_t     angle = actor->angle;
 
     if (!accurate)
-        angle += (P_Random() - P_Random()) << 18;
+        angle += (M_Random() - M_Random()) << 18;
 
     P_LineAttack(actor, angle, MISSILERANGE, bulletslope, damage);
 }
@@ -700,10 +707,10 @@ void A_FireShotgun2(mobj_t *actor, player_t *player, pspdef_t *psp)
 
     for (i = 0; i < 20; i++)
     {
-        int     damage = 5 * (P_Random() % 3 + 1);
-        angle_t angle = actor->angle + ((P_Random() - P_Random()) << ANGLETOFINESHIFT);
+        int     damage = 5 * (M_Random() % 3 + 1);
+        angle_t angle = actor->angle + ((M_Random() - M_Random()) << ANGLETOFINESHIFT);
 
-        P_LineAttack(actor, angle, MISSILERANGE, bulletslope + ((P_Random() - P_Random()) << 5),
+        P_LineAttack(actor, angle, MISSILERANGE, bulletslope + ((M_Random() - M_Random()) << 5),
             damage);
     }
 
@@ -812,7 +819,7 @@ void A_BFGSpray(mobj_t *actor, player_t *player, pspdef_t *psp)
             MT_EXTRABFG);
 
         for (j = 0; j < 15; j++)
-            damage += (P_Random() & 7) + 1;
+            damage += (M_Random() & 7) + 1;
 
         P_DamageMobj(linetarget, mo, mo, damage);
     }

@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -173,7 +173,8 @@ void R_FixWiggle(sector_t *sector)
     static int  lastheight;
 
     // disallow negative heights, force cache initialization
-    int         height = MAX(1, (sector->interpceilingheight - sector->interpfloorheight) >> FRACBITS);
+    int         height = MAX(1, (sector->interpceilingheight
+                    - sector->interpfloorheight) >> FRACBITS);
 
     // early out?
     if (height != lastheight)
@@ -206,36 +207,47 @@ void R_FixWiggle(sector_t *sector)
     }
 }
 
-static void R_DrawMaskedColumn(column_t *column)
+static void R_DrawMaskedColumn(const rpatch_t *patch, const rcolumn_t *column)
 {
-    int         td;
-    int         topdelta = -1;
-    int         lastlength = 0;
-    fixed_t     texturemid = dc_texturemid;
+    int i;
 
-    while ((td = column->topdelta) != 0xFF)
+    for (i = 0; i < column->numPosts; ++i)
     {
-        int64_t topscreen;
-
-        topdelta = (td < topdelta + lastlength - 1) * topdelta + td;
-        lastlength = column->length;
+        const rpost_t   *post = &column->posts[i];
+        int64_t         topscreen;
+        int             length = post->length;
+        int             topdelta = post->topdelta;
 
         // calculate unclipped screen coordinates for post
-        topscreen = sprtopscreen + spryscale * topdelta;
+        topscreen = sprtopscreen + spryscale * topdelta + 1;
 
-        dc_yl = MAX((int)((topscreen + FRACUNIT - 1) >> FRACBITS), mceilingclip[dc_x] + 1);
-        dc_yh = MIN((int)((topscreen + spryscale * lastlength) >> FRACBITS),
-            mfloorclip[dc_x] - 1);
+        dc_yl = MAX((int)((topscreen + FRACUNIT) >> FRACBITS), mceilingclip[dc_x] + 1);
+        dc_yh = MIN((int)((topscreen + spryscale * length) >> FRACBITS), mfloorclip[dc_x] - 1);
 
-        if (dc_yh < viewheight && dc_yl <= dc_yh)
+        dc_texturefrac = dc_texturemid - (topdelta << FRACBITS) +
+            FixedMul((dc_yl - centery) << FRACBITS, dc_iscale);
+
+        if (dc_texturefrac < 0)
         {
-            dc_texturefrac = texturemid - (topdelta << FRACBITS)
-                + FixedMul((dc_yl - centery) << FRACBITS, dc_iscale);
-            dc_source = (byte *)column + 3;
-            colfunc();
+            int cnt = (FixedDiv(-dc_texturefrac, dc_iscale) + FRACUNIT - 1) >> FRACBITS;
+
+            dc_yl += cnt;
+            dc_texturefrac += cnt * dc_iscale;
         }
 
-        column = (column_t *)((byte *)column + lastlength + 4);
+        {
+            const fixed_t       endfrac = dc_texturefrac + (dc_yh - dc_yl) * dc_iscale;
+            const fixed_t       maxfrac = length << FRACBITS;
+
+            if (endfrac >= maxfrac)
+                dc_yh -= (FixedDiv(endfrac - maxfrac - 1, dc_iscale) + FRACUNIT - 1) >> FRACBITS;
+        }
+
+        if (dc_yl <= dc_yh && dc_yh < viewheight)
+        {
+            dc_source = column->pixels + post->topdelta;
+            colfunc();
+        }
     }
 }
 
@@ -247,6 +259,7 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
     int         lightnum;
     int         texnum;
     fixed_t     texheight;
+    rpatch_t    *patch;
     sector_t    tempsec;        // killough 4/13/98
 
     // Calculate light table.
@@ -289,6 +302,8 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
 
     dc_colormap = fixedcolormap;
 
+    patch = R_CacheTextureCompositePatchNum(texnum);
+
     // draw the columns
     for (dc_x = x1; dc_x <= x2; ++dc_x, spryscale += rw_scalestep)
     {
@@ -322,11 +337,12 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
             dc_iscale = 0xFFFFFFFFu / (unsigned int)spryscale;
 
             // draw the texture
-            R_DrawMaskedColumn((column_t *)((byte *)R_GetColumn(texnum,
-                maskedtexturecol[dc_x], false) - 3));
+            R_DrawMaskedColumn(patch, R_GetPatchColumnWrapped(patch, maskedtexturecol[dc_x]));
             maskedtexturecol[dc_x] = INT_MAX;   // dropoff overflow
         }
     }
+
+    R_UnlockTextureCompositePatchNum(texnum);
     curline = NULL;
 }
 
@@ -338,7 +354,8 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
 //
 void R_RenderSegLoop(void)
 {
-    fixed_t     texturecolumn = 0;      // shut up compiler warning
+    rpatch_t    *tex_patch;
+    fixed_t     texturecolumn = 0;
     dboolean    usebrightmaps = (r_brightmaps && !fixedcolormap && fullcolormap == colormaps[0]);
 
     for (; rw_x < rw_stopx; ++rw_x)
@@ -358,7 +375,7 @@ void R_RenderSegLoop(void)
         {
             bottom = MIN(yl - 1, floorclip[rw_x] - 1);
 
-            if (top <= bottom)
+            if (top <= bottom && ceilingplane)
             {
                 ceilingplane->top[rw_x] = top;
                 ceilingplane->bottom[rw_x] = bottom;
@@ -379,7 +396,7 @@ void R_RenderSegLoop(void)
         {
 
             top = MAX(yh, ceilingclip[rw_x]) + 1;
-            if (top <= bottom)
+            if (top <= bottom && floorplane)
             {
                 floorplane->top[rw_x] = top;
                 floorplane->bottom[rw_x] = bottom;
@@ -418,7 +435,8 @@ void R_RenderSegLoop(void)
                     && rw_distance < (512 << FRACBITS));
 
                 dc_texturemid = rw_midtexturemid;
-                dc_source = R_GetColumn(midtexture, texturecolumn, true);
+                tex_patch = R_CacheTextureCompositePatchNum(midtexture);
+                dc_source = R_GetTextureColumn(tex_patch, texturecolumn);
                 dc_texheight = midtexheight;
 
                 // [BH] apply brightmap
@@ -428,6 +446,9 @@ void R_RenderSegLoop(void)
                     fbwallcolfunc();
                 else
                     wallcolfunc();
+
+                R_UnlockTextureCompositePatchNum(midtexture);
+                tex_patch = NULL;
             }
             ceilingclip[rw_x] = viewheight;
             floorclip[rw_x] = -1;
@@ -463,7 +484,8 @@ void R_RenderSegLoop(void)
                             && rw_distance < (512 << FRACBITS));
 
                         dc_texturemid = rw_toptexturemid;
-                        dc_source = R_GetColumn(toptexture, texturecolumn, true);
+                        tex_patch = R_CacheTextureCompositePatchNum(toptexture);
+                        dc_source = R_GetTextureColumn(tex_patch, texturecolumn);
                         dc_texheight = toptexheight;
 
                         // [BH] apply brightmap
@@ -473,6 +495,9 @@ void R_RenderSegLoop(void)
                             fbwallcolfunc();
                         else
                             wallcolfunc();
+
+                        R_UnlockTextureCompositePatchNum(toptexture);
+                        tex_patch = NULL;
                     }
                     ceilingclip[rw_x] = mid;
                 }
@@ -514,7 +539,8 @@ void R_RenderSegLoop(void)
                             && rw_distance < (512 << FRACBITS));
 
                         dc_texturemid = rw_bottomtexturemid;
-                        dc_source = R_GetColumn(bottomtexture, texturecolumn, true);
+                        tex_patch = R_CacheTextureCompositePatchNum(bottomtexture);
+                        dc_source = R_GetTextureColumn(tex_patch, texturecolumn);
                         dc_texheight = bottomtexheight;
 
                         // [BH] apply brightmap
@@ -524,6 +550,9 @@ void R_RenderSegLoop(void)
                             fbwallcolfunc();
                         else
                             wallcolfunc();
+
+                        R_UnlockTextureCompositePatchNum(bottomtexture);
+                        tex_patch = NULL;
                     }
                     floorclip[rw_x] = mid;
                 }
@@ -598,12 +627,12 @@ void R_StoreWallRange(int start, int stop)
 
     // [Linguica] Fix long wall error
     // shift right to avoid possibility of int64 overflow in rw_distance calculation
-    dx = (curline->v2->x - curline->v1->x) >> 1;
-    dy = (curline->v2->y - curline->v1->y) >> 1;
-    dx1 = (viewx - curline->v1->x) >> 1;
-    dy1 = (viewy - curline->v1->y) >> 1;
+    dx = ((int64_t)curline->v2->x - curline->v1->x) >> 1;
+    dy = ((int64_t)curline->v2->y - curline->v1->y) >> 1;
+    dx1 = ((int64_t)viewx - curline->v1->x) >> 1;
+    dy1 = ((int64_t)viewy - curline->v1->y) >> 1;
     len = curline->length >> 1;
-    rw_distance = (fixed_t)(((dy * dx1 - dx * dy1) / len) << 1);
+    rw_distance = (fixed_t)((dy * dx1 - dx * dy1) / len) << 1;
 
     ds_p->x1 = rw_x = start;
     ds_p->x2 = stop;

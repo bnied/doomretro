@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -116,7 +116,7 @@ dboolean                s_randompitch = s_randompitch_default;
 // in snd_sfxdevice.
 static void InitSfxModule(void)
 {
-    if (I_SDL_InitSound())
+    if (I_InitSound())
     {
         C_Output("SFX playing at a sample rate of %.1fkHz on %i channels.",
             snd_samplerate / 1000.0f, numChannels);
@@ -129,7 +129,7 @@ static void InitSfxModule(void)
 // Initialize music according to snd_musicdevice.
 static void InitMusicModule(void)
 {
-    if (I_SDL_InitMusic())
+    if (I_InitMusic())
     {
         C_Output("Using General MIDI for music.");
 
@@ -140,7 +140,6 @@ static void InitMusicModule(void)
     C_Warning("The initialization of music failed.");
 }
 
-dboolean nosound = false;
 dboolean nosfx = false;
 dboolean nomusic = false;
 
@@ -153,63 +152,61 @@ void S_Init(int sfxvol, int musicvol)
 {
     if (M_CheckParm("-nosound") > 0)
     {
-        C_Output("Found -NOSOUND parameter on command-line. Music and SFX have been disabled.");
-        nosound = true;
+        C_Output("\"-NOSOUND\" was found on the command-line. Both sound effects and music have "
+            "been disabled.");
         nomusic = true;
         nosfx = true;
     }
+
     if (M_CheckParm("-nomusic") > 0)
     {
-        C_Output("Found -NOMUSIC parameter on command-line. Music has been disabled.");
+        C_Output("\"-NOMUSIC\" was found on the command-line. Music has been disabled.");
         nomusic = true;
     }
+
     if (M_CheckParm("-nosfx") > 0)
     {
-        C_Output("Found -NOSFX parameter on command-line. SFX have been disabled.");
+        C_Output("\"-NOSFX\" was found on the command-line. Sound effects have been disabled.");
         nosfx = true;
     }
 
-    // Initialize the sound and music subsystems.
-    if (!nosound)
+    // This is kind of a hack. If native MIDI is enabled, set up
+    // the TIMIDITY_CFG environment variable here before SDL_mixer
+    // is opened.
+    if (!nomusic)
+        I_InitTimidityConfig();
+
+    if (!nosfx)
     {
-        // This is kind of a hack. If native MIDI is enabled, set up
-        // the TIMIDITY_CFG environment variable here before SDL_mixer
-        // is opened.
-        if (!nomusic)
-            I_InitTimidityConfig();
+        int i;
 
-        if (!nosfx)
-        {
-            int i;
+        InitSfxModule();
+        S_SetSfxVolume(sfxvol);
 
-            InitSfxModule();
-            S_SetSfxVolume(sfxvol);
+        // Allocating the internal channels for mixing
+        // (the maximum number of sounds rendered
+        // simultaneously) within zone memory.
+        channels = (channel_t *)calloc(numChannels, sizeof(channel_t));
 
-            // Allocating the internal channels for mixing
-            // (the maximum number of sounds rendered
-            // simultaneously) within zone memory.
-            channels = (channel_t *)calloc(numChannels, sizeof(channel_t));
+        // Note that sounds have not been cached (yet).
+        for (i = 1; i < NUMSFX; i++)
+            S_sfx[i].lumpnum = -1;
+    }
 
-            // Note that sounds have not been cached (yet).
-            for (i = 1; i < NUMSFX; i++)
-                S_sfx[i].lumpnum = -1;
-        }
+    if (!nomusic)
+    {
+        InitMusicModule();
+        S_SetMusicVolume(musicvol);
 
-        if (!nomusic)
-        {
-            InitMusicModule();
-            S_SetMusicVolume(musicvol);
-
-            // no sounds are playing, and they are not mus_paused
-            mus_paused = false;
-        }
+        // no sounds are playing, and they are not mus_paused
+        mus_paused = false;
     }
 }
 
 void S_Shutdown(void)
 {
-    I_SDL_ShutdownSound();
-    I_SDL_ShutdownMusic();
+    I_ShutdownSound();
+    I_ShutdownMusic();
 }
 
 static void S_StopChannel(int cnum)
@@ -221,8 +218,8 @@ static void S_StopChannel(int cnum)
         int     i;
 
         // stop the sound playing
-        if (I_SDL_SoundIsPlaying(c->handle))
-            I_SDL_StopSound(c->handle);
+        if (I_SoundIsPlaying(c->handle))
+            I_StopSound(c->handle);
 
         // check to see if other channels are playing the sound
         for (i = 0; i < numChannels; ++i)
@@ -459,13 +456,13 @@ void S_StartSoundAtVolume(mobj_t *origin, int sfx_id, int pitch, int volume)
 
     // Get lumpnum if necessary
     // killough 2/28/98: make missing sounds non-fatal
-    if (sfx->lumpnum < 0 && (sfx->lumpnum = I_SDL_GetSfxLumpNum(sfx)) < 0)
+    if (sfx->lumpnum < 0 && (sfx->lumpnum = I_GetSfxLumpNum(sfx)) < 0)
         return;
 
     // Assigns the handle to one of the channels in the
     //  mix/output buffer.
     // e6y: [Fix] Crash with zero-length sounds.
-    if ((handle = I_SDL_StartSound(sfx, cnum, volume, sep, pitch)) != -1)
+    if ((handle = I_StartSound(sfx, cnum, volume, sep, pitch)) != -1)
     {
         channels[cnum].handle = handle;
         channels[cnum].pitch = pitch;
@@ -489,7 +486,7 @@ void S_PauseSound(void)
 {
     if (mus_playing && !mus_paused)
     {
-        I_SDL_PauseSong();
+        I_PauseSong();
         mus_paused = true;
     }
 }
@@ -498,7 +495,7 @@ void S_ResumeSound(void)
 {
     if (mus_playing && mus_paused)
     {
-        I_SDL_ResumeSong();
+        I_ResumeSong();
         mus_paused = false;
     }
 }
@@ -513,7 +510,7 @@ void S_UpdateSounds(mobj_t *listener)
     if (nosfx)
         return;
 
-    I_SDL_UpdateSound();
+    I_UpdateSound();
 
     for (cnum = 0; cnum < numChannels; ++cnum)
     {
@@ -522,7 +519,7 @@ void S_UpdateSounds(mobj_t *listener)
 
         if (sfx)
         {
-            if (I_SDL_SoundIsPlaying(c->handle))
+            if (I_SoundIsPlaying(c->handle))
             {
                 // initialize parameters
                 int     volume = snd_SfxVolume;
@@ -547,7 +544,7 @@ void S_UpdateSounds(mobj_t *listener)
                     if (!S_AdjustSoundParams(listener, c->origin, &volume, &sep))
                         S_StopChannel(cnum);
                     else
-                        I_SDL_UpdateSoundParams(c->handle, volume, sep);
+                        I_UpdateSoundParams(c->handle, volume, sep);
                 }
             }
             else
@@ -556,13 +553,13 @@ void S_UpdateSounds(mobj_t *listener)
         }
     }
 
-    if (!nomusic && s_randommusic && !I_SDL_MusicIsPlaying())
+    if (!nomusic && s_randommusic && !I_MusicIsPlaying())
         S_ChangeMusic(S_GetMusicNum(), false, false, false);
 }
 
 void S_SetMusicVolume(int volume)
 {
-    I_SDL_SetMusicVolume(volume);
+    I_SetMusicVolume(volume);
 }
 
 void S_SetSfxVolume(int volume)
@@ -578,7 +575,7 @@ void S_StartMusic(int music_id)
 void S_ChangeMusic(int music_id, dboolean looping, dboolean cheating, dboolean mapstart)
 {
     musicinfo_t *music = &S_music[music_id];
-    void        *handle;
+    void        *handle = NULL;
     int         mapinfomusic;
 
     if (nomusic || (mus_playing == music && !cheating))
@@ -588,7 +585,7 @@ void S_ChangeMusic(int music_id, dboolean looping, dboolean cheating, dboolean m
     S_StopMusic();
 
     // get lumpnum if necessary
-    if (mapstart && (mapinfomusic = P_GetMapMusic((gameepisode - 1) * 10 + gamemap)))
+    if (mapstart && (mapinfomusic = P_GetMapMusic((gameepisode - 1) * 10 + gamemap)) > 0)
         music->lumpnum = mapinfomusic;
     else if (!music->lumpnum)
     {
@@ -598,9 +595,12 @@ void S_ChangeMusic(int music_id, dboolean looping, dboolean cheating, dboolean m
         music->lumpnum = W_GetNumForName(namebuf);
     }
 
-    // Load & register it
-    music->data = W_CacheLumpNum(music->lumpnum, PU_STATIC);
-    handle = I_SDL_RegisterSong(music->data, W_LumpLength(music->lumpnum));
+    if (music->lumpnum != -1)
+    {
+        // Load & register it
+        music->data = W_CacheLumpNum(music->lumpnum, PU_STATIC);
+        handle = I_RegisterSong(music->data, W_LumpLength(music->lumpnum));
+    }
 
     if (!handle)
     {
@@ -611,7 +611,7 @@ void S_ChangeMusic(int music_id, dboolean looping, dboolean cheating, dboolean m
     music->handle = handle;
 
     // Play it
-    I_SDL_PlaySong(handle, looping);
+    I_PlaySong(handle, looping);
 
     mus_playing = music;
 }
@@ -621,10 +621,10 @@ void S_StopMusic(void)
     if (mus_playing)
     {
         if (mus_paused)
-            I_SDL_ResumeSong();
+            I_ResumeSong();
 
-        I_SDL_StopSong();
-        I_SDL_UnRegisterSong(mus_playing->handle);
+        I_StopSong();
+        I_UnRegisterSong(mus_playing->handle);
         W_ReleaseLumpNum(mus_playing->lumpnum);
         mus_playing->data = NULL;
         mus_playing = NULL;

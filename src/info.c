@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,6 +36,7 @@
 ========================================================================
 */
 
+#include "d_player.h"
 #include "info.h"
 #include "p_mobj.h"
 #include "p_pspr.h"
@@ -44,6 +45,7 @@
 
 char *sprnames[] =
 {
+    // Sprites 0 to 137
     "TROO", "SHTG", "PUNG", "PISG", "PISF", "SHTF", "SHT2", "CHGG", "CHGF", "MISG",
     "MISF", "SAWG", "PLSG", "PLSF", "BFGG", "BFGF", "BLUD", "PUFF", "BAL1", "BAL2",
     "PLSS", "PLSE", "MISL", "BFS1", "BFE1", "BFE2", "TFOG", "IFOG", "PLAY", "POSS",
@@ -59,6 +61,7 @@ char *sprnames[] =
     "COL5", "TBLU", "TGRN", "TRED", "SMBT", "SMGT", "SMRT", "HDB1", "HDB2", "HDB3",
     "HDB4", "HDB5", "HDB6", "POB1", "POB2", "BRS1", "TLMP", "TLP2",
 
+    // Sprites 138 to 143
     "TNT1",     // invisible sprite     phares 3/9/98
     "DOGS",     // killough 7/19/98: Marine's best friend :)
     "PLS1",     // killough 7/19/98: first of two plasma fireballs in the beta
@@ -66,91 +69,104 @@ char *sprnames[] =
     "BON3",     // killough 7/11/98: evil sceptre in the beta version
     "BON4",     // killough 7/11/98: unholy bible in the beta version
 
+    // Sprite 144
     "BLD2",     // [BH] blood splats
+
+    // [BH] Sprites 145 to 244 (100 extra sprite names to use in DeHackEd patches)
+    "SP00", "SP01", "SP02", "SP03", "SP04", "SP05", "SP06", "SP07", "SP08", "SP09",
+    "SP10", "SP11", "SP12", "SP13", "SP14", "SP15", "SP16", "SP17", "SP18", "SP19",
+    "SP20", "SP21", "SP22", "SP23", "SP24", "SP25", "SP26", "SP27", "SP28", "SP29",
+    "SP30", "SP31", "SP32", "SP33", "SP34", "SP35", "SP36", "SP37", "SP38", "SP39",
+    "SP40", "SP41", "SP42", "SP43", "SP44", "SP45", "SP46", "SP47", "SP48", "SP49",
+    "SP50", "SP51", "SP52", "SP53", "SP54", "SP55", "SP56", "SP57", "SP58", "SP59",
+    "SP60", "SP61", "SP62", "SP63", "SP64", "SP65", "SP66", "SP67", "SP68", "SP69",
+    "SP70", "SP71", "SP72", "SP73", "SP74", "SP75", "SP76", "SP77", "SP78", "SP79",
+    "SP80", "SP81", "SP82", "SP83", "SP84", "SP85", "SP86", "SP87", "SP88", "SP89",
+    "SP90", "SP91", "SP92", "SP93", "SP94", "SP95", "SP96", "SP97", "SP98", "SP99",
 
     NULL
 };
 
-void A_Light0();
-void A_WeaponReady();
-void A_Lower();
-void A_Raise();
-void A_Punch();
-void A_ReFire();
-void A_FirePistol();
-void A_Light1();
-void A_FireShotgun();
-void A_Light2();
-void A_FireShotgun2();
-void A_CheckReload();
-void A_OpenShotgun2();
-void A_LoadShotgun2();
-void A_CloseShotgun2();
-void A_FireCGun();
-void A_GunFlash();
-void A_FireMissile();
-void A_Saw();
-void A_FirePlasma();
-void A_BFGsound();
-void A_FireBFG();
-void A_FireOldBFG();
-void A_BFGSpray();
-void A_Explode();
-void A_Pain();
-void A_PlayerScream();
-void A_Fall();
-void A_XScream();
-void A_Look();
-void A_Chase();
-void A_FaceTarget();
-void A_PosAttack();
-void A_Scream();
-void A_SPosAttack();
-void A_VileChase();
-void A_VileStart();
-void A_VileTarget();
-void A_VileAttack();
-void A_StartFire();
-void A_Fire();
-void A_FireCrackle();
-void A_Tracer();
-void A_SkelWhoosh();
-void A_SkelFist();
-void A_SkelMissile();
-void A_FatRaise();
-void A_FatAttack1();
-void A_FatAttack2();
-void A_FatAttack3();
-void A_BossDeath();
-void A_CPosAttack();
-void A_CPosRefire();
-void A_TroopAttack();
-void A_SargAttack();
-void A_HeadAttack();
-void A_BruisAttack();
-void A_BetaSkullAttack();
-void A_Stop();
-void A_SkullAttack();
-void A_Metal();
-void A_SpidRefire();
-void A_BabyMetal();
-void A_BspiAttack();
-void A_Hoof();
-void A_CyberAttack();
-void A_PainAttack();
-void A_PainDie();
-void A_KeenDie();
-void A_BrainPain();
-void A_BrainScream();
-void A_BrainDie();
-void A_BrainAwake();
-void A_BrainSpit();
-void A_SpawnSound();
-void A_SpawnFly();
-void A_BrainExplode();
-void A_Die();
-void A_Detonate();
-void A_Mushroom();
+void A_Light0(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_WeaponReady(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Lower(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Raise(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Punch(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_ReFire(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FirePistol(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Light1(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireShotgun(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Light2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireShotgun2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_CheckReload(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_OpenShotgun2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_LoadShotgun2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_CloseShotgun2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireCGun(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_GunFlash(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireMissile(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Saw(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FirePlasma(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BFGsound(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireBFG(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireOldBFG(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BFGSpray(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Explode(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Pain(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_PlayerScream(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Fall(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_XScream(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Look(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Chase(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FaceTarget(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_PosAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Scream(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SPosAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_VileChase(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_VileStart(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_VileTarget(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_VileAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_StartFire(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Fire(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FireCrackle(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Tracer(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SkelWhoosh(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SkelFist(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SkelMissile(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FatRaise(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FatAttack1(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FatAttack2(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_FatAttack3(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BossDeath(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_CPosAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_CPosRefire(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_TroopAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SargAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_HeadAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BruisAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BetaSkullAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Stop(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SkullAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Metal(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SpidRefire(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BabyMetal(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BspiAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Hoof(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_CyberAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_PainAttack(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_PainDie(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_KeenDie(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainPain(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainScream(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainDie(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainAwake(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainSpit(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SpawnSound(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_SpawnFly(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_BrainExplode(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Die(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Detonate(mobj_t *actor, player_t *player, pspdef_t *psp);
+void A_Mushroom(mobj_t *actor, player_t *player, pspdef_t *psp);
 
 state_t states[NUMSTATES] =
 {
@@ -1556,6 +1572,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_PLAY,
         /* spawnhealth          */ 100,
+        /* gibhealth            */ -100,
         /* seestate             */ S_PLAY_RUN1,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 0,
@@ -1592,6 +1609,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Zombieman,
         /* spawnstate           */ S_POSS_STND,
         /* spawnhealth          */ 20,
+        /* gibhealth            */ -20,
         /* seestate             */ S_POSS_RUN1,
         /* seesound             */ sfx_posit1,
         /* reactiontime         */ 8,
@@ -1628,6 +1646,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ShotgunGuy,
         /* spawnstate           */ S_SPOS_STND,
         /* spawnhealth          */ 30,
+        /* gibhealth            */ -30,
         /* seestate             */ S_SPOS_RUN1,
         /* seesound             */ sfx_posit2,
         /* reactiontime         */ 8,
@@ -1664,6 +1683,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ArchVile,
         /* spawnstate           */ S_VILE_STND,
         /* spawnhealth          */ 700,
+        /* gibhealth            */ -700,
         /* seestate             */ S_VILE_RUN1,
         /* seesound             */ sfx_vilsit,
         /* reactiontime         */ 8,
@@ -1700,6 +1720,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_FIRE1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -1736,6 +1757,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Revenant,
         /* spawnstate           */ S_SKEL_STND,
         /* spawnhealth          */ 300,
+        /* gibhealth            */ -300,
         /* seestate             */ S_SKEL_RUN1,
         /* seesound             */ sfx_skesit,
         /* reactiontime         */ 8,
@@ -1772,6 +1794,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_TRACER,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_skeatk,
         /* reactiontime         */ 8,
@@ -1808,6 +1831,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_SMOKE1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -1844,6 +1868,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Mancubus,
         /* spawnstate           */ S_FATT_STND,
         /* spawnhealth          */ 600,
+        /* gibhealth            */ -600,
         /* seestate             */ S_FATT_RUN1,
         /* seesound             */ sfx_mansit,
         /* reactiontime         */ 8,
@@ -1880,6 +1905,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_FATSHOT1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_firsht,
         /* reactiontime         */ 8,
@@ -1916,6 +1942,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HeavyWeaponDude,
         /* spawnstate           */ S_CPOS_STND,
         /* spawnhealth          */ 70,
+        /* gibhealth            */ -70,
         /* seestate             */ S_CPOS_RUN1,
         /* seesound             */ sfx_posit2,
         /* reactiontime         */ 8,
@@ -1952,6 +1979,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Imp,
         /* spawnstate           */ S_TROO_STND,
         /* spawnhealth          */ 60,
+        /* gibhealth            */ -60,
         /* seestate             */ S_TROO_RUN1,
         /* seesound             */ sfx_bgsit1,
         /* reactiontime         */ 8,
@@ -1988,6 +2016,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Demon,
         /* spawnstate           */ S_SARG_STND,
         /* spawnhealth          */ 150,
+        /* gibhealth            */ -150,
         /* seestate             */ S_SARG_RUN1,
         /* seesound             */ sfx_sgtsit,
         /* reactiontime         */ 8,
@@ -2024,6 +2053,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Spectre,
         /* spawnstate           */ S_SARG_STND,
         /* spawnhealth          */ 150,
+        /* gibhealth            */ -150,
         /* seestate             */ S_SARG_RUN1,
         /* seesound             */ sfx_sgtsit,
         /* reactiontime         */ 8,
@@ -2060,6 +2090,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Cacodemon,
         /* spawnstate           */ S_HEAD_STND,
         /* spawnhealth          */ 400,
+        /* gibhealth            */ -400,
         /* seestate             */ S_HEAD_RUN1,
         /* seesound             */ sfx_cacsit,
         /* reactiontime         */ 8,
@@ -2096,6 +2127,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BaronOfHell,
         /* spawnstate           */ S_BOSS_STND,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ -1000,
         /* seestate             */ S_BOSS_RUN1,
         /* seesound             */ sfx_brssit,
         /* reactiontime         */ 8,
@@ -2132,6 +2164,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_BRBALL1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_firsht,
         /* reactiontime         */ 8,
@@ -2168,6 +2201,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HellKnight,
         /* spawnstate           */ S_BOS2_STND,
         /* spawnhealth          */ 500,
+        /* gibhealth            */ -500,
         /* seestate             */ S_BOS2_RUN1,
         /* seesound             */ sfx_kntsit,
         /* reactiontime         */ 8,
@@ -2204,6 +2238,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ LostSoul,
         /* spawnstate           */ S_SKULL_STND,
         /* spawnhealth          */ 100,
+        /* gibhealth            */ -100,
         /* seestate             */ S_SKULL_RUN1,
         /* seesound             */ 0,
         /* reactiontime         */ 8,
@@ -2240,6 +2275,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ SpiderMastermind,
         /* spawnstate           */ S_SPID_STND,
         /* spawnhealth          */ 3000,
+        /* gibhealth            */ -3000,
         /* seestate             */ S_SPID_RUN1,
         /* seesound             */ sfx_spisit,
         /* reactiontime         */ 8,
@@ -2276,6 +2312,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Arachnotron,
         /* spawnstate           */ S_BSPI_STND,
         /* spawnhealth          */ 500,
+        /* gibhealth            */ -500,
         /* seestate             */ S_BSPI_SIGHT,
         /* seesound             */ sfx_bspsit,
         /* reactiontime         */ 8,
@@ -2312,6 +2349,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Cyberdemon,
         /* spawnstate           */ S_CYBER_STND,
         /* spawnhealth          */ 4000,
+        /* gibhealth            */ -4000,
         /* seestate             */ S_CYBER_RUN1,
         /* seesound             */ sfx_cybsit,
         /* reactiontime         */ 8,
@@ -2348,6 +2386,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ PainElemental,
         /* spawnstate           */ S_PAIN_STND,
         /* spawnhealth          */ 400,
+        /* gibhealth            */ -400,
         /* seestate             */ S_PAIN_RUN1,
         /* seesound             */ sfx_pesit,
         /* reactiontime         */ 8,
@@ -2384,6 +2423,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ WolfensteinSS,
         /* spawnstate           */ S_SSWV_STND,
         /* spawnhealth          */ 50,
+        /* gibhealth            */ -50,
         /* seestate             */ S_SSWV_RUN1,
         /* seesound             */ sfx_sssit,
         /* reactiontime         */ 8,
@@ -2420,6 +2460,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ CommanderKeen,
         /* spawnstate           */ S_KEENSTND,
         /* spawnhealth          */ 100,
+        /* gibhealth            */ -100,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -2456,6 +2497,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BossBrain,
         /* spawnstate           */ S_BRAIN,
         /* spawnhealth          */ 250,
+        /* gibhealth            */ -250,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -2492,6 +2534,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ MonstersSpawner,
         /* spawnstate           */ S_BRAINEYE,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_BRAINEYESEE,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -2528,6 +2571,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ MonstersTarget,
         /* spawnstate           */ S_NULL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -2564,6 +2608,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_SPAWN1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_bospit,
         /* reactiontime         */ 8,
@@ -2600,6 +2645,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_SPAWNFIRE1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -2636,6 +2682,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Barrel,
         /* spawnstate           */ S_BAR1,
         /* spawnhealth          */ 20,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -2672,6 +2719,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_TBALL1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_firsht,
         /* reactiontime         */ 8,
@@ -2708,6 +2756,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_RBALL1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_firsht,
         /* reactiontime         */ 8,
@@ -2744,6 +2793,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_ROCKET,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_rlaunc,
         /* reactiontime         */ 8,
@@ -2780,6 +2830,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_PLASBALL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_plasma,
         /* reactiontime         */ 8,
@@ -2816,6 +2867,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_BFGSHOT,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ 0,
         /* reactiontime         */ 8,
@@ -2852,6 +2904,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_ARACH_PLAZ,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_plasma,
         /* reactiontime         */ 8,
@@ -2888,6 +2941,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_PUFF1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -2924,6 +2978,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_BLOOD1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -2960,6 +3015,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_TFOG,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -2996,6 +3052,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_IFOG,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3032,6 +3089,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ TeleportDestination,
         /* spawnstate           */ S_NULL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3068,6 +3126,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_BFGEXP,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3104,6 +3163,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ GreenArmor,
         /* spawnstate           */ S_ARM1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3140,6 +3200,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BlueArmor,
         /* spawnstate           */ S_ARM2,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3176,6 +3237,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HealthBonus,
         /* spawnstate           */ S_BON1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3212,6 +3274,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ArmorBonus,
         /* spawnstate           */ S_BON2,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3248,6 +3311,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BlueKeycard,
         /* spawnstate           */ S_BKEY,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3284,6 +3348,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ RedKeycard,
         /* spawnstate           */ S_RKEY,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3320,6 +3385,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ YellowKeycard,
         /* spawnstate           */ S_YKEY,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3356,6 +3422,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ YellowSkullKey,
         /* spawnstate           */ S_YSKULL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3392,6 +3459,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ RedSkullKey,
         /* spawnstate           */ S_RSKULL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3428,6 +3496,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BlueSkullKey,
         /* spawnstate           */ S_BSKULL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3464,6 +3533,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Stimpack,
         /* spawnstate           */ S_STIM,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3500,6 +3570,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Medikit,
         /* spawnstate           */ S_MEDI,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3536,6 +3607,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ SoulSphere,
         /* spawnstate           */ S_SOUL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3572,6 +3644,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Invulnerability,
         /* spawnstate           */ S_PINV,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3608,6 +3681,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Berserk,
         /* spawnstate           */ S_PSTR,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3644,6 +3718,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ PartialInvisibility,
         /* spawnstate           */ S_PINS,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3680,6 +3755,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ RadiationShieldingSuit,
         /* spawnstate           */ S_SUIT,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3716,6 +3792,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ComputerAreaMap,
         /* spawnstate           */ S_PMAP,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3752,6 +3829,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ LightAmplificationVisor,
         /* spawnstate           */ S_PVIS,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3788,6 +3866,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ MegaSphere,
         /* spawnstate           */ S_MEGA,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3824,6 +3903,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Clip,
         /* spawnstate           */ S_CLIP,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3860,6 +3940,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BoxOfBullets,
         /* spawnstate           */ S_AMMO,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3896,6 +3977,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Rocket,
         /* spawnstate           */ S_ROCK,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3932,6 +4014,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BoxOfRockets,
         /* spawnstate           */ S_BROK,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -3968,6 +4051,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Cell,
         /* spawnstate           */ S_CELL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4004,6 +4088,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ CellPack,
         /* spawnstate           */ S_CELP,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4040,6 +4125,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ShotgunShells,
         /* spawnstate           */ S_SHEL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4076,6 +4162,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BoxOfShells,
         /* spawnstate           */ S_SBOX,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4112,6 +4199,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Backpack,
         /* spawnstate           */ S_BPAK,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4148,6 +4236,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BFG9000,
         /* spawnstate           */ S_BFUG,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4175,7 +4264,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* shadowoffset         */ 0,
         /* name1                */ "BFG-9000",
         /* plural1              */ "",
-        /* name2                */ "",
+        /* name2                */ "BFG",
         /* plural2              */ ""
     },
 
@@ -4184,6 +4273,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Chaingun,
         /* spawnstate           */ S_MGUN,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4220,6 +4310,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Chainsaw,
         /* spawnstate           */ S_CSAW,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4256,6 +4347,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ RocketLauncher,
         /* spawnstate           */ S_LAUN,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4292,6 +4384,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ PlasmaRifle,
         /* spawnstate           */ S_PLAS,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4328,6 +4421,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Shotgun,
         /* spawnstate           */ S_SHOT,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4364,6 +4458,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ SuperShotgun,
         /* spawnstate           */ S_SHOT2,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4400,6 +4495,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ TallTechnoFloorLamp,
         /* spawnstate           */ S_TECHLAMP,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4436,6 +4532,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ShortTechnoFloorLamp,
         /* spawnstate           */ S_TECH2LAMP,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4472,6 +4569,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ FloorLamp,
         /* spawnstate           */ S_COLU,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4508,6 +4606,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ TallGreenColumn,
         /* spawnstate           */ S_TALLGRNCOL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4544,6 +4643,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ShortGreenColumn,
         /* spawnstate           */ S_SHRTGRNCOL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4580,6 +4680,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ TallRedColumn,
         /* spawnstate           */ S_TALLREDCOL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4616,6 +4717,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ShortRedColumn,
         /* spawnstate           */ S_SHRTREDCOL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4652,6 +4754,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ShortRedColumnWithSkull,
         /* spawnstate           */ S_SKULLCOL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4688,6 +4791,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ShortGreenColumnWithBeatingHeart,
         /* spawnstate           */ S_HEARTCOL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4724,6 +4828,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ EvilEye,
         /* spawnstate           */ S_EVILEYE,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4760,6 +4865,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ FloatingSkullRock,
         /* spawnstate           */ S_FLOATSKULL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4796,6 +4902,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ TorchedTree,
         /* spawnstate           */ S_TORCHTREE,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4832,6 +4939,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ TallBlueFirestick,
         /* spawnstate           */ S_BLUETORCH,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4868,6 +4976,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ TallGreenFirestick,
         /* spawnstate           */ S_GREENTORCH,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4904,6 +5013,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ TallRedFirestick,
         /* spawnstate           */ S_REDTORCH,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4940,6 +5050,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ShortBlueFirestick,
         /* spawnstate           */ S_BTORCHSHRT,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -4976,6 +5087,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ShortGreenFirestick,
         /* spawnstate           */ S_GTORCHSHRT,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5012,6 +5124,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ShortRedFirestick,
         /* spawnstate           */ S_RTORCHSHRT,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5048,6 +5161,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Stalagmite,
         /* spawnstate           */ S_STALAGTITE,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5084,6 +5198,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ TallTechnoPillar,
         /* spawnstate           */ S_TECHPILLAR,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5120,6 +5235,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Candlestick,
         /* spawnstate           */ S_CANDLESTIK,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5156,6 +5272,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ Candelabra,
         /* spawnstate           */ S_CANDELABRA,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5192,6 +5309,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingVictimTwitchingBlocking,
         /* spawnstate           */ S_BLOODYTWITCH,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5228,6 +5346,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingVictimArmsOutBlocking,
         /* spawnstate           */ S_MEAT2,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5264,6 +5383,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingVictimOneLeggedBlocking,
         /* spawnstate           */ S_MEAT3,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5300,6 +5420,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingPairOfLegsBlocking,
         /* spawnstate           */ S_MEAT4,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5336,6 +5457,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingLegBlocking,
         /* spawnstate           */ S_MEAT5,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5372,6 +5494,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingVictimArmsOut,
         /* spawnstate           */ S_MEAT2,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5408,6 +5531,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingPairOfLegs,
         /* spawnstate           */ S_MEAT4,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5444,6 +5568,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingVictimOneLegged,
         /* spawnstate           */ S_MEAT3,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5480,6 +5605,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingLeg,
         /* spawnstate           */ S_MEAT5,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5516,6 +5642,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingVictimTwitching,
         /* spawnstate           */ S_BLOODYTWITCH,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5552,6 +5679,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ DeadCacodemon,
         /* spawnstate           */ S_HEAD_DIE6,
         /* spawnhealth          */ 0,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5588,6 +5716,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ DeadPlayer,
         /* spawnstate           */ S_PLAY_DIE7,
         /* spawnhealth          */ 0,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5624,6 +5753,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ DeadZombieman,
         /* spawnstate           */ S_POSS_DIE5,
         /* spawnhealth          */ 0,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5660,6 +5790,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ DeadDemon,
         /* spawnstate           */ S_SARG_DIE6,
         /* spawnhealth          */ 0,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5696,6 +5827,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ DeadLostSoulInvisible,
         /* spawnstate           */ S_SKULL_DIE6,
         /* spawnhealth          */ 0,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5732,6 +5864,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ DeadImp,
         /* spawnstate           */ S_TROO_DIE5,
         /* spawnhealth          */ 0,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5768,6 +5901,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ DeadShotgunGuy,
         /* spawnstate           */ S_SPOS_DIE5,
         /* spawnhealth          */ 0,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5804,6 +5938,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BloodyMess1,
         /* spawnstate           */ S_PLAY_XDIE9,
         /* spawnhealth          */ 0,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5840,6 +5975,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BloodyMess2,
         /* spawnstate           */ S_PLAY_XDIE9,
         /* spawnhealth          */ 0,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5876,6 +6012,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ FiveSkullsShishKebab,
         /* spawnstate           */ S_HEADSONSTICK,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5912,6 +6049,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ PoolOfBloodAndBones,
         /* spawnstate           */ S_GIBS,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5948,6 +6086,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ SkullOnAPole,
         /* spawnstate           */ S_HEADONASTICK,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -5984,6 +6123,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ PileOfSkullsAndCandles,
         /* spawnstate           */ S_HEADCANDLES,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6020,6 +6160,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ ImpaledHuman,
         /* spawnstate           */ S_DEADSTICK,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6056,6 +6197,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ TwitchingImpaledHuman,
         /* spawnstate           */ S_LIVESTICK,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6092,6 +6234,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ LargeBrownTree,
         /* spawnstate           */ S_BIGTREE,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6128,6 +6271,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ BurningBarrel,
         /* spawnstate           */ S_BBAR1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6164,6 +6308,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingVictimGutsRemoved,
         /* spawnstate           */ S_HANGNOGUTS,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6200,6 +6345,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingVictimGutsAndBrainRemoved,
         /* spawnstate           */ S_HANGBNOBRAIN,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6236,6 +6382,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingTorsoLookingDown,
         /* spawnstate           */ S_HANGTLOOKDN,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6272,6 +6419,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingTorsoOpenSkull,
         /* spawnstate           */ S_HANGTSKULL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6308,6 +6456,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingTorsoLookingUp,
         /* spawnstate           */ S_HANGTLOOKUP,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6344,6 +6493,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ HangingTorsoBrainRemoved,
         /* spawnstate           */ S_HANGTNOBRAIN,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6380,6 +6530,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ PoolOfBloodAndGuts,
         /* spawnstate           */ S_COLONGIBS,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6416,6 +6567,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ PoolOfBlood,
         /* spawnstate           */ S_SMALLPOOL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6452,6 +6604,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ PoolOfBrains,
         /* spawnstate           */ S_BRAINSTEM,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6488,6 +6641,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ 5001,
         /* spawnstate           */ S_TNT1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6524,6 +6678,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ 5002,
         /* spawnstate           */ S_TNT1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6560,6 +6715,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ 888,
         /* spawnstate           */ S_DOGS_STND,
         /* spawnhealth          */ 500,
+        /* gibhealth            */ -500,
         /* seestate             */ S_DOGS_RUN1,
         /* seesound             */ sfx_dgsit,
         /* reactiontime         */ 8,
@@ -6596,6 +6752,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_PLS1BALL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_plasma,
         /* reactiontime         */ 8,
@@ -6632,6 +6789,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_PLS2BALL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_plasma,
         /* reactiontime         */ 8,
@@ -6668,6 +6826,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ 2016,
         /* spawnstate           */ S_BON3,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6704,6 +6863,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ 2017,
         /* spawnstate           */ S_BON4,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6740,6 +6900,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ 14164,
         /* spawnstate           */ S_TNT1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6776,6 +6937,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_TNT1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6812,6 +6974,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_BLOOD1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6848,6 +7011,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_BLOOD1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6884,6 +7048,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_BLOOD1,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6920,6 +7085,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_BLOODSPLAT,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6956,6 +7122,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_TRAIL,
         /* spawnhealth          */ 1000,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 8,
@@ -6992,6 +7159,7 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] =
         /* doomednum            */ -1,
         /* spawnstate           */ S_NULL,
         /* spawnhealth          */ 0,
+        /* gibhealth            */ 0,
         /* seestate             */ S_NULL,
         /* seesound             */ sfx_None,
         /* reactiontime         */ 0,
@@ -7390,7 +7558,7 @@ offset_t sproffsets[] =
     { "MEGAC0",     12,   40,  25,  25, MT_MEGA         }, //   12,   32
     { "MEGAD0",     12,   40,  25,  25, MT_MEGA         }, //   12,   32
     { "MGUNA0",     27,   14,  54,  16, MT_CHAINGUN     }, //   25,   18
-    { "MISFA0",   -134, -105,  53,  31, NOTYPE          }, // -136, -105
+    { "MISFA0",   -134, -106,  53,  31, NOTYPE          }, // -136, -105
     { "MISFB0",   -123, -101,  73,  51, NOTYPE          }, // -126, -101
     { "MISFC0",   -114,  -94,  88,  58, NOTYPE          }, // -117,  -94
     { "MISFD0",   -109,  -81, 105,  79, NOTYPE          }, // -112,  -81

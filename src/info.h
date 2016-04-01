@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,14 +36,15 @@
 ========================================================================
 */
 
-#if !defined(__INFO__)
-#define __INFO__
+#if !defined(__INFO_H__)
+#define __INFO_H__
 
 #include "doomtype.h"
 #include "d_think.h"
 
 typedef enum
 {
+    // Sprites 0 to 137
     SPR_TROO,
     SPR_SHTG,
     SPR_PUNG,
@@ -183,6 +184,7 @@ typedef enum
     SPR_TLMP,
     SPR_TLP2,
 
+    // Sprites 138 to 143
     SPR_TNT1,   // add invisible sprite phares 3/8/98
     SPR_DOGS,   // killough 7/19/98: Marine's best friend :)
     SPR_PLS1,   // killough 7/19/98: first of two plasma fireballs in the beta
@@ -190,7 +192,20 @@ typedef enum
     SPR_BON3,   // killough 7/11/98: evil sceptre in beta version
     SPR_BON4,   // killough 7/11/98: unholy bible in beta version
 
+    // Sprite 144
     SPR_BLD2,   // [BH] blood splats
+
+    // [BH] Sprites 145 to 244 (100 extra sprite names to use in DeHackEd patches)
+    SPR_SP00, SPR_SP01, SPR_SP02, SPR_SP03, SPR_SP04, SPR_SP05, SPR_SP06, SPR_SP07, SPR_SP08, SPR_SP09,
+    SPR_SP10, SPR_SP11, SPR_SP12, SPR_SP13, SPR_SP14, SPR_SP15, SPR_SP16, SPR_SP17, SPR_SP18, SPR_SP19,
+    SPR_SP20, SPR_SP21, SPR_SP22, SPR_SP23, SPR_SP24, SPR_SP25, SPR_SP26, SPR_SP27, SPR_SP28, SPR_SP29,
+    SPR_SP30, SPR_SP31, SPR_SP32, SPR_SP33, SPR_SP34, SPR_SP35, SPR_SP36, SPR_SP37, SPR_SP38, SPR_SP39,
+    SPR_SP40, SPR_SP41, SPR_SP42, SPR_SP43, SPR_SP44, SPR_SP45, SPR_SP46, SPR_SP47, SPR_SP48, SPR_SP49,
+    SPR_SP50, SPR_SP51, SPR_SP52, SPR_SP53, SPR_SP54, SPR_SP55, SPR_SP56, SPR_SP57, SPR_SP58, SPR_SP59,
+    SPR_SP60, SPR_SP61, SPR_SP62, SPR_SP63, SPR_SP64, SPR_SP65, SPR_SP66, SPR_SP67, SPR_SP68, SPR_SP69,
+    SPR_SP70, SPR_SP71, SPR_SP72, SPR_SP73, SPR_SP74, SPR_SP75, SPR_SP76, SPR_SP77, SPR_SP78, SPR_SP79,
+    SPR_SP80, SPR_SP81, SPR_SP82, SPR_SP83, SPR_SP84, SPR_SP85, SPR_SP86, SPR_SP87, SPR_SP88, SPR_SP89,
+    SPR_SP90, SPR_SP91, SPR_SP92, SPR_SP93, SPR_SP94, SPR_SP95, SPR_SP96, SPR_SP97, SPR_SP98, SPR_SP99,
 
     NUMSPRITES
 } spritenum_t;
@@ -1326,7 +1341,9 @@ typedef struct
     statenum_t  nextstate;
     long        misc1;
     long        misc2;
+    dboolean    translucent;
     dboolean    dehacked;
+    int         num;
 } state_t;
 
 extern state_t  states[NUMSTATES];
@@ -1476,7 +1493,7 @@ typedef enum
     MT_PUSH,    // controls push source                     // phares
     MT_PULL,    // controls pull source                     // phares 3/20/98
 
-    MT_DOGS,    /* killough 7/19/98: Marine's best friend */
+    MT_DOGS,    // killough 7/19/98: Marine's best friend
 
     MT_PLASMA1, // killough 7/11/98: first  of alternating beta plasma fireballs
     MT_PLASMA2, // killough 7/11/98: second of alternating beta plasma fireballs
@@ -1492,6 +1509,29 @@ typedef enum
     MT_BLOODSPLAT,
     MT_TRAIL,
     MT_SHADOW,
+
+    // [BH] Mobjs 152 to 251 (100 extra mobjs to use in DeHackEd patches)
+    MT_EXTRA00, MT_EXTRA01, MT_EXTRA02, MT_EXTRA03, MT_EXTRA04,
+    MT_EXTRA05, MT_EXTRA06, MT_EXTRA07, MT_EXTRA08, MT_EXTRA09,
+    MT_EXTRA10, MT_EXTRA11, MT_EXTRA12, MT_EXTRA13, MT_EXTRA14,
+    MT_EXTRA15, MT_EXTRA16, MT_EXTRA17, MT_EXTRA18, MT_EXTRA19,
+    MT_EXTRA20, MT_EXTRA21, MT_EXTRA22, MT_EXTRA23, MT_EXTRA24,
+    MT_EXTRA25, MT_EXTRA26, MT_EXTRA27, MT_EXTRA28, MT_EXTRA29,
+    MT_EXTRA30, MT_EXTRA31, MT_EXTRA32, MT_EXTRA33, MT_EXTRA34,
+    MT_EXTRA35, MT_EXTRA36, MT_EXTRA37, MT_EXTRA38, MT_EXTRA39,
+    MT_EXTRA40, MT_EXTRA41, MT_EXTRA42, MT_EXTRA43, MT_EXTRA44,
+    MT_EXTRA45, MT_EXTRA46, MT_EXTRA47, MT_EXTRA48, MT_EXTRA49,
+    MT_EXTRA50, MT_EXTRA51, MT_EXTRA52, MT_EXTRA53, MT_EXTRA54,
+    MT_EXTRA55, MT_EXTRA56, MT_EXTRA57, MT_EXTRA58, MT_EXTRA59,
+    MT_EXTRA60, MT_EXTRA61, MT_EXTRA62, MT_EXTRA63, MT_EXTRA64,
+    MT_EXTRA65, MT_EXTRA66, MT_EXTRA67, MT_EXTRA68, MT_EXTRA69,
+    MT_EXTRA70, MT_EXTRA71, MT_EXTRA72, MT_EXTRA73, MT_EXTRA74,
+    MT_EXTRA75, MT_EXTRA76, MT_EXTRA77, MT_EXTRA78, MT_EXTRA79,
+    MT_EXTRA80, MT_EXTRA81, MT_EXTRA82, MT_EXTRA83, MT_EXTRA84,
+    MT_EXTRA85, MT_EXTRA86, MT_EXTRA87, MT_EXTRA88, MT_EXTRA89,
+    MT_EXTRA90, MT_EXTRA91, MT_EXTRA92, MT_EXTRA93, MT_EXTRA94,
+    MT_EXTRA95, MT_EXTRA96, MT_EXTRA97, MT_EXTRA98, MT_EXTRA99,
+
     NUMMOBJTYPES
 } mobjtype_t;
 
@@ -1500,6 +1540,7 @@ typedef struct
     int         doomednum;
     int         spawnstate;
     int         spawnhealth;
+    int         gibhealth;
     int         seestate;
     int         seesound;
     int         reactiontime;

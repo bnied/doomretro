@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -110,8 +110,8 @@ void P_CalcHeight(player_t *player)
         // Regular movement bobbing
         // (needs to be calculated for gun swing
         // even if not on ground)
-        player->bob = (bob ? MAX(MIN(bob, MAXBOB) * movebob / 100, MAXBOB * stillbob / 100) :
-            MAXBOB * stillbob / 100);
+        player->bob = (bob ? MAX(MIN(bob, MAXBOB) * movebob / 100, MAXBOB * stillbob / 400) :
+            MAXBOB * stillbob / 400);
 
         bob = FixedMul(player->bob / 2, finesine[angle]);
 
@@ -210,22 +210,17 @@ void P_MovePlayer(player_t *player)
 
 void P_ReduceDamageCount(player_t *player)
 {
+    if (player->damagecount)
+        --player->damagecount;
+
     if (r_shakescreen)
     {
         if (player->damagecount)
-        {
-            player->damagecount--;
-            blitfunc = (vid_showfps ? (nearestlinear ? I_Blit_NearestLinear_ShowFPS_Shake :
-                I_Blit_ShowFPS_Shake) : (nearestlinear ? I_Blit_NearestLinear_Shake :
-                I_Blit_Shake));
-        }
+            blitfunc = (vid_showfps ? (nearestlinear ? I_Blit_NearestLinear_ShowFPS_Shake
+                : I_Blit_ShowFPS_Shake) : (nearestlinear ? I_Blit_NearestLinear_Shake
+                : I_Blit_Shake));
         else
             I_UpdateBlitFunc();
-    }
-    else if (player->damagecount)
-    {
-        player->damagecount--;
-        I_UpdateBlitFunc();
     }
 }
 
@@ -234,7 +229,6 @@ void P_ReduceDamageCount(player_t *player)
 // Fall on your face when dying.
 // Decrease POV height to floor height.
 //
-#define ANG5    (ANG90 / 18)
 
 void P_DeathThink(player_t *player)
 {
@@ -268,7 +262,7 @@ void P_DeathThink(player_t *player)
         angle_t angle = R_PointToAngle2(mo->x, mo->y, attacker->x, attacker->y);
         angle_t delta = angle - mo->angle;
 
-        if (delta < ANG5 || delta >(unsigned int) - ANG5)
+        if (delta < ANG5 || delta > (unsigned int)(-ANG5))
         {
             // Looking at killer, so fade damage flash down.
             mo->angle = angle;
@@ -327,15 +321,17 @@ void P_ResurrectPlayer(player_t *player)
     thing = P_SpawnMobj(x, y, ONFLOORZ, MT_PLAYER);
     thing->angle = player->mo->angle;
     thing->player = player;
-    thing->health = 100;
+    thing->health = initial_health;
     thing->reactiontime = 18;
     player->mo = thing;
     player->playerstate = PST_LIVE;
     player->viewheight = VIEWHEIGHT;
-    player->health = 100;
+    player->health = initial_health;
     infight = false;
     P_SetupPsprites(player);
     P_MapEnd();
+
+    C_HideConsole();
 }
 
 //
@@ -424,7 +420,8 @@ void P_PlayerThink(player_t *player)
                  || (newweapon == wp_shotgun && !player->ammo[am_shell])
                  || (newweapon == wp_missile && !player->ammo[am_misl])
                  || (newweapon == wp_plasma && !player->ammo[am_cell])
-                 || (newweapon == wp_bfg && player->ammo[am_cell] < bfgcells))
+                 || (newweapon == wp_bfg && player->ammo[am_cell] < bfgcells
+                     && bfgcells == BFGCELLS))
             newweapon = wp_nochange;
 
         // Select the preferred shotgun.
@@ -469,10 +466,6 @@ void P_PlayerThink(player_t *player)
     P_MovePsprites(player);
 
     // Counters, time dependent power ups.
-
-    // Strength counts up to diminish fade.
-    if (player->powers[pw_strength])
-        player->powers[pw_strength]++;
 
     if (player->powers[pw_invulnerability] > 0)
         player->powers[pw_invulnerability]--;

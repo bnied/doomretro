@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,8 +36,8 @@
 ========================================================================
 */
 
-#if !defined(__ST_LIB__)
-#define __ST_LIB__
+#if !defined(__ST_LIB_H__)
+#define __ST_LIB_H__
 
 #include "r_defs.h"
 
@@ -143,8 +143,6 @@ typedef struct
 // More precisely, initialize STMINUS,
 //  everything else is done somewhere else.
 //
-void STlib_init(void);
-
 // Number widget routines
 void STlib_initNum(st_number_t *n, int x, int y, patch_t **pl, int *num, dboolean *on, int width);
 
@@ -168,9 +166,5 @@ void STlib_initBinIcon(st_binicon_t *b, int x, int y, patch_t *i, dboolean *val,
 
 void STlib_updateBinIcon(st_binicon_t *bi, dboolean refresh);
 void STlib_updateBigBinIcon(st_binicon_t *bi, dboolean refresh);
-
-void STlib_DrawNumber(st_number_t *n);
-
-void STlib_DrawPercent(st_percent_t *n);
 
 #endif

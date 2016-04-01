@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -43,6 +43,7 @@
 #include "info.h"
 #include "i_system.h"
 #include "m_misc.h"
+#include "version.h"
 #include "w_wad.h"
 #include "z_zone.h"
 
@@ -267,8 +268,21 @@ static void AddSpriteLump(lumpinfo_t *lump)
     sprite_frame_t      *sprite;
     int                 angle_num;
     int                 i;
+    static int          MISFA0;
+    static int          MISFB0;
 
     if (!ValidSpriteLumpName(lump->name))
+        return;
+
+    if (lump->wad_file->type == PWAD)
+    {
+        MISFA0 += M_StringCompare(lump->name, "MISFA0");
+        MISFB0 += M_StringCompare(lump->name, "MISFB0");
+    }
+
+    if (M_StringCompare(leafname(lump->wad_file->path), PACKAGE_WAD)
+        && (M_StringCompare(lump->name, "MISFA0") || M_StringCompare(lump->name, "MISFB0"))
+        && (MISFA0 > 2 || MISFB0 > 2))
         return;
 
     // first angle

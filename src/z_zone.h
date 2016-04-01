@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,17 +36,17 @@
 ========================================================================
 */
 
-#if !defined(__Z_ZONE__)
-#define __Z_ZONE__
+#if !defined(__Z_ZONE_H__)
+#define __Z_ZONE_H__
 
 // Include system definitions so that prototypes become
 // active before macro replacements below are in effect.
-
-#include "doomtype.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
+#include "doomtype.h"
 
 //
 // ZONE MEMORY
@@ -66,6 +66,7 @@ enum
 #define PU_PURGELEVEL    PU_CACHE    // First purgeable tag's level
 
 void *Z_Malloc(size_t size, int32_t tag, void **user);
+void *Z_Calloc(size_t n1, size_t n2, int32_t tag, void **user);
 void *Z_Realloc(void *ptr, size_t size);
 void Z_Free(void *ptr);
 void Z_FreeTags(int32_t lowtag, int32_t hightag);

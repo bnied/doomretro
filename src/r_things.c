@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -96,9 +96,8 @@ extern dboolean         skippsprinterp;
 static void R_InstallSpriteLump(lumpinfo_t *lump, int lumpnum, unsigned int frame, char rot,
     dboolean flipped)
 {
-    unsigned int        rotation;
-
-    rotation = (rot >= '0' && rot <= '9' ? rot - '0' : (rot >= 'A' ? rot - 'A' + 10 : 17));
+    unsigned int        rotation = (rot >= '0' && rot <= '9' ? rot - '0' : (rot >= 'A' ?
+        rot - 'A' + 10 : 17));
 
     if (frame >= MAX_SPRITE_FRAMES || rotation > 16)
         I_Error("R_InstallSpriteLump: Bad frame characters in lump %s", lump->name);
@@ -106,7 +105,7 @@ static void R_InstallSpriteLump(lumpinfo_t *lump, int lumpnum, unsigned int fram
     if ((int)frame > maxframe)
         maxframe = frame;
 
-    if (rotation == 0)
+    if (!rotation)
     {
         int r;
 
@@ -180,7 +179,7 @@ static void R_InitSpriteDefs(const char *const *namelist)
 
     numsprites = (signed int)i;
 
-    sprites = Z_Malloc(numsprites * sizeof(*sprites), PU_STATIC, NULL);
+    sprites = Z_Calloc(numsprites, sizeof(*sprites), PU_STATIC, NULL);
 
     // Create hash table based on just the first four letters of each sprite
     // killough 1/31/98
@@ -255,19 +254,19 @@ static void R_InitSpriteDefs(const char *const *namelist)
 
                         case 1:
                             // must have all 8 frames
-                            for (rot = 0; rot < 8; ++rot)
+                            for (rot = 0; rot < 16; rot += 2)
                             {
-                                if (sprtemp[frame].lump[rot * 2 + 1] == -1)
+                                if (sprtemp[frame].lump[rot + 1] == -1)
                                 {
-                                    sprtemp[frame].lump[rot * 2 + 1] = sprtemp[frame].lump[rot * 2];
-                                    if (sprtemp[frame].flip & (1 << (rot * 2)))
-                                        sprtemp[frame].flip |= 1 << (rot * 2 + 1);
+                                    sprtemp[frame].lump[rot + 1] = sprtemp[frame].lump[rot];
+                                    if (sprtemp[frame].flip & (1 << rot))
+                                        sprtemp[frame].flip |= 1 << (rot + 1);
                                 }
-                                if (sprtemp[frame].lump[rot * 2] == -1)
+                                if (sprtemp[frame].lump[rot] == -1)
                                 {
-                                    sprtemp[frame].lump[rot * 2] = sprtemp[frame].lump[rot * 2 + 1];
-                                    if (sprtemp[frame].flip & (1 << (rot * 2 + 1)))
-                                        sprtemp[frame].flip |= 1 << (rot * 2);
+                                    sprtemp[frame].lump[rot] = sprtemp[frame].lump[rot + 1];
+                                    if (sprtemp[frame].flip & (1 << (rot + 1)))
+                                        sprtemp[frame].flip |= 1 << rot;
                                 }
                             }
                             for (rot = 0; rot < 16; ++rot)
@@ -286,13 +285,13 @@ static void R_InitSpriteDefs(const char *const *namelist)
                     }
 
                 // allocate space for the frames present and copy sprtemp to it
-                sprites[i].spriteframes = Z_Malloc(maxframe * sizeof(spriteframe_t),
-                    PU_STATIC, NULL);
+                sprites[i].spriteframes = Z_Malloc(maxframe * sizeof(spriteframe_t), PU_STATIC,
+                    NULL);
                 memcpy(sprites[i].spriteframes, sprtemp, maxframe * sizeof(spriteframe_t));
             }
         }
     }
-    free(hash);             // free hash table
+    free(hash); // free hash table
 }
 
 //
@@ -321,7 +320,7 @@ void R_InitSprites(char **namelist)
     for (i = 0; i < SCREENWIDTH; i++)
         negonearray[i] = -1;
 
-    R_InitSpriteDefs(namelist);
+    R_InitSpriteDefs((const char *const *)namelist);
 
     num_vissprite = 0;
     num_vissprite_alloc = 128;
@@ -453,6 +452,8 @@ int64_t shift;
 static void R_DrawMaskedSpriteColumn(column_t *column)
 {
     byte        topdelta;
+    int         ceilingclip = mceilingclip[dc_x] + 1;
+    int         floorclip = mfloorclip[dc_x] - 1;
 
     while ((topdelta = column->topdelta) != 0xFF)
     {
@@ -461,8 +462,8 @@ static void R_DrawMaskedSpriteColumn(column_t *column)
         // calculate unclipped screen coordinates for post
         int64_t topscreen = sprtopscreen + spryscale * topdelta + 1;
 
-        dc_yl = MAX((int)((topscreen + FRACUNIT) >> FRACBITS), mceilingclip[dc_x] + 1);
-        dc_yh = MIN((int)((topscreen + spryscale * length) >> FRACBITS), mfloorclip[dc_x] - 1);
+        dc_yl = MAX((int)((topscreen + FRACUNIT) >> FRACBITS), ceilingclip);
+        dc_yh = MIN((int)((topscreen + spryscale * length) >> FRACBITS), floorclip);
 
         if (dc_baseclip != -1)
             dc_yh = MIN(dc_baseclip, dc_yh);
@@ -498,6 +499,8 @@ static void R_DrawMaskedSpriteColumn(column_t *column)
 static void R_DrawMaskedBloodSplatColumn(column_t *column)
 {
     byte        topdelta;
+    int         ceilingclip = mceilingclip[dc_x] + 1;
+    int         floorclip = mfloorclip[dc_x] - 1;
 
     while ((topdelta = column->topdelta) != 0xFF)
     {
@@ -506,8 +509,8 @@ static void R_DrawMaskedBloodSplatColumn(column_t *column)
         // calculate unclipped screen coordinates for post
         int64_t topscreen = sprtopscreen + spryscale * topdelta;
 
-        dc_yl = MAX((int)(topscreen >> FRACBITS) + 1, mceilingclip[dc_x] + 1);
-        dc_yh = MIN((int)((topscreen + spryscale * length) >> FRACBITS), mfloorclip[dc_x] - 1);
+        dc_yl = MAX((int)(topscreen >> FRACBITS) + 1, ceilingclip);
+        dc_yh = MIN((int)((topscreen + spryscale * length) >> FRACBITS), floorclip);
 
         if (dc_yl <= dc_yh && dc_yh < viewheight)
             colfunc();
@@ -518,6 +521,8 @@ static void R_DrawMaskedBloodSplatColumn(column_t *column)
 static void R_DrawMaskedShadowColumn(column_t *column)
 {
     byte        topdelta;
+    int         ceilingclip = mceilingclip[dc_x] + 1;
+    int         floorclip = mfloorclip[dc_x] - 1;
 
     while ((topdelta = column->topdelta) != 0xFF)
     {
@@ -526,9 +531,8 @@ static void R_DrawMaskedShadowColumn(column_t *column)
         // calculate unclipped screen coordinates for post
         int64_t topscreen = sprtopscreen + spryscale * topdelta;
 
-        dc_yl = MAX((int)(((topscreen >> FRACBITS) + 1) / 10 + shift), mceilingclip[dc_x] + 1);
-        dc_yh = MIN((int)(((topscreen + spryscale * length) >> FRACBITS) / 10 + shift),
-            mfloorclip[dc_x] - 1);
+        dc_yl = MAX((int)(((topscreen >> FRACBITS) + 1) / 10 + shift), ceilingclip);
+        dc_yh = MIN((int)(((topscreen + spryscale * length) >> FRACBITS) / 10 + shift), floorclip);
 
         if (dc_yl <= dc_yh && dc_yh < viewheight)
             colfunc();
@@ -744,13 +748,13 @@ void R_ProjectSprite(mobj_t *thing)
         else
             rot = (ang - fangle + (angle_t)(ANG45 / 2) * 9 - (angle_t)(ANG180 / 16)) >> 28;
         lump = sprframe->lump[rot];
-        flip = ((dboolean)(sprframe->flip & (1 << rot)) || (flags2 & MF2_MIRRORED));
+        flip = (!!(sprframe->flip & (1 << rot)) || (flags2 & MF2_MIRRORED));
     }
     else
     {
         // use single rotation for all views
         lump = sprframe->lump[0];
-        flip = ((dboolean)(sprframe->flip & 1) || (flags2 & MF2_MIRRORED));
+        flip = (!!(sprframe->flip & 1) || (flags2 & MF2_MIRRORED));
     }
 
     if (thing->state->dehacked)
@@ -834,7 +838,7 @@ void R_ProjectSprite(mobj_t *thing)
 
         vis->texturemid = gzt - viewz - clipfeet;
 
-        if ((flags2 & MF2_NOLIQUIDBOB) && r_liquid_bob && isliquid[sector->floorpic])
+        if (r_liquid_bob && isliquid[sector->floorpic])
             clipfeet += animatedliquiddiff;
 
         vis->footclip = clipfeet;
@@ -1034,13 +1038,13 @@ void R_ProjectShadow(mobj_t *thing)
         else
             rot = (ang - thing->angle + (angle_t)(ANG45 / 2) * 9 - (angle_t)(ANG180 / 16)) >> 28;
         lump = sprframe->lump[rot];
-        flip = ((dboolean)(sprframe->flip & (1 << rot)) || (thing->flags2 & MF2_MIRRORED));
+        flip = (!!(sprframe->flip & (1 << rot)) || (thing->flags2 & MF2_MIRRORED));
     }
     else
     {
         // use single rotation for all views
         lump = sprframe->lump[0];
-        flip = ((dboolean)(sprframe->flip & 1) || (thing->flags2 & MF2_MIRRORED));
+        flip = (!!(sprframe->flip & 1) || (thing->flags2 & MF2_MIRRORED));
     }
 
     // calculate edges of the shape
@@ -1133,6 +1137,7 @@ static void R_DrawPSprite(pspdef_t *psp, dboolean invisibility)
     vissprite_t         *vis;
     vissprite_t         avis;
     state_t             *state;
+    dboolean            dehacked = weaponinfo[viewplayer->readyweapon].dehacked;
 
     // decide which patch to use
     state = psp->state;
@@ -1142,10 +1147,10 @@ static void R_DrawPSprite(pspdef_t *psp, dboolean invisibility)
     sprframe = &sprdef->spriteframes[frame & FF_FRAMEMASK];
 
     lump = sprframe->lump[0];
-    flip = (dboolean)(sprframe->flip & 1);
+    flip = !!(sprframe->flip & 1);
 
     // calculate edges of the shape
-    tx = psp->sx - ORIGINALWIDTH / 2 * FRACUNIT - (state->dehacked ? spriteoffset[lump] :
+    tx = psp->sx - ORIGINALWIDTH / 2 * FRACUNIT - (dehacked ? spriteoffset[lump] :
         newspriteoffset[lump]);
     x1 = (centerxfrac + FRACUNIT / 2 + FixedMul(tx, pspritexscale)) >> FRACBITS;
 
@@ -1195,8 +1200,9 @@ static void R_DrawPSprite(pspdef_t *psp, dboolean invisibility)
     }
     else
     {
-        if (spr == SPR_SHT2 && (!frame || frame >= 8))
-            vis->colfunc = R_DrawSuperShotgunColumn;
+        if (spr == SPR_SHT2 && (!frame || frame >= 8) && !dehacked)
+            vis->colfunc = (r_translucency ? R_DrawTranslucentSuperShotgunColumn :
+                R_DrawSuperShotgunColumn);
         else
         {
             void (*colfuncs[])(void) =
@@ -1211,7 +1217,7 @@ static void R_DrawPSprite(pspdef_t *psp, dboolean invisibility)
                 /* SPR_CHGG */ basecolfunc,
                 /* SPR_CHGF */ tlredwhitecolfunc2,
                 /* SPR_MISG */ basecolfunc,
-                /* SPR_MISF */ tlcolfunc,
+                /* SPR_MISF */ tlredwhitecolfunc2,
                 /* SPR_SAWG */ basecolfunc,
                 /* SPR_PLSG */ basecolfunc,
                 /* SPR_PLSF */ tlcolfunc,
@@ -1219,8 +1225,8 @@ static void R_DrawPSprite(pspdef_t *psp, dboolean invisibility)
                 /* SPR_BFGF */ tlcolfunc
             };
 
-            vis->colfunc = (bflash && spr <= SPR_BFGF && !state->dehacked ? colfuncs[spr] :
-                basecolfunc);
+            vis->colfunc = (bflash && spr <= SPR_BFGF && (!dehacked || state->translucent) ?
+                colfuncs[spr] : basecolfunc);
         }
         if (fixedcolormap)
             vis->colormap = fixedcolormap;      // fixed color
@@ -1313,7 +1319,10 @@ void R_DrawPlayerSprites(void)
         bflash = false;
         for (i = 0, psp = viewplayer->psprites; i < NUMPSPRITES; i++, psp++)
             if (psp->state && (psp->state->frame & FF_FULLBRIGHT))
+            {
                 bflash = true;
+                break;
+            }
         for (i = 0, psp = viewplayer->psprites; i < NUMPSPRITES; i++, psp++)
             if (psp->state)
                 R_DrawPSprite(psp, false);

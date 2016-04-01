@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -54,19 +54,32 @@
 #include "p_local.h"
 #include "version.h"
 
-char                    *configfile = PACKAGE_CONFIG;
-
 extern dboolean         alwaysrun;
+extern int              am_allmapcdwallcolor;
+extern int              am_allmapfdwallcolor;
+extern int              am_allmapwallcolor;
+extern int              am_backcolor;
+extern int              am_cdwallcolor;
 extern dboolean         am_external;
+extern int              am_fdwallcolor;
 extern dboolean         am_followmode;
 extern dboolean         am_grid;
+extern int              am_gridcolor;
+extern int              am_markcolor;
+extern int              am_playercolor;
 extern dboolean         am_rotatemode;
+extern int              am_teleportercolor;
+extern int              am_thingcolor;
+extern int              am_tswallcolor;
+extern int              am_wallcolor;
+extern int              am_xhaircolor;
+extern dboolean         autoload;
 extern dboolean         centerweapon;
 extern dboolean         con_obituaries;
 extern dboolean         con_timestamps;
 extern int              episode;
 extern int              expansion;
-extern int              faceback;
+extern int              facebackcolor;
 extern float            gp_deadzone_left;
 extern float            gp_deadzone_right;
 extern int              gp_sensitivity;
@@ -82,6 +95,7 @@ extern int              m_threshold;
 extern int              movebob;
 extern char             *playername;
 extern dboolean         r_althud;
+extern int              r_berserkintensity;
 extern int              r_blood;
 extern int              r_bloodsplats_max;
 extern dboolean         r_brightmaps;
@@ -147,6 +161,7 @@ extern unsigned int     stat_secretsrevealed;
 extern unsigned int     stat_shotsfired;
 extern unsigned int     stat_shotshit;
 extern unsigned int     stat_time;
+extern int              turbo;
 extern dboolean         vid_capfps;
 extern int              vid_display;
 #if !defined(WIN32)
@@ -161,40 +176,47 @@ extern dboolean         vid_widescreen;
 extern char             *vid_windowposition;
 extern char             *vid_windowsize;
 
-extern int              gamepadleftdeadzone;
-extern int              gamepadrightdeadzone;
+extern char             *packageconfig;
 extern int              pixelwidth;
 extern int              pixelheight;
 extern dboolean         returntowidescreen;
 
-#define CONFIG_VARIABLE_INT(name, set) \
-    { #name, &name, DEFAULT_INT, set }
-#define CONFIG_VARIABLE_INT_UNSIGNED(name, set) \
-    { #name, &name, DEFAULT_INT_UNSIGNED, set }
-#define CONFIG_VARIABLE_INT_PERCENT(name, set) \
-    { #name, &name, DEFAULT_INT_PERCENT, set }
-#define CONFIG_VARIABLE_FLOAT(name, set) \
-    { #name, &name, DEFAULT_FLOAT, set }
-#define CONFIG_VARIABLE_FLOAT_PERCENT(name, set) \
-    { #name, &name, DEFAULT_FLOAT_PERCENT, set }
-#define CONFIG_VARIABLE_STRING(name, set) \
-    { #name, &name, DEFAULT_STRING, set }
-#define CONFIG_VARIABLE_OTHER(name, set) \
-    { #name, &name, DEFAULT_OTHER, set }
+#define CONFIG_VARIABLE_INT(name, set)           { #name, &name, DEFAULT_INT, set }
+#define CONFIG_VARIABLE_INT_UNSIGNED(name, set)  { #name, &name, DEFAULT_INT_UNSIGNED, set }
+#define CONFIG_VARIABLE_INT_PERCENT(name, set)   { #name, &name, DEFAULT_INT_PERCENT, set }
+#define CONFIG_VARIABLE_FLOAT(name, set)         { #name, &name, DEFAULT_FLOAT, set }
+#define CONFIG_VARIABLE_FLOAT_PERCENT(name, set) { #name, &name, DEFAULT_FLOAT_PERCENT, set }
+#define CONFIG_VARIABLE_STRING(name, set)        { #name, &name, DEFAULT_STRING, set }
+#define CONFIG_VARIABLE_OTHER(name, set)         { #name, &name, DEFAULT_OTHER, set }
 
 static default_t cvars[] =
 {
     CONFIG_VARIABLE_INT          (alwaysrun,                             BOOLALIAS  ),
+    CONFIG_VARIABLE_INT          (am_allmapcdwallcolor,                  NOALIAS    ),
+    CONFIG_VARIABLE_INT          (am_allmapfdwallcolor,                  NOALIAS    ),
+    CONFIG_VARIABLE_INT          (am_allmapwallcolor,                    NOALIAS    ),
+    CONFIG_VARIABLE_INT          (am_backcolor,                          NOALIAS    ),
+    CONFIG_VARIABLE_INT          (am_cdwallcolor,                        NOALIAS    ),
     CONFIG_VARIABLE_INT          (am_external,                           BOOLALIAS  ),
+    CONFIG_VARIABLE_INT          (am_fdwallcolor,                        NOALIAS    ),
     CONFIG_VARIABLE_INT          (am_followmode,                         BOOLALIAS  ),
     CONFIG_VARIABLE_INT          (am_grid,                               BOOLALIAS  ),
+    CONFIG_VARIABLE_INT          (am_gridcolor,                          NOALIAS    ),
+    CONFIG_VARIABLE_INT          (am_markcolor,                          NOALIAS    ),
+    CONFIG_VARIABLE_INT          (am_playercolor,                        NOALIAS    ),
     CONFIG_VARIABLE_INT          (am_rotatemode,                         BOOLALIAS  ),
+    CONFIG_VARIABLE_INT          (am_teleportercolor,                    NOALIAS    ),
+    CONFIG_VARIABLE_INT          (am_thingcolor,                         NOALIAS    ),
+    CONFIG_VARIABLE_INT          (am_tswallcolor,                        NOALIAS    ),
+    CONFIG_VARIABLE_INT          (am_wallcolor,                          NOALIAS    ),
+    CONFIG_VARIABLE_INT          (am_xhaircolor,                         NOALIAS    ),
+    CONFIG_VARIABLE_INT          (autoload,                              BOOLALIAS  ),
     CONFIG_VARIABLE_INT          (centerweapon,                          BOOLALIAS  ),
     CONFIG_VARIABLE_INT          (con_obituaries,                        BOOLALIAS  ),
     CONFIG_VARIABLE_INT          (con_timestamps,                        BOOLALIAS  ),
     CONFIG_VARIABLE_INT          (episode,                               NOALIAS    ),
     CONFIG_VARIABLE_INT          (expansion,                             NOALIAS    ),
-    CONFIG_VARIABLE_INT          (faceback,                              NOALIAS    ),
+    CONFIG_VARIABLE_INT          (facebackcolor,                         NOALIAS    ),
     CONFIG_VARIABLE_FLOAT_PERCENT(gp_deadzone_left,                      NOALIAS    ),
     CONFIG_VARIABLE_FLOAT_PERCENT(gp_deadzone_right,                     NOALIAS    ),
     CONFIG_VARIABLE_INT          (gp_sensitivity,                        NOALIAS    ),
@@ -210,8 +232,9 @@ static default_t cvars[] =
     CONFIG_VARIABLE_INT_PERCENT  (movebob,                               NOALIAS    ),
     CONFIG_VARIABLE_STRING       (playername,                            NOALIAS    ),
     CONFIG_VARIABLE_INT          (r_althud,                              BOOLALIAS  ),
+    CONFIG_VARIABLE_INT_PERCENT  (r_berserkintensity,                    NOALIAS    ),
     CONFIG_VARIABLE_INT          (r_blood,                               BLOODALIAS ),
-    CONFIG_VARIABLE_INT          (r_bloodsplats_max,                     SPLATALIAS ),
+    CONFIG_VARIABLE_INT          (r_bloodsplats_max,                     NOALIAS    ),
     CONFIG_VARIABLE_INT          (r_brightmaps,                          BOOLALIAS  ),
     CONFIG_VARIABLE_INT          (r_corpses_color,                       BOOLALIAS  ),
     CONFIG_VARIABLE_INT          (r_corpses_mirrored,                    BOOLALIAS  ),
@@ -276,6 +299,7 @@ static default_t cvars[] =
     CONFIG_VARIABLE_INT_UNSIGNED (stat_shotshit,                         NOALIAS    ),
     CONFIG_VARIABLE_INT_UNSIGNED (stat_time,                             NOALIAS    ),
     CONFIG_VARIABLE_INT_PERCENT  (stillbob,                              NOALIAS    ),
+    CONFIG_VARIABLE_INT_PERCENT  (turbo,                                 NOALIAS    ),
     CONFIG_VARIABLE_INT          (vid_capfps,                            BOOLALIAS  ),
     CONFIG_VARIABLE_INT          (vid_display,                           NOALIAS    ),
 #if !defined(WIN32)
@@ -293,28 +317,12 @@ static default_t cvars[] =
 
 alias_t aliases[] =
 {
-    { "off",           0, BOOLALIAS   }, { "on",            1, BOOLALIAS   },
-    { "0",             0, BOOLALIAS   }, { "1",             1, BOOLALIAS   },
-    { "no",            0, BOOLALIAS   }, { "yes",           1, BOOLALIAS   },
-    { "false",         0, BOOLALIAS   }, { "true",          1, BOOLALIAS   },
-    { "low",           0, DETAILALIAS }, { "high",          1, DETAILALIAS },
-    { "unlimited", 32768, SPLATALIAS  }, { "off",           1, GAMMAALIAS  },
-    { "none",          0, BLOODALIAS  }, { "red",           1, BLOODALIAS  },
-    { "all",           2, BLOODALIAS  }, { "",              0, NOALIAS     }
+    { "off",   0, BOOLALIAS   }, { "on",    1, BOOLALIAS   }, { "0",     0, BOOLALIAS   },
+    { "1",     1, BOOLALIAS   }, { "no",    0, BOOLALIAS   }, { "yes",   1, BOOLALIAS   },
+    { "false", 0, BOOLALIAS   }, { "true",  1, BOOLALIAS   }, { "low",   0, DETAILALIAS },
+    { "high",  1, DETAILALIAS }, { "off",   1, GAMMAALIAS  }, { "none",  0, BLOODALIAS  },
+    { "red",   1, BLOODALIAS  }, { "all",   2, BLOODALIAS  }, { "",      0, NOALIAS     }
 };
-
-char *striptrailingzero(float value, int precision)
-{
-    size_t      len;
-    char        result[100];
-
-    M_snprintf(result, sizeof(result), "%.*f",
-        (precision == 2 ? 2 : (value != floor(value))), value);
-    len = strlen(result);
-    if (len >= 4 && result[len - 3] == '.' && result[len - 1] == '0')
-        result[len - 1] = '\0';
-    return strdup(result);
-}
 
 static void SaveBind(FILE *file, char *action, int value, controltype_t type)
 {
@@ -324,7 +332,7 @@ static void SaveBind(FILE *file, char *action, int value, controltype_t type)
     {
         if (controls[i].type == type && controls[i].value == value)
         {
-            char *control = controls[i].control;
+            char        *control = controls[i].control;
 
             if (strlen(control) == 1)
                 fprintf(file, "bind '%s' %s\n", (control[0] == '=' ? "+" : control), action);
@@ -342,7 +350,7 @@ static void SaveBind(FILE *file, char *action, int value, controltype_t type)
 void M_SaveCVARs(void)
 {
     int         i;
-    FILE        *file = fopen(configfile, "w");
+    FILE        *file = fopen(packageconfig, "w");
 
     if (!file)
         return; // can't write the file, but don't complain
@@ -352,7 +360,7 @@ void M_SaveCVARs(void)
 
     for (i = 0; i < arrlen(cvars); i++)
     {
-        // Print the name and line up all values at 30 characters
+        // Print the name
         fprintf(file, "%s ", cvars[i].name);
 
         // Print the value
@@ -364,7 +372,7 @@ void M_SaveCVARs(void)
                 dboolean    flag = false;
                 int         v = *(int *)cvars[i].location;
 
-                while (aliases[j].text[0])
+                while (*aliases[j].text)
                 {
                     if (v == aliases[j].value && cvars[i].aliastype == aliases[j].type)
                     {
@@ -391,7 +399,7 @@ void M_SaveCVARs(void)
                 dboolean    flag = false;
                 int         v = *(int *)cvars[i].location;
 
-                while (aliases[j].text[0])
+                while (*aliases[j].text)
                 {
                     if (v == aliases[j].value && cvars[i].aliastype == aliases[j].type)
                     {
@@ -412,7 +420,7 @@ void M_SaveCVARs(void)
                 dboolean    flag = false;
                 float       v = *(float *)cvars[i].location;
 
-                while (aliases[j].text[0])
+                while (*aliases[j].text)
                 {
                     if (v == aliases[j].value && cvars[i].aliastype == aliases[j].type)
                     {
@@ -433,7 +441,7 @@ void M_SaveCVARs(void)
                 dboolean    flag = false;
                 float       v = *(float *)cvars[i].location;
 
-                while (aliases[j].text[0])
+                while (*aliases[j].text)
                 {
                     if (v == aliases[j].value && cvars[i].aliastype == aliases[j].type)
                     {
@@ -463,7 +471,7 @@ void M_SaveCVARs(void)
     fprintf(file, "\n");
 
     i = 0;
-    while (actions[i].action[0])
+    while (*actions[i].action)
     {
         if (actions[i].keyboard)
             SaveBind(file, actions[i].action, *(int *)actions[i].keyboard, keyboardcontrol);
@@ -486,7 +494,7 @@ static int ParseIntParameter(char *strparm, int aliastype)
     int parm = 0;
     int i = 0;
 
-    while (aliases[i].text[0])
+    while (*aliases[i].text)
     {
         if (M_StringCompare(strparm, aliases[i].text) && aliastype == aliases[i].type)
             return aliases[i].value;
@@ -503,7 +511,7 @@ static float ParseFloatParameter(char *strparm, int aliastype)
 {
     int     i = 0;
 
-    while (aliases[i].text[0])
+    while (*aliases[i].text)
     {
         if (M_StringCompare(strparm, aliases[i].text) && aliastype == aliases[i].type)
             return (float)aliases[i].value;
@@ -520,16 +528,51 @@ static void M_CheckCVARs(void)
     if (alwaysrun != false && alwaysrun != true)
         alwaysrun = alwaysrun_default;
 
+    am_allmapcdwallcolor = BETWEEN(am_allmapcdwallcolor_min, am_allmapcdwallcolor,
+        am_allmapcdwallcolor_max);
+
+    am_allmapfdwallcolor = BETWEEN(am_allmapfdwallcolor_min, am_allmapfdwallcolor,
+        am_allmapfdwallcolor_max);
+
+    am_allmapwallcolor = BETWEEN(am_allmapwallcolor_min, am_allmapwallcolor,
+        am_allmapwallcolor_max);
+
+    am_backcolor = BETWEEN(am_backcolor_min, am_backcolor, am_backcolor_max);
+
+    am_cdwallcolor = BETWEEN(am_cdwallcolor_min, am_cdwallcolor, am_cdwallcolor_max);
+
     if (am_external != false && am_external != true)
         am_external = am_external_default;
+
+    am_fdwallcolor = BETWEEN(am_fdwallcolor_min, am_fdwallcolor, am_fdwallcolor_max);
 
     am_followmode = am_followmode_default;
 
     if (am_grid != false && am_grid != true)
         am_grid = am_grid_default;
 
+    am_gridcolor = BETWEEN(am_gridcolor_min, am_gridcolor, am_gridcolor_max);
+
+    am_markcolor = BETWEEN(am_markcolor_min, am_markcolor, am_markcolor_max);
+
+    am_playercolor = BETWEEN(am_playercolor_min, am_playercolor, am_playercolor_max);
+
     if (am_rotatemode != false && am_rotatemode != true)
         am_rotatemode = am_rotatemode_default;
+
+    am_teleportercolor = BETWEEN(am_teleportercolor_min, am_teleportercolor,
+        am_teleportercolor_max);
+
+    am_thingcolor = BETWEEN(am_thingcolor_min, am_thingcolor, am_thingcolor_max);
+
+    am_tswallcolor = BETWEEN(am_tswallcolor_min, am_tswallcolor, am_tswallcolor_max);
+
+    am_wallcolor = BETWEEN(am_wallcolor_min, am_wallcolor, am_wallcolor_max);
+
+    am_xhaircolor = BETWEEN(am_xhaircolor_min, am_xhaircolor, am_xhaircolor_max);
+
+    if (autoload != false && autoload != true)
+        autoload = autoload_default;
 
     if (centerweapon != false && centerweapon != true)
         centerweapon = centerweapon_default;
@@ -544,17 +587,16 @@ static void M_CheckCVARs(void)
 
     expansion = BETWEEN(expansion_min, expansion, expansion_max);
 
-    faceback = BETWEEN(faceback_min, faceback, faceback_max);
+    facebackcolor = BETWEEN(facebackcolor_min, facebackcolor, facebackcolor_max);
 
     gp_deadzone_left = BETWEENF(gp_deadzone_left_min, gp_deadzone_left, gp_deadzone_left_max);
-    gamepadleftdeadzone = (int)(gp_deadzone_left * (float)SHRT_MAX / 100.0f);
+    gamepadleftdeadzone = (short)(gp_deadzone_left * (float)SHRT_MAX / 100.0f);
 
     gp_deadzone_right = BETWEENF(gp_deadzone_right_min, gp_deadzone_right, gp_deadzone_right_max);
-    gamepadrightdeadzone = (int)(gp_deadzone_right * (float)SHRT_MAX / 100.0f);
+    gamepadrightdeadzone = (short)(gp_deadzone_right * (float)SHRT_MAX / 100.0f);
 
     gp_sensitivity = BETWEEN(gp_sensitivity_min, gp_sensitivity, gp_sensitivity_max);
-    gamepadsensitivityf = (!gp_sensitivity ? 0.0f : GP_SENSITIVITY_OFFSET
-        + gp_sensitivity / (float)gp_sensitivity_max * GP_SENSITIVITY_FACTOR);
+    I_SetGamepadSensitivity(gp_sensitivity);
 
     if (gp_swapthumbsticks != false && gp_swapthumbsticks != true)
         gp_swapthumbsticks = gp_swapthumbsticks_default;
@@ -578,7 +620,10 @@ static void M_CheckCVARs(void)
     if (r_althud != false && r_althud != true)
         r_althud = r_althud_default;
 
-    if (r_blood != noblood && r_blood != redbloodonly && r_blood != allbloodcolors)
+    r_berserkintensity = BETWEEN(r_berserkintensity_min, r_berserkintensity,
+        r_berserkintensity_max);
+
+    if (r_blood != r_blood_none && r_blood != r_blood_red && r_blood != r_blood_all)
         r_blood = r_blood_default;
 
     r_bloodsplats_max = BETWEEN(r_bloodsplats_max_min, r_bloodsplats_max, r_bloodsplats_max_max);
@@ -601,7 +646,7 @@ static void M_CheckCVARs(void)
     if (r_corpses_smearblood != false && r_corpses_smearblood != true)
         r_corpses_smearblood = r_corpses_smearblood_default;
 
-    if (r_detail != lowdetail && r_detail != highdetail)
+    if (r_detail != r_detail_low && r_detail != r_detail_high)
         r_detail = r_detail_default;
 
     if (r_diskicon != false && r_diskicon != true)
@@ -617,16 +662,7 @@ static void M_CheckCVARs(void)
         r_floatbob = r_floatbob_default;
 
     r_gamma = BETWEENF(r_gamma_min, r_gamma, r_gamma_max);
-    gammaindex = 0;
-    while (gammaindex < GAMMALEVELS)
-        if (gammalevels[gammaindex++] == r_gamma)
-        break;
-    if (gammaindex == GAMMALEVELS)
-    {
-        gammaindex = 0;
-        while (gammalevels[gammaindex++] != r_gamma_default);
-    }
-    --gammaindex;
+    I_SetGamma(r_gamma);
 
     if (r_homindicator != false && r_homindicator != true)
         r_homindicator = r_homindicator_default;
@@ -669,7 +705,8 @@ static void M_CheckCVARs(void)
     if (r_translucency != false && r_translucency != true)
         r_translucency = r_translucency_default;
 
-    musicVolume = (BETWEEN(s_musicvolume_min, s_musicvolume, s_musicvolume_max) * 15 + 50) / 100;
+    s_musicvolume = BETWEEN(s_musicvolume_min, s_musicvolume, s_musicvolume_max);
+    musicVolume = (s_musicvolume * 15 + 50) / 100;
 
     if (s_randommusic != false && s_randommusic != true)
         s_randommusic = s_randommusic_default;
@@ -677,13 +714,16 @@ static void M_CheckCVARs(void)
     if (s_randompitch != false && s_randompitch != true)
         s_randompitch = s_randompitch_default;
 
-    sfxVolume = (BETWEEN(s_sfxvolume_min, s_sfxvolume, s_sfxvolume_max) * 15 + 50) / 100;
+    s_sfxvolume = BETWEEN(s_sfxvolume_min, s_sfxvolume, s_sfxvolume_max);
+    sfxVolume = (s_sfxvolume * 15 + 50) / 100;
 
     savegame = BETWEEN(savegame_min, savegame, savegame_max);
 
     skilllevel = BETWEEN(skilllevel_min, skilllevel, skilllevel_max);
 
     stillbob = BETWEEN(stillbob_min, stillbob, stillbob_max);
+
+    turbo = BETWEEN(turbo_min, turbo, turbo_max);
 
     if (vid_capfps != false && vid_capfps != true)
         vid_capfps = vid_capfps_default;
@@ -728,8 +768,6 @@ void M_LoadCVARs(char *filename)
     char        action[32];
     char        defname[32] = "";
     char        strparm[256] = "";
-
-    configfile = strdup(filename);
 
     // read the file in, overriding any set defaults
     file = fopen(filename, "r");

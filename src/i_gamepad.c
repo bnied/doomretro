@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -37,8 +37,6 @@
 */
 
 #if defined(WIN32)
-#define WIN32_LEAN_AND_MEAN
-
 #include <Windows.h>
 #include <XInput.h>
 
@@ -54,6 +52,7 @@ static XINPUTSETSTATE pXInputSetState;
 #include "hu_stuff.h"
 #include "i_gamepad.h"
 #include "m_config.h"
+#include "m_controls.h"
 #include "m_fixed.h"
 #include "m_misc.h"
 #include "SDL.h"
@@ -65,11 +64,16 @@ float                   gp_deadzone_right = gp_deadzone_right_default;
 static SDL_Joystick     *gamepad;
 
 int                     gamepadbuttons = 0;
-short                   gamepadthumbLX;
-short                   gamepadthumbLY;
-short                   gamepadthumbRX;
+short                   gamepadthumbLX = 0;
+short                   gamepadthumbLY = 0;
+short                   gamepadthumbRX = 0;
+float                   gamepadsensitivity;
+short                   gamepadleftdeadzone;
+short                   gamepadrightdeadzone;
 
 dboolean                vibrate = false;
+int                     damagevibrationtics;
+int                     weaponvibrationtics;
 
 extern dboolean         idclev;
 extern dboolean         idmus;
@@ -336,4 +340,10 @@ void I_PollXInputGamepad(void)
         }
     }
 #endif
+}
+
+void I_SetGamepadSensitivity(int value)
+{
+    gamepadsensitivity = (!value ? 0.0f : GP_SENSITIVITY_OFFSET
+        + GP_SENSITIVITY_FACTOR * value / gp_sensitivity_max);
 }

@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -62,32 +62,23 @@
 #include "v_video.h"
 #include "z_zone.h"
 
-#define BLACK                   0
-#define WHITE                   4
-#define DARKGRAY                5
-#define BROWN                   64
-#define GRAY                    96
-#define GREEN                   112
-#define YELLOW                  160
-#define RED                     176
-#define PINK                    251
+#define MASKCOLOR               251
 
 // Automap colors
-#define CROSSHAIRCOLOR          WHITE
-#define MARKCOLOR               (GRAY + 4)
-#define PLAYERCOLOR             WHITE
-#define THINGCOLOR              GREEN
-#define WALLCOLOR               RED
-#define ALLMAPWALLCOLOR         (GRAY + 12)
-#define MASKCOLOR               PINK
-#define TELEPORTERCOLOR         (RED + 8)
-#define FDWALLCOLOR             BROWN
-#define ALLMAPFDWALLCOLOR       (GRAY + 14)
-#define CDWALLCOLOR             YELLOW
-#define ALLMAPCDWALLCOLOR       (GRAY + 10)
-#define TSWALLCOLOR             (GRAY + 8)
-#define GRIDCOLOR               DARKGRAY
-#define BACKGROUNDCOLOR         BLACK
+int     am_allmapcdwallcolor = am_allmapcdwallcolor_default;
+int     am_allmapfdwallcolor = am_allmapfdwallcolor_default;
+int     am_allmapwallcolor = am_allmapwallcolor_default;
+int     am_backcolor = am_backcolor_default;
+int     am_cdwallcolor = am_cdwallcolor_default;
+int     am_fdwallcolor = am_fdwallcolor_default;
+int     am_gridcolor = am_gridcolor_default;
+int     am_markcolor = am_markcolor_default;
+int     am_playercolor = am_playercolor_default;
+int     am_teleportercolor = am_teleportercolor_default;
+int     am_thingcolor = am_thingcolor_default;
+int     am_tswallcolor = am_tswallcolor_default;
+int     am_wallcolor = am_wallcolor_default;
+int     am_xhaircolor = am_xhaircolor_default;
 
 // Automap color priorities
 #define PLAYERPRIORITY          12
@@ -390,51 +381,57 @@ static void AM_changeWindowLoc(void)
     m_y2 = m_y + m_h;
 }
 
-void AM_Init(void)
+void AM_SetColors(void)
 {
-    byte        *priority;
+    byte        *priority = Z_Calloc(1, 256, PU_STATIC, NULL);
     int         x, y;
 
-    priority = Z_Malloc(256, PU_STATIC, NULL);
-    mask = Z_Malloc(256, PU_STATIC, NULL);
-    for (x = 0; x < 256; ++x)
-    {
-        *(priority + x) = 0;
-        *(mask + x) = x;
-    }
+    *(priority + am_playercolor) = PLAYERPRIORITY;
+    *(priority + am_thingcolor) = THINGPRIORITY;
+    *(priority + am_wallcolor) = WALLPRIORITY;
+    *(priority + am_allmapwallcolor) = ALLMAPWALLPRIORITY;
+    *(priority + am_cdwallcolor) = CDWALLPRIORITY;
+    *(priority + am_allmapcdwallcolor) = ALLMAPCDWALLPRIORITY;
+    *(priority + am_fdwallcolor) = FDWALLPRIORITY;
+    *(priority + am_allmapfdwallcolor) = ALLMAPFDWALLPRIORITY;
+    *(priority + am_teleportercolor) = TELEPORTERPRIORITY;
+    *(priority + am_tswallcolor) = TSWALLPRIORITY;
+    *(priority + am_gridcolor) = GRIDPRIORITY;
 
-    *(priority + PLAYERCOLOR) = PLAYERPRIORITY;
-    *(priority + THINGCOLOR) = THINGPRIORITY;
-    *(priority + WALLCOLOR) = WALLPRIORITY;
-    *(priority + ALLMAPWALLCOLOR) = ALLMAPWALLPRIORITY;
     *(priority + MASKCOLOR) = MASKPRIORITY;
-    *(priority + CDWALLCOLOR) = CDWALLPRIORITY;
-    *(priority + ALLMAPCDWALLCOLOR) = ALLMAPCDWALLPRIORITY;
-    *(priority + FDWALLCOLOR) = FDWALLPRIORITY;
-    *(priority + ALLMAPFDWALLCOLOR) = ALLMAPFDWALLPRIORITY;
-    *(priority + TELEPORTERCOLOR) = TELEPORTERPRIORITY;
-    *(priority + TSWALLCOLOR) = TSWALLPRIORITY;
-    *(priority + GRIDCOLOR) = GRIDPRIORITY;
 
-    *(mask + MASKCOLOR) = BACKGROUNDCOLOR;
+    *(mask + MASKCOLOR) = am_backcolor;
 
-    priorities = Z_Malloc(65536, PU_STATIC, NULL);
     for (x = 0; x < 256; ++x)
         for (y = 0; y < 256; ++y)
             *(priorities + (x << 8) + y) = (*(priority + x) > *(priority + y) ? x : y);
 
-    playercolor = priorities + (PLAYERCOLOR << 8);
-    thingcolor = priorities + (THINGCOLOR << 8);
-    wallcolor = priorities + (WALLCOLOR << 8);
-    allmapwallcolor = priorities + (ALLMAPWALLCOLOR << 8);
+    playercolor = priorities + (am_playercolor << 8);
+    thingcolor = priorities + (am_thingcolor << 8);
+    wallcolor = priorities + (am_wallcolor << 8);
+    allmapwallcolor = priorities + (am_allmapwallcolor << 8);
+    cdwallcolor = priorities + (am_cdwallcolor << 8);
+    allmapcdwallcolor = priorities + (am_allmapcdwallcolor << 8);
+    fdwallcolor = priorities + (am_fdwallcolor << 8);
+    allmapfdwallcolor = priorities + (am_allmapfdwallcolor << 8);
+    teleportercolor = priorities + (am_teleportercolor << 8);
+    tswallcolor = priorities + (am_tswallcolor << 8);
+    gridcolor = priorities + (am_gridcolor << 8);
+
     maskcolor = priorities + (MASKCOLOR << 8);
-    cdwallcolor = priorities + (CDWALLCOLOR << 8);
-    allmapcdwallcolor = priorities + (ALLMAPCDWALLCOLOR << 8);
-    fdwallcolor = priorities + (FDWALLCOLOR << 8);
-    allmapfdwallcolor = priorities + (ALLMAPFDWALLCOLOR << 8);
-    teleportercolor = priorities + (TELEPORTERCOLOR << 8);
-    tswallcolor = priorities + (TSWALLCOLOR << 8);
-    gridcolor = priorities + (GRIDCOLOR << 8);
+}
+
+void AM_Init(void)
+{
+    int x;
+
+    mask = Z_Malloc(256, PU_STATIC, NULL);
+    for (x = 0; x < 256; ++x)
+        *(mask + x) = x;
+
+    priorities = Z_Malloc(256 * 256, PU_STATIC, NULL);
+
+    AM_SetColors();
 }
 
 static void AM_initVariables(dboolean mainwindow)
@@ -580,7 +577,7 @@ static void AM_toggleFollowMode(void)
     am_followmode = !am_followmode;
     if (am_followmode)
         m_paninc.x = m_paninc.y = 0;
-    C_Input("%s %s", stringize(am_followmode), (am_followmode ? "on" : "off"));
+    C_StrCVAROutput(stringize(am_followmode), (am_followmode ? "on" : "off"));
     HU_PlayerMessage((am_followmode ? s_AMSTR_FOLLOWON : s_AMSTR_FOLLOWOFF), false);
     message_dontfuckwithme = true;
     message_clearable = true;
@@ -589,7 +586,7 @@ static void AM_toggleFollowMode(void)
 static void AM_toggleGrid(void)
 {
     am_grid = !am_grid;
-    C_Input("%s %s", stringize(am_grid), (am_grid ? "on" : "off"));
+    C_StrCVAROutput(stringize(am_grid), (am_grid ? "on" : "off"));
     HU_PlayerMessage((am_grid ? s_AMSTR_GRIDON : s_AMSTR_GRIDOFF), false);
     message_dontfuckwithme = true;
     message_clearable = true;
@@ -653,7 +650,7 @@ static void AM_clearMarks(void)
 static void AM_toggleRotateMode(void)
 {
     am_rotatemode = !am_rotatemode;
-    C_Input("%s %s", stringize(am_rotatemode), (am_rotatemode ? "on" : "off"));
+    C_StrCVAROutput(stringize(am_rotatemode), (am_rotatemode ? "on" : "off"));
     HU_PlayerMessage((am_rotatemode ? s_AMSTR_ROTATEON : s_AMSTR_ROTATEOFF), false);
     message_dontfuckwithme = true;
     message_clearable = true;
@@ -1151,7 +1148,7 @@ void AM_Ticker(void)
 //
 void AM_clearFB(void)
 {
-    memset(mapscreen, BACKGROUNDCOLOR, maparea);
+    memset(mapscreen, am_backcolor, maparea);
 }
 
 //
@@ -1246,8 +1243,8 @@ static __inline void PUTTRANSDOT(unsigned int x, unsigned int y, byte *color)
     {
         byte    *dot = mapscreen + y + x;
 
-        if (*dot != *(tinttab60 + PLAYERCOLOR))
-            *dot = *(tinttab60 + (*dot << 8) + PLAYERCOLOR);
+        if (*dot != *(tinttab60 + am_playercolor))
+            *dot = *(tinttab60 + (*dot << 8) + am_playercolor);
     }
 }
 
@@ -1681,24 +1678,24 @@ static const char *marknums[10] =
 {
     "011111101122221112222221122112211221122112211221"
     "122112211221122112211221122222211122221101111110",
-    "001111000112210011222100122221001112210000122100"
-    "001221000012210000122100001221000012210000111100",
-    "111111101222221112222221111112210111122111222221"
+    "001111000112210001222100012221000112210000122100"
+    "001221000012210001122110012222100122221001111110",
+    "011111101122221112222221122112211111122111222221"
     "122222111221111012211111122222211222222111111111",
-    "111111101222221112222221111112210111122101222221"
-    "012222210111122111111221122222211222221111111110",
+    "011111101122221112222221122112211111122100122221"
+    "001222211111122112211221122222211122221101111110",
     "111111111221122112211221122112211221122112222221"
     "122222211111122100001221000012210000122100001111",
     "111111111222222112222221122111111221111012222211"
-    "122222211111122111111221122222211222221111111110",
-    "011111101122221012222210122111101221111012222211"
+    "122222211111122112211221122222211122221101111110",
+    "011111101122221112222221122112211221111112222211"
     "122222211221122112211221122222211122221101111110",
     "111111111222222112222221111112210011222101122211"
     "012221100122110001221000012210000122100001111000",
     "011111101122221112222221122112211221122111222211"
     "122222211221122112211221122222211122221101111110",
     "011111101122221112222221122112211221122112222221"
-    "112222210111122101111221012222210122221101111110"
+    "112222211111122112211221122222211122221101111110"
 };
 
 #define MARKWIDTH       8
@@ -1736,8 +1733,7 @@ static void AM_drawMarks(void)
             int digit = number % 10;
             int j;
 
-            if (i > 0 && digit == 1)
-                x += 2;
+            x += (i > 0 && digit == 1);
             for (j = 0; j < MARKWIDTH * MARKHEIGHT; ++j)
             {
                 int fx = x + j % MARKWIDTH;
@@ -1752,13 +1748,13 @@ static void AM_drawMarks(void)
                         byte    *dest = mapscreen + fy * mapwidth + fx;
 
                         if (src == '2')
-                            *dest = MARKCOLOR;
-                        else if (src == '1' && *dest != MARKCOLOR && *dest != GRIDCOLOR)
+                            *dest = am_markcolor;
+                        else if (src == '1' && *dest != am_markcolor && *dest != am_gridcolor)
                             *dest = *(*dest + tinttab80);
                     }
                 }
             }
-            x -= MARKWIDTH;
+            x -= MARKWIDTH - 1;
             number /= 10;
         }
         while (number > 0);
@@ -1783,7 +1779,7 @@ static __inline void AM_DrawScaledPixel(int x, int y, byte *color)
 
 static void AM_drawCrosshair(void)
 {
-    byte        *color = tinttab60 + (CROSSHAIRCOLOR << 8);
+    byte        *color = tinttab60 + (am_xhaircolor << 8);
 
     AM_DrawScaledPixel(CENTERX - 2, CENTERY, color);
     AM_DrawScaledPixel(CENTERX - 1, CENTERY, color);

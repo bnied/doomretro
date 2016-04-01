@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -76,19 +76,17 @@ typedef struct
 //
 
 // Location of each lump on disk.
-lumpinfo_t              **lumpinfo;
-int                     numlumps = 0;
+lumpinfo_t      **lumpinfo;
+int             numlumps = 0;
 
 // Hash table for fast lookups
 static lumpindex_t      *lumphash;
 
 void ExtractFileBase(char *path, char *dest)
 {
-    char        *src;
+    char        *src = path + strlen(path) - 1;
     char        *filename;
-    int         length;
-
-    src = path + strlen(path) - 1;
+    int         length = 0;
 
     // back up until a \ or the start
     while (src != path && *(src - 1) != '\\' && *(src - 1) != '/')
@@ -96,7 +94,6 @@ void ExtractFileBase(char *path, char *dest)
 
     // copy up to eight characters
     filename = src;
-    length = 0;
     memset(dest, 0, 8);
 
     while (*src != '\0' && *src != '.')
@@ -133,7 +130,6 @@ wad_file_t *W_AddFile(char *filename, dboolean automatic)
 {
     wadinfo_t   header;
     lumpindex_t i;
-    wad_file_t  *wad_file;
     int         startlump;
     filelump_t  *fileinfo;
     filelump_t  *filerover;
@@ -141,7 +137,7 @@ wad_file_t *W_AddFile(char *filename, dboolean automatic)
     int         numfilelumps;
 
     // open the file and add to directory
-    wad_file = W_OpenFile(filename);
+    wad_file_t  *wad_file = W_OpenFile(filename);
 
     if (!wad_file)
         return NULL;
@@ -158,7 +154,7 @@ wad_file_t *W_AddFile(char *filename, dboolean automatic)
         // parsing code expects a little-endian directory, so will swap
         // them back. Effectively we're constructing a "fake WAD directory"
         // here, as it would appear on disk.
-        fileinfo = Z_Malloc(sizeof(filelump_t), PU_STATIC, 0);
+        fileinfo = Z_Malloc(sizeof(filelump_t), PU_STATIC, NULL);
         fileinfo->filepos = LONG(0);
         fileinfo->size = LONG(wad_file->length);
 
@@ -184,7 +180,7 @@ wad_file_t *W_AddFile(char *filename, dboolean automatic)
         header.numlumps = LONG(header.numlumps);
         header.infotableofs = LONG(header.infotableofs);
         length = header.numlumps * sizeof(filelump_t);
-        fileinfo = Z_Malloc(length, PU_STATIC, 0);
+        fileinfo = Z_Malloc(length, PU_STATIC, NULL);
 
         W_Read(wad_file, header.infotableofs, fileinfo, length);
         numfilelumps = header.numlumps;
@@ -395,8 +391,8 @@ lumpindex_t W_CheckNumForName(char *name)
 //
 int W_CheckMultipleLumps(char *name)
 {
-    int         i;
-    int         count = 0;
+    int i;
+    int count = 0;
 
     if (FREEDOOM || hacx)
         return 3;

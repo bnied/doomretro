@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -107,7 +107,7 @@ struct midi_file_s
 // Check the header of a chunk:
 static dboolean CheckChunkHeader(chunk_header_t *chunk, char *expected_id)
 {
-    return (memcmp((char *)chunk->chunk_id, expected_id, 4) == 0);
+    return (!memcmp((char *)chunk->chunk_id, expected_id, 4));
 }
 
 // Read a single byte. Returns false on error.
@@ -145,7 +145,7 @@ static dboolean ReadVariableLength(unsigned int *result, FILE *stream)
         *result |= b & 0x7F;
 
         // If the top bit is not set, this is the end.
-        if ((b & 0x80) == 0)
+        if (!(b & 0x80))
             return true;
     }
 
@@ -267,7 +267,7 @@ static dboolean ReadEvent(midi_event_t *event, unsigned int *last_event_type, FI
     // the top bit is not set, it is because we are using the "same
     // as previous event type" shortcut to save a byte. Skip back
     // a byte so that we read this byte again.
-    if ((event_type & 0x80) == 0)
+    if (!(event_type & 0x80))
     {
         event_type = *last_event_type;
 

@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -53,7 +53,7 @@ void T_FireFlicker(fireflicker_t *flick)
     if (--flick->count)
         return;
 
-    flick->sector->lightlevel = MAX(flick->minlight, flick->maxlight - (P_Random() & 3) * 16);
+    flick->sector->lightlevel = MAX(flick->minlight, flick->maxlight - (M_Random() & 3) * 16);
 
     flick->count = 4;
 }
@@ -63,11 +63,7 @@ void T_FireFlicker(fireflicker_t *flick)
 //
 void P_SpawnFireFlicker(sector_t *sector)
 {
-    fireflicker_t       *flick = Z_Malloc(sizeof(*flick), PU_LEVSPEC, 0);
-
-    // Note that we are resetting sector attributes.
-    // Nothing special about it during gameplay.
-    sector->special &= ~31;     // jff 3/14/98 clear non-generalized sector type
+    fireflicker_t       *flick = Z_Calloc(1, sizeof(*flick), PU_LEVSPEC, NULL);
 
     P_AddThinker(&flick->thinker);
 
@@ -94,12 +90,12 @@ void T_LightFlash(lightflash_t *flash)
     if (flash->sector->lightlevel == flash->maxlight)
     {
         flash->sector->lightlevel = flash->minlight;
-        flash->count = (P_Random() & flash->mintime) + 1;
+        flash->count = (M_Random() & flash->mintime) + 1;
     }
     else
     {
         flash->sector->lightlevel = flash->maxlight;
-        flash->count = (P_Random() & flash->maxtime) + 1;
+        flash->count = (M_Random() & flash->maxtime) + 1;
     }
 }
 
@@ -110,10 +106,7 @@ void T_LightFlash(lightflash_t *flash)
 //
 void P_SpawnLightFlash(sector_t *sector)
 {
-    lightflash_t        *flash = Z_Malloc(sizeof(*flash), PU_LEVSPEC, 0);
-
-    // nothing special about it during gameplay
-    sector->special &= ~31;     // jff 3/14/98 clear non-generalized sector type
+    lightflash_t        *flash = Z_Calloc(1, sizeof(*flash), PU_LEVSPEC, NULL);
 
     P_AddThinker(&flash->thinker);
 
@@ -124,7 +117,7 @@ void P_SpawnLightFlash(sector_t *sector)
     flash->minlight = P_FindMinSurroundingLight(sector, sector->lightlevel);
     flash->maxtime = 63;
     flash->mintime = 7;
-    flash->count = (P_Random() & flash->maxtime) + 1;
+    flash->count = (M_Random() & flash->maxtime) + 1;
 }
 
 //
@@ -158,7 +151,7 @@ void T_StrobeFlash(strobe_t *flash)
 //
 void P_SpawnStrobeFlash(sector_t *sector, int fastOrSlow, int inSync)
 {
-    strobe_t    *flash = Z_Malloc(sizeof(*flash), PU_LEVSPEC, 0);
+    strobe_t    *flash = Z_Calloc(1, sizeof(*flash), PU_LEVSPEC, NULL);
 
     P_AddThinker(&flash->thinker);
 
@@ -172,10 +165,7 @@ void P_SpawnStrobeFlash(sector_t *sector, int fastOrSlow, int inSync)
     if (flash->minlight == flash->maxlight)
         flash->minlight = 0;
 
-    // nothing special about it during gameplay
-    sector->special &= ~31;     // jff 3/14/98 clear non-generalized sector type
-
-    flash->count = (inSync ? 1 : (P_Random() & 7) + 1);
+    flash->count = (inSync ? 1 : (M_Random() & 7) + 1);
 }
 
 //
@@ -183,7 +173,7 @@ void P_SpawnStrobeFlash(sector_t *sector, int fastOrSlow, int inSync)
 //
 int EV_StartLightStrobing(line_t *line)
 {
-    int         secnum = -1;
+    int secnum = -1;
 
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)
     {
@@ -284,7 +274,7 @@ void T_Glow(glow_t *g)
 
 void P_SpawnGlowingLight(sector_t *sector)
 {
-    glow_t *glow = Z_Malloc(sizeof(*glow), PU_LEVSPEC, 0);
+    glow_t      *glow = Z_Calloc(1, sizeof(*glow), PU_LEVSPEC, NULL);
 
     P_AddThinker(&glow->thinker);
 
@@ -293,8 +283,6 @@ void P_SpawnGlowingLight(sector_t *sector)
     glow->maxlight = sector->lightlevel;
     glow->thinker.function = T_Glow;
     glow->direction = -1;
-
-    sector->special &= ~31;     // jff 3/14/98 clear non-generalized sector type
 }
 
 // killough 10/98:
@@ -316,8 +304,11 @@ void EV_LightTurnOnPartway(line_t *line, fixed_t level)
     // search all sectors for ones with same tag as activating line
     for (i = -1; (i = P_FindSectorFromLineTag(line, i)) >= 0;)
     {
-        sector_t        *temp, *sector = sectors + i;
-        int             j, bright = 0, min = sector->lightlevel;
+        sector_t        *temp;
+        sector_t        *sector = sectors + i;
+        int             j;
+        int             bright = 0;
+        int             min = sector->lightlevel;
 
         for (j = 0; j < sector->linecount; j++)
             if ((temp = getNextSector(sector->lines[j], sector)))
@@ -333,12 +324,17 @@ void EV_LightTurnOnPartway(line_t *line, fixed_t level)
     }
 }
 
+//
+// EV_LightByAdjacentSectors()
+//
 // [BH] similar to EV_LightTurnOnPartway(), but instead of using a line tag, looks at adjacent
 //  sectors of the sector itself.
 void EV_LightByAdjacentSectors(sector_t *sector, fixed_t level)
 {
     sector_t    *temp;
-    int         i, bright = 0, min = MAX(0, sector->lightlevel - 4);
+    int         i;
+    int         bright = 0;
+    int         min = MAX(0, sector->lightlevel - 4);
 
     level = BETWEEN(0, level, FRACUNIT);        // clip at extremes
 

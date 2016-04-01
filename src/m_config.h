@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -36,31 +36,89 @@
 ========================================================================
 */
 
-#if !defined(__M_CONFIG__)
-#define __M_CONFIG__
+#if !defined(__M_CONFIG_H__)
+#define __M_CONFIG_H__
 
 typedef enum
 {
-    noblood,
-    redbloodonly,
-    allbloodcolors
+    r_blood_none,
+    r_blood_red,
+    r_blood_all
 } r_blood_values_e;
 
 typedef enum
 {
-    lowdetail,
-    highdetail
+    r_detail_low,
+    r_detail_high
 } r_detail_values_e;
 
 #define alwaysrun_default                       false
 
+#define am_allmapcdwallcolor_min                0
+#define am_allmapcdwallcolor_default            106
+#define am_allmapcdwallcolor_max                255
+
+#define am_allmapfdwallcolor_min                0
+#define am_allmapfdwallcolor_default            110
+#define am_allmapfdwallcolor_max                255
+
+#define am_allmapwallcolor_min                  0
+#define am_allmapwallcolor_default              108
+#define am_allmapwallcolor_max                  255
+
+#define am_backcolor_min                        0
+#define am_backcolor_default                    0
+#define am_backcolor_max                        255
+
+#define am_cdwallcolor_min                      0
+#define am_cdwallcolor_default                  160
+#define am_cdwallcolor_max                      255
+
 #define am_external_default                     false
+
+#define am_fdwallcolor_min                      0
+#define am_fdwallcolor_default                  64
+#define am_fdwallcolor_max                      255
 
 #define am_followmode_default                   true
 
 #define am_grid_default                         false
 
+#define am_gridcolor_min                        0
+#define am_gridcolor_default                    5
+#define am_gridcolor_max                        255
+
+#define am_markcolor_min                        0
+#define am_markcolor_default                    100
+#define am_markcolor_max                        255
+
+#define am_playercolor_min                      0
+#define am_playercolor_default                  4
+#define am_playercolor_max                      255
+
 #define am_rotatemode_default                   true
+
+#define am_teleportercolor_min                  0
+#define am_teleportercolor_default              184
+#define am_teleportercolor_max                  255
+
+#define am_thingcolor_min                       0
+#define am_thingcolor_default                   112
+#define am_thingcolor_max                       255
+
+#define am_tswallcolor_min                      0
+#define am_tswallcolor_default                  104
+#define am_tswallcolor_max                      255
+
+#define am_wallcolor_min                        0
+#define am_wallcolor_default                    176
+#define am_wallcolor_max                        255
+
+#define am_xhaircolor_min                       0
+#define am_xhaircolor_default                   4
+#define am_xhaircolor_max                       255
+
+#define autoload_default                        true
 
 #define centerweapon_default                    true
 
@@ -72,20 +130,20 @@ typedef enum
 #define episode_default                         0
 #define episode_max                             3
 
-#define faceback_min                            0
-#define faceback_default                        5
-#define faceback_max                            255
+#define facebackcolor_min                       0
+#define facebackcolor_default                   5
+#define facebackcolor_max                       255
 
 #define expansion_min                           0
 #define expansion_default                       0
 #define expansion_max                           1
 
 #define gp_deadzone_left_min                    0.0f
-#define gp_deadzone_left_default                (GAMEPAD_LEFT_THUMB_DEADZONE / (float)SHRT_MAX * 100.0f)
+#define gp_deadzone_left_default                24.0f
 #define gp_deadzone_left_max                    100.0f
 
 #define gp_deadzone_right_min                   0.0f
-#define gp_deadzone_right_default               (GAMEPAD_RIGHT_THUMB_DEADZONE / (float)SHRT_MAX * 100.0f)
+#define gp_deadzone_right_default               26.5f
 #define gp_deadzone_right_max                   100.0f
 
 #define gp_sensitivity_min                      0
@@ -124,13 +182,17 @@ typedef enum
 
 #define r_althud_default                        false
 
-#define r_blood_min                             noblood
-#define r_blood_default                         allbloodcolors
-#define r_blood_max                             allbloodcolors
+#define r_berserkintensity_min                  0
+#define r_berserkintensity_default              33
+#define r_berserkintensity_max                  100
+
+#define r_blood_min                             r_blood_none
+#define r_blood_default                         r_blood_all
+#define r_blood_max                             r_blood_all
 
 #define r_bloodsplats_max_min                   0
 #define r_bloodsplats_max_default               32768
-#define r_bloodsplats_max_max                   32768
+#define r_bloodsplats_max_max                   1048576
 
 #define r_bloodsplats_total_min                 0
 #define r_bloodsplats_total_default             0
@@ -150,7 +212,7 @@ typedef enum
 
 #define r_corpses_smearblood_default            true
 
-#define r_detail_default                        highdetail
+#define r_detail_default                        r_detail_high
 
 #define r_diskicon_default                      true
 
@@ -222,6 +284,10 @@ typedef enum
 #define stillbob_default                        0
 #define stillbob_max                            100
 
+#define turbo_min                               10
+#define turbo_default                           100
+#define turbo_max                               400
+
 #define vid_capfps_default                      false
 
 #define vid_display_min                         1
@@ -286,6 +352,7 @@ typedef enum
 #define KEYAUTOMAPROTATEMODE_DEFAULT            'r'
 #define KEYAUTOMAPZOOMIN_DEFAULT                KEY_EQUALS
 #define KEYAUTOMAPZOOMOUT_DEFAULT               KEY_MINUS
+#define KEYCONSOLE_DEFAULT                      KEY_TILDE
 #define KEYDOWN_DEFAULT                         KEY_DOWNARROW
 #define KEYDOWN2_DEFAULT                        's'
 #define KEYFIRE_DEFAULT                         KEY_RCTRL
@@ -302,6 +369,7 @@ typedef enum
 #define KEYUP_DEFAULT                           KEY_UPARROW
 #define KEYUP2_DEFAULT                          'w'
 #define KEYUSE_DEFAULT                          ' '
+#define KEYUSE2_DEFAULT                         'e'
 #define KEYWEAPON1_DEFAULT                      '1'
 #define KEYWEAPON2_DEFAULT                      '2'
 #define KEYWEAPON3_DEFAULT                      '3'
@@ -315,6 +383,7 @@ typedef enum
 #define MOUSEPREVWEAPON_DEFAULT                 MOUSE_WHEELUP
 #define MOUSENEXTWEAPON_DEFAULT                 MOUSE_WHEELDOWN
 #define MOUSESTRAFE_DEFAULT                     -1
+#define MOUSERUN_DEFAULT                        -1
 #define MOUSEUSE_DEFAULT                        -1
 
 typedef enum
@@ -332,9 +401,7 @@ typedef enum
 {
     NOALIAS,
     BOOLALIAS,
-    SCREENALIAS,
     DETAILALIAS,
-    SPLATALIAS,
     GAMMAALIAS,
     BLOODALIAS
 } alias_type_t;
@@ -364,6 +431,5 @@ extern alias_t          aliases[];
 
 void M_LoadCVARs(char *filename);
 void M_SaveCVARs(void);
-char *striptrailingzero(float value, int precision);
 
 #endif

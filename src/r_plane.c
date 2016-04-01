@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -284,7 +284,7 @@ static void R_MakeSpans(visplane_t *pl)
     }
 }
 
-// Ripple Effect from Eternity Engine (r_ripple.cpp) by Simon Howard
+// Ripple Effect from SMMU (r_ripple.cpp) by Simon Howard
 #define AMP             2
 #define AMP2            2
 #define SPEED           40
@@ -314,36 +314,34 @@ static byte *R_DistortedFlat(int flatnum)
     int         leveltic = gametic;
 
     // Already swirled this one?
-    if (gametic == swirltic && lastflat == flatnum)
+    if (leveltic == swirltic && lastflat == flatnum)
         return distortedflat;
 
     lastflat = flatnum;
 
     // built this tic?
-    if (gametic != swirltic && (!consoleactive || swirltic == -1) && !menuactive && !paused)
+    if (leveltic != swirltic && (!consoleactive || swirltic == -1) && !menuactive && !paused)
     {
         int     x, y;
 
+        leveltic *= SPEED;
         for (x = 0; x < 64; ++x)
             for (y = 0; y < 64; ++y)
             {
                 int     x1, y1;
                 int     sinvalue, sinvalue2;
 
-                sinvalue = (y * SWIRLFACTOR + leveltic * SPEED * 5 + 900) & 8191;
-                sinvalue2 = (x * SWIRLFACTOR2 + leveltic * SPEED * 4 + 300) & 8191;
+                sinvalue = (y * SWIRLFACTOR + leveltic * 5 + 900) & 8191;
+                sinvalue2 = (x * SWIRLFACTOR2 + leveltic * 4 + 300) & 8191;
                 x1 = x + 128 + ((finesine[sinvalue] * AMP) >> FRACBITS)
                     + ((finesine[sinvalue2] * AMP2) >> FRACBITS);
 
-                sinvalue = (x * SWIRLFACTOR + leveltic * SPEED * 3 + 700) & 8191;
-                sinvalue2 = (y * SWIRLFACTOR2 + leveltic * SPEED * 4 + 1200) & 8191;
+                sinvalue = (x * SWIRLFACTOR + leveltic * 3 + 700) & 8191;
+                sinvalue2 = (y * SWIRLFACTOR2 + leveltic * 4 + 1200) & 8191;
                 y1 = y + 128 + ((finesine[sinvalue] * AMP) >> FRACBITS)
                     + ((finesine[sinvalue2] * AMP2) >> FRACBITS);
 
-                x1 &= 63;
-                y1 &= 63;
-
-                offset[(y << 6) + x] = (y1 << 6) + x1;
+                offset[(y << 6) + x] = ((y1 & 63) << 6) + (x1 & 63);
             }
 
         swirltic = gametic;
@@ -351,7 +349,7 @@ static byte *R_DistortedFlat(int flatnum)
 
     normalflat = W_CacheLumpNum(firstflat + flatnum, PU_LEVEL);
 
-    for (i = 0; i < 4096; i++)
+    for (i = 0; i < 4096; ++i)
         distortedflat[i] = normalflat[offset[i]];
 
     return distortedflat;
@@ -370,7 +368,6 @@ void R_DrawPlanes(void)
         visplane_t      *pl;
 
         for (pl = visplanes[i]; pl; pl = pl->next)
-        {
             if (pl->minx <= pl->maxx)
             {
                 int     picnum = pl->picnum;
@@ -382,6 +379,7 @@ void R_DrawPlanes(void)
                     int         texture;
                     int         offset;
                     angle_t     an, flip;
+                    rpatch_t    *tex_patch;
 
                     // killough 10/98: allow skies to come from sidedefs.
                     // Allows scrolling and/or animated skies, as well as
@@ -433,6 +431,8 @@ void R_DrawPlanes(void)
                     dc_texheight = textureheight[texture] >> FRACBITS;
                     dc_iscale = pspriteiscale;
 
+                    tex_patch = R_CacheTextureCompositePatchNum(texture);
+
                     offset = skycolumnoffset >> FRACBITS;
 
                     for (x = pl->minx; x <= pl->maxx; x++)
@@ -443,11 +443,13 @@ void R_DrawPlanes(void)
                         if (dc_yl <= dc_yh)
                         {
                             dc_x = x;
-                            dc_source = R_GetColumn(texture, (((an + xtoviewangle[x]) ^ flip)
-                                >> ANGLETOSKYSHIFT) + offset, false);
+                            dc_source = R_GetTextureColumn(tex_patch,
+                                (((an + xtoviewangle[x]) ^ flip) >> ANGLETOSKYSHIFT) + offset);
                             skycolfunc();
                         }
                     }
+
+                    R_UnlockTextureCompositePatchNum(texture);
                 }
                 else
                 {
@@ -477,6 +479,5 @@ void R_DrawPlanes(void)
                         W_ReleaseLumpNum(lumpnum);
                 }
             }
-        }
     }
 }

@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -50,6 +50,7 @@
 #include "p_tick.h"
 #include "r_sky.h"
 #include "s_sound.h"
+#include "sc_man.h"
 #include "w_wad.h"
 #include "z_zone.h"
 
@@ -115,74 +116,6 @@ static anim_t   *lastanim;
 static anim_t   *anims;                 // new structure w/o limits -- killough
 static size_t   maxanims;
 
-static struct
-{
-    char        *pwad;
-    char        *texture;
-} exception[] = {
-    { "BTSX_E1.WAD",  "SHNPRT02" },
-    { "BTSX_E2B.WAD", "SHNPRT08" },
-    { "BTSX_E2B.WAD", "SLIME09"  },
-    { "DOOM2.WAD",    "RROCK05"  },
-    { "DOOM2.WAD",    "RROCK06"  },
-    { "DOOM2.WAD",    "RROCK07"  },
-    { "DOOM2.WAD",    "RROCK08"  },
-    { "DOOM2.WAD",    "SLIME09"  },
-    { "DOOM2.WAD",    "SLIME10"  },
-    { "DOOM2.WAD",    "SLIME11"  },
-    { "DOOM2.WAD",    "SLIME12"  },
-    { "MOHU2.WAD",    "DIFL_01"  },
-    { "ETERNALL.WAD", "NUKAGE1"  },
-    { "ETERNALL.WAD", "NUKAGE2"  },
-    { "ETERNALL.WAD", "NUKAGE3"  },
-    { "ETERNALL.WAD", "RROCK05"  },
-    { "ETERNALL.WAD", "RROCK06"  },
-    { "ETERNALL.WAD", "RROCK07"  },
-    { "ETERNALL.WAD", "RROCK08"  },
-    { "ETERNALL.WAD", "SLIME09"  },
-    { "ETERNALL.WAD", "SLIME10"  },
-    { "ETERNALL.WAD", "SLIME11"  },
-    { "ETERNALL.WAD", "SLIME12"  },
-    { "PLUTONIA.WAD", "RROCK05"  },
-    { "PLUTONIA.WAD", "RROCK06"  },
-    { "PLUTONIA.WAD", "RROCK07"  },
-    { "PLUTONIA.WAD", "RROCK08"  },
-    { "PLUTONIA.WAD", "SLIME09"  },
-    { "PLUTONIA.WAD", "SLIME10"  },
-    { "PLUTONIA.WAD", "SLIME11"  },
-    { "PLUTONIA.WAD", "SLIME12"  },
-    { "RC-DC.WAD",    "BWORM00A" },
-    { "RC-DC.WAD",    "CFAN00A"  },
-    { "RC-DC.WAD",    "CFAN01A"  },
-    { "RC-DC.WAD",    "CFAN00D"  },
-    { "RC-DC.WAD",    "CFAN01D"  },
-    { "REQUIEM.WAD",  "SLIME05"  },
-    { "REQUIEM.WAD",  "SLIME08"  },
-    { "SID.WAD",      "FWATER1"  },
-    { "SUNLUST.WAD",  "RROCK05"  },
-    { "SUNLUST.WAD",  "RROCK06"  },
-    { "SUNLUST.WAD",  "RROCK07"  },
-    { "SUNLUST.WAD",  "RROCK08"  },
-    { "SUNLUST.WAD",  "SLIME09"  },
-    { "SUNLUST.WAD",  "SLIME10"  },
-    { "SUNLUST.WAD",  "SLIME11"  },
-    { "SUNLUST.WAD",  "SLIME12"  },
-    { "TNT.WAD",      "RROCK05"  },
-    { "TNT.WAD",      "RROCK06"  },
-    { "TNT.WAD",      "RROCK07"  },
-    { "TNT.WAD",      "RROCK08"  },
-    { "TNT.WAD",      "SLIME09"  },
-    { "TNT.WAD",      "SLIME10"  },
-    { "TNT.WAD",      "SLIME11"  },
-    { "TNT.WAD",      "SLIME12"  },
-    { "UACULTRA.WAD", "RROCK05"  },
-    { "VALIANT.WAD",  "E3SAW_A1" },
-    { "VALIANT.WAD",  "E3SAW_A2" },
-    { "VALIANT.WAD",  "E3SAW_A3" },
-    { "VALIANT.WAD",  "E3SAW_A4" },
-    { "",             ""         }
-};
-
 // killough 3/7/98: Initialize generalized scrolling
 static void P_SpawnScrollers(void);
 static void P_SpawnFriction(void);      // phares 3/16/98
@@ -200,16 +133,58 @@ dboolean        *isteleport;
 //
 void P_InitPicAnims(void)
 {
+    int size = (numflats + 1) * sizeof(dboolean);
+
+    isliquid = Z_Malloc(size, PU_STATIC, NULL);
+    isteleport = Z_Calloc(1, size, PU_STATIC, NULL);
+
+    // [BH] indicate obvious teleport textures for automap
+    if (BTSX)
+    {
+        isteleport[R_CheckFlatNumForName("SLIME09")] = true;
+        isteleport[R_CheckFlatNumForName("SLIME12")] = true;
+        isteleport[R_CheckFlatNumForName("TELEPRT1")] = true;
+        isteleport[R_CheckFlatNumForName("TELEPRT2")] = true;
+        isteleport[R_CheckFlatNumForName("TELEPRT3")] = true;
+        isteleport[R_CheckFlatNumForName("TELEPRT4")] = true;
+        isteleport[R_CheckFlatNumForName("TELEPRT5")] = true;
+        isteleport[R_CheckFlatNumForName("TELEPRT6")] = true;
+        isteleport[R_CheckFlatNumForName("SLIME05")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT02")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT03")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT04")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT05")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT06")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT07")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT08")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT09")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT10")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT11")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT12")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT13")] = true;
+        isteleport[R_CheckFlatNumForName("SHNPRT14")] = true;
+        isteleport[R_CheckFlatNumForName("SLIME08")] = true;
+    }
+    else
+    {
+        isteleport[R_CheckFlatNumForName("GATE1")] = true;
+        isteleport[R_CheckFlatNumForName("GATE2")] = true;
+        isteleport[R_CheckFlatNumForName("GATE3")] = true;
+        isteleport[R_CheckFlatNumForName("GATE4")] = true;
+    }
+}
+
+//
+// P_GetLiquids
+//
+void P_SetLiquids(void)
+{
     int         i;
     int         lump = W_GetNumForName2("ANIMATED");
     animdef_t   *animdefs = W_CacheLumpNum(lump, PU_STATIC);
-    int         size = (numflats + 1) * sizeof(dboolean);
 
-    isliquid = Z_Malloc(size, PU_STATIC, 0);
-    memset(isliquid, false, size);
-
-    isteleport = Z_Malloc(size, PU_STATIC, 0);
-    memset(isteleport, false, size);
+    for (i = 0; i < numflats; ++i)
+        isliquid[i] = false;
 
     // Init animation
     lastanim = anims;
@@ -264,49 +239,16 @@ void P_InitPicAnims(void)
     }
     W_ReleaseLumpNum(lump);
 
-    i = 0;
-    while (exception[i].pwad[0])
+    // [BH] parse NOLIQUID lump to find animated textures that are not liquid in current wad
+    SC_Open("NOLIQUID");
+    while (SC_GetString())
     {
-        int     lump = R_CheckFlatNumForName(exception[i].texture);
+        int     lump = R_CheckFlatNumForName(sc_String);
 
+        SC_MustGetString();
         if (lump >= 0 && M_StringCompare(leafname(lumpinfo[firstflat + lump]->wad_file->path),
-            exception[i].pwad))
+            sc_String))
             isliquid[lump] = false;
-        ++i;
-    }
-
-    if (BTSX)
-    {
-        isteleport[R_CheckFlatNumForName("SLIME09")] = true;
-        isteleport[R_CheckFlatNumForName("SLIME12")] = true;
-        isteleport[R_CheckFlatNumForName("TELEPRT1")] = true;
-        isteleport[R_CheckFlatNumForName("TELEPRT2")] = true;
-        isteleport[R_CheckFlatNumForName("TELEPRT3")] = true;
-        isteleport[R_CheckFlatNumForName("TELEPRT4")] = true;
-        isteleport[R_CheckFlatNumForName("TELEPRT5")] = true;
-        isteleport[R_CheckFlatNumForName("TELEPRT6")] = true;
-        isteleport[R_CheckFlatNumForName("SLIME05")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT02")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT03")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT04")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT05")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT06")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT07")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT08")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT09")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT10")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT11")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT12")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT13")] = true;
-        isteleport[R_CheckFlatNumForName("SHNPRT14")] = true;
-        isteleport[R_CheckFlatNumForName("SLIME08")] = true;
-    }
-    else
-    {
-        isteleport[R_CheckFlatNumForName("GATE1")] = true;
-        isteleport[R_CheckFlatNumForName("GATE2")] = true;
-        isteleport[R_CheckFlatNumForName("GATE3")] = true;
-        isteleport[R_CheckFlatNumForName("GATE4")] = true;
     }
 }
 
@@ -899,13 +841,24 @@ dboolean P_CanUnlockGenDoor(line_t *line, player_t *player)
 //  succeeding in starting multiple specials on one sector
 //
 // killough 11/98: reformatted
-
 dboolean P_SectorActive(special_e t, sector_t *sec)
 {
     return (t == floor_special ? !!sec->floordata :     // return whether
         (t == ceiling_special ? !!sec->ceilingdata :     // thinker of same
         (t == lighting_special ? !!sec->lightingdata :   // type is active
         true)));        // don't know which special, must be active, shouldn't be here
+}
+
+//
+// P_SectorHasLightSpecial()
+//
+// [BH] Returns true if sector has a light special
+dboolean P_SectorHasLightSpecial(sector_t *sec)
+{
+    short special = sec->special;
+
+    return (special && special != Secret && special != Door_CloseStay_After30sec
+        && special != Door_OpenClose_OpensAfter5Min);
 }
 
 //
@@ -1080,6 +1033,13 @@ void P_CrossSpecialLine(line_t *line, int side, mobj_t *thing)
                 if (!(line->special & StairMonster))
                     return;             // monsters disallowed
             linefunc = EV_DoGenStairs;
+        }
+        else if ((unsigned int)line->special >= GenCrusherBase)
+        {
+            if (!thing->player)
+                if (!(line->special & CrusherMonster))
+                    return;             // monsters disallowed
+            linefunc = EV_DoGenCrusher;
         }
 
         // if it was a valid generalized type
@@ -1275,9 +1235,7 @@ void P_CrossSpecialLine(line_t *line, int side, mobj_t *thing)
             break;
 
         case W1_ExitLevel:
-            // killough 10/98: prevent zombies from exiting levels
-            if (!(thing->player && thing->player->health <= 0))
-                G_ExitLevel();
+            G_ExitLevel();
             break;
 
         case W1_Floor_StartMovingUpAndDown:
@@ -1346,9 +1304,7 @@ void P_CrossSpecialLine(line_t *line, int side, mobj_t *thing)
             break;
 
         case W1_ExitLevel_GoesToSecretLevel:
-            // killough 10/98: prevent zombies from exiting levels
-            if (!(thing->player && thing->player->health <= 0))
-                G_SecretExitLevel();
+            G_SecretExitLevel();
             break;
 
         case W1_Teleport_MonstersOnly:
@@ -1710,91 +1666,88 @@ void P_CrossSpecialLine(line_t *line, int side, mobj_t *thing)
 void P_ShootSpecialLine(mobj_t *thing, line_t *line)
 {
     // jff 02/04/98 add check here for generalized linedef
+    // pointer to line function is NULL by default, set non-null if
+    // line special is gun triggered generalized linedef type
+    dboolean (*linefunc)(line_t *line) = NULL;
+
+    // check each range of generalized linedefs
+    if ((unsigned int)line->special >= GenFloorBase)
     {
-        // pointer to line function is NULL by default, set non-null if
-        // line special is gun triggered generalized linedef type
-        dboolean (*linefunc)(line_t *line) = NULL;
-
-        // check each range of generalized linedefs
-        if ((unsigned int)line->special >= GenFloorBase)
-        {
-            if (!thing->player)
-                if ((line->special & FloorChange) || !(line->special & FloorModel))
-                    return;             // FloorModel is "Allow Monsters" if FloorChange is 0
-            linefunc = EV_DoGenFloor;
-        }
-        else if ((unsigned int)line->special >= GenCeilingBase)
-        {
-            if (!thing->player)
-                if ((line->special & CeilingChange) || !(line->special & CeilingModel))
-                    return;             // CeilingModel is "Allow Monsters" if CeilingChange is 0
-            linefunc = EV_DoGenCeiling;
-        }
-        else if ((unsigned int)line->special >= GenDoorBase)
-        {
-            if (!thing->player)
-            {
-                if (!(line->special & DoorMonster))
-                    return;                     // monsters disallowed from this door
-                if (line->flags & ML_SECRET)    // they can't open secret doors either
-                    return;
-            }
-            linefunc = EV_DoGenDoor;
-        }
-        else if ((unsigned int)line->special >= GenLockedBase)
-        {
-            if (!thing->player)
-                return;                 // monsters disallowed from unlocking doors
-            if (((line->special & TriggerType) == GunOnce)
-                || ((line->special & TriggerType) == GunMany))
-            {
-                // jff 4/1/98 check for being a gun type before reporting door type
-                if (!P_CanUnlockGenDoor(line, thing->player))
-                    return;
-            }
-            else
-                return;
-            linefunc = EV_DoGenLockedDoor;
-        }
-        else if ((unsigned int)line->special >= GenLiftBase)
-        {
-            if (!thing->player)
-                if (!(line->special & LiftMonster))
-                    return;             // monsters disallowed
-            linefunc = EV_DoGenLift;
-        }
-        else if ((unsigned int)line->special >= GenStairsBase)
-        {
-            if (!thing->player)
-                if (!(line->special & StairMonster))
-                    return;             // monsters disallowed
-            linefunc = EV_DoGenStairs;
-        }
-        else if ((unsigned int)line->special >= GenCrusherBase)
-        {
-            if (!thing->player)
-                if (!(line->special & StairMonster))
-                    return;             // monsters disallowed
-            linefunc = EV_DoGenCrusher;
-        }
-
-        if (linefunc)
-            switch ((line->special & TriggerType) >> TriggerTypeShift)
-            {
-                case GunOnce:
-                    if (linefunc(line))
-                        P_ChangeSwitchTexture(line, 0);
-                    return;
-
-                case GunMany:
-                    if (linefunc(line))
-                        P_ChangeSwitchTexture(line, 1);
-                    return;
-
-                default:                // if not a gun type, do nothing here
-                    return;
-            }
+        if (!thing->player)
+            if ((line->special & FloorChange) || !(line->special & FloorModel))
+                return;             // FloorModel is "Allow Monsters" if FloorChange is 0
+        linefunc = EV_DoGenFloor;
     }
+    else if ((unsigned int)line->special >= GenCeilingBase)
+    {
+        if (!thing->player)
+            if ((line->special & CeilingChange) || !(line->special & CeilingModel))
+                return;             // CeilingModel is "Allow Monsters" if CeilingChange is 0
+        linefunc = EV_DoGenCeiling;
+    }
+    else if ((unsigned int)line->special >= GenDoorBase)
+    {
+        if (!thing->player)
+        {
+            if (!(line->special & DoorMonster))
+                return;                     // monsters disallowed from this door
+            if (line->flags & ML_SECRET)    // they can't open secret doors either
+                return;
+        }
+        linefunc = EV_DoGenDoor;
+    }
+    else if ((unsigned int)line->special >= GenLockedBase)
+    {
+        if (!thing->player)
+            return;                 // monsters disallowed from unlocking doors
+        if ((line->special & TriggerType) == GunOnce || (line->special & TriggerType) == GunMany)
+        {
+            // jff 4/1/98 check for being a gun type before reporting door type
+            if (!P_CanUnlockGenDoor(line, thing->player))
+                return;
+        }
+        else
+            return;
+        linefunc = EV_DoGenLockedDoor;
+    }
+    else if ((unsigned int)line->special >= GenLiftBase)
+    {
+        if (!thing->player)
+            if (!(line->special & LiftMonster))
+                return;             // monsters disallowed
+        linefunc = EV_DoGenLift;
+    }
+    else if ((unsigned int)line->special >= GenStairsBase)
+    {
+        if (!thing->player)
+            if (!(line->special & StairMonster))
+                return;             // monsters disallowed
+        linefunc = EV_DoGenStairs;
+    }
+    else if ((unsigned int)line->special >= GenCrusherBase)
+    {
+        if (!thing->player)
+            if (!(line->special & CrusherMonster))
+                return;             // monsters disallowed
+        linefunc = EV_DoGenCrusher;
+    }
+
+    if (linefunc)
+        switch ((line->special & TriggerType) >> TriggerTypeShift)
+        {
+            case GunOnce:
+                if (linefunc(line))
+                    P_ChangeSwitchTexture(line, 0);
+                return;
+
+            case GunMany:
+                if (linefunc(line))
+                    P_ChangeSwitchTexture(line, 1);
+                return;
+
+            default:                // if not a gun type, do nothing here
+                return;
+        }
 
     // Impacts that other things can activate.
     if (!thing->player && line->special != GR_Door_OpenStay)
@@ -1823,17 +1776,11 @@ void P_ShootSpecialLine(mobj_t *thing, line_t *line)
             break;
 
         case G1_ExitLevel:
-            // killough 10/98: prevent zombies from exiting levels
-            if (thing->player && thing->player->health <= 0)
-                break;
             P_ChangeSwitchTexture(line, 0);
             G_ExitLevel();
             break;
 
         case G1_ExitLevel_GoesToSecretLevel:
-            // killough 10/98: prevent zombies from exiting levels
-            if (thing->player && thing->player->health <= 0)
-                break;
             P_ChangeSwitchTexture(line, 0);
             G_SecretExitLevel();
             break;
@@ -1875,7 +1822,7 @@ void P_PlayerInSpecialSector(player_t *player)
 
             case DamageNegative10Or20PercentHealth:
             case DamageNegative10Or20PercentHealthAndLightBlinks_2Hz:
-                if (!player->powers[pw_ironfeet] || P_Random() < 5)
+                if (!player->powers[pw_ironfeet] || M_Random() < 5)
                     if (!(leveltime & 0x1f))
                         P_DamageMobj(player->mo, NULL, NULL, 20);
                 break;
@@ -1925,7 +1872,7 @@ void P_PlayerInSpecialSector(player_t *player)
                 break;
 
             case 3:     // 10/20 damage per 31 ticks
-                if (!player->powers[pw_ironfeet] || P_Random() < 5)  // take damage even with suit
+                if (!player->powers[pw_ironfeet] || M_Random() < 5)  // take damage even with suit
                 {
                     if (!(leveltime & 0x1f))
                         P_DamageMobj(player->mo, NULL, NULL, 20);
@@ -2046,7 +1993,7 @@ dboolean EV_DoDonut(line_t *line)
             rtn = true;
 
             // Spawn rising slime
-            floor = Z_Malloc(sizeof(*floor), PU_LEVSPEC, 0);
+            floor = Z_Calloc(1, sizeof(*floor), PU_LEVSPEC, NULL);
             P_AddThinker(&floor->thinker);
             s2->floordata = floor;
             floor->thinker.function = T_MoveFloor;
@@ -2061,7 +2008,7 @@ dboolean EV_DoDonut(line_t *line)
             floor->stopsound = (floor->sector->floorheight != floor->floordestheight);
 
             // Spawn lowering donut-hole
-            floor = Z_Malloc(sizeof(*floor), PU_LEVSPEC, 0);
+            floor = Z_Calloc(1, sizeof(*floor), PU_LEVSPEC, NULL);
             P_AddThinker(&floor->thinker);
             s1->floordata = floor;
             floor->thinker.function = T_MoveFloor;
@@ -2089,6 +2036,7 @@ dboolean EV_DoDonut(line_t *line)
 //
 void P_SpawnSpecials(void)
 {
+    line_t      *line;
     sector_t    *sector;
     int         i;
 
@@ -2166,34 +2114,34 @@ void P_SpawnSpecials(void)
 
     P_SpawnPushers();                   // phares 3/20/98: New pusher model using linedefs
 
-    for (i = 0; i < numlines; i++)
+    for (line = lines, i = 0; i < numlines; ++i, ++line)
     {
         int sec;
         int s;
 
-        switch (lines[i].special)
+        switch (line->special)
         {
             // killough 3/7/98:
             // support for drawn heights coming from different sector
             case CreateFakeCeilingAndFloor:
-                sec = sides[*lines[i].sidenum].sector - sectors;
-                for (s = -1; (s = P_FindSectorFromLineTag(lines + i, s)) >= 0;)
+                sec = sides[*line->sidenum].sector - sectors;
+                for (s = -1; (s = P_FindSectorFromLineTag(line, s)) >= 0;)
                     sectors[s].heightsec = sec;
                 break;
 
             // killough 3/16/98: Add support for setting
             // floor lighting independently (e.g. lava)
             case Floor_ChangeBrightnessToThisBrightness:
-                sec = sides[*lines[i].sidenum].sector - sectors;
-                for (s = -1; (s = P_FindSectorFromLineTag(lines + i, s)) >= 0;)
+                sec = sides[*line->sidenum].sector - sectors;
+                for (s = -1; (s = P_FindSectorFromLineTag(line, s)) >= 0;)
                     sectors[s].floorlightsec = sec;
                 break;
 
             // killough 4/11/98: Add support for setting
             // ceiling lighting independently
             case Ceiling_ChangeBrightnessToThisBrightness:
-                sec = sides[*lines[i].sidenum].sector - sectors;
-                for (s = -1; (s = P_FindSectorFromLineTag(lines + i, s)) >= 0;)
+                sec = sides[*line->sidenum].sector - sectors;
+                for (s = -1; (s = P_FindSectorFromLineTag(line, s)) >= 0;)
                     sectors[s].ceilinglightsec = sec;
                 break;
 
@@ -2207,7 +2155,7 @@ void P_SpawnSpecials(void)
             // or ceiling texture, to distinguish floor and ceiling sky.
             case TransferSkyTextureToTaggedSectors:
             case TransferSkyTextureToTaggedSectors_Flipped:
-                for (s = -1; (s = P_FindSectorFromLineTag(lines + i, s)) >= 0;)
+                for (s = -1; (s = P_FindSectorFromLineTag(line, s)) >= 0;)
                     sectors[s].sky = i | PL_SKYFLAT;
                 break;
         }
@@ -2263,7 +2211,6 @@ void T_Scroll(scroll_t *s)
         sector_t        *sec;
         fixed_t         height, waterheight;    // killough 4/4/98: add waterheight
         msecnode_t      *node;
-        mobj_t          *thing;
 
         case sc_side:                           // killough 3/7/98: Scroll wall texture
             side = sides + s->affectee;
@@ -2296,13 +2243,16 @@ void T_Scroll(scroll_t *s)
             // Move objects only if on floor or underwater,
             // non-floating, and clipped.
             for (node = sec->touching_thinglist; node; node = node->m_snext)
-                if (!((thing = node->m_thing)->flags & MF_NOCLIP)
-                    && (!((thing->flags & MF_NOGRAVITY) || thing->z > height)
-                    || thing->z < waterheight))
+            {
+                mobj_t  *thing = node->m_thing;
+
+                if (!(thing->flags & MF_NOCLIP) && (!((thing->flags & MF_NOGRAVITY)
+                    || thing->z > height) || thing->z < waterheight))
                 {
                     thing->momx += dx;
                     thing->momy += dy;
                 }
+            }
             break;
 
         case sc_carry_ceiling:       // to be added later
@@ -2329,7 +2279,7 @@ void T_Scroll(scroll_t *s)
 //
 static void Add_Scroller(int type, fixed_t dx, fixed_t dy, int control, int affectee, int accel)
 {
-    scroll_t    *s = Z_Malloc(sizeof *s, PU_LEVSPEC, 0);
+    scroll_t    *s = Z_Calloc(1, sizeof(*s), PU_LEVSPEC, NULL);
 
     s->thinker.function = T_Scroll;
     s->type = type;
@@ -2603,7 +2553,7 @@ static void P_SpawnFriction(void)
 // Add a push thinker to the thinker list
 static void Add_Pusher(int type, int x_mag, int y_mag, mobj_t *source, int affectee)
 {
-    pusher_t *p = Z_Malloc(sizeof *p, PU_LEVSPEC, 0);
+    pusher_t    *p = Z_Calloc(1, sizeof(*p), PU_LEVSPEC, NULL);
 
     p->thinker.function = T_Pusher;
     p->source = source;
@@ -2678,7 +2628,6 @@ dboolean PIT_PushThing(mobj_t* thing)
 void T_Pusher(pusher_t *p)
 {
     sector_t    *sec;
-    mobj_t      *thing;
     msecnode_t  *node;
     int         xspeed, yspeed;
     int         ht = 0;
@@ -2733,7 +2682,8 @@ void T_Pusher(pusher_t *p)
     node = sec->touching_thinglist;                     // things touching this sector
     for (; node; node = node->m_snext)
     {
-        thing = node->m_thing;
+        mobj_t  *thing = node->m_thing;
+
         if (!thing->player || (thing->flags & (MF_NOGRAVITY | MF_NOCLIP)))
             continue;
         if (p->type == p_wind)
@@ -2746,8 +2696,8 @@ void T_Pusher(pusher_t *p)
                 }
                 else                                    // on ground
                 {
-                    xspeed = (p->x_mag) >> 1;           // half force
-                    yspeed = (p->y_mag) >> 1;
+                    xspeed = p->x_mag >> 1;             // half force
+                    yspeed = p->y_mag >> 1;
                 }
             else                                        // special water sector
             {
@@ -2761,8 +2711,8 @@ void T_Pusher(pusher_t *p)
                         xspeed = yspeed = 0;            // no force
                     else                                // wading in water
                     {
-                        xspeed = (p->x_mag) >> 1;       // half force
-                        yspeed = (p->y_mag) >> 1;
+                        xspeed = p->x_mag >> 1;         // half force
+                        yspeed = p->y_mag >> 1;
                     }
             }
         }

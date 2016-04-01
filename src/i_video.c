@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -58,6 +58,9 @@
 
 #if defined(WIN32)
 #include "SDL_syswm.h"
+#elif defined(X11)
+#include <X11/Xlib.h>
+#include <X11/XKBlib.h>
 #endif
 
 #define MAXUPSCALEWIDTH         5
@@ -65,7 +68,6 @@
 
 // CVARs
 dboolean                m_novertical = m_novertical_default;
-dboolean                r_hud = r_hud_default;
 dboolean                vid_capfps = vid_capfps_default;
 int                     vid_display = vid_display_default;
 #if !defined(WIN32)
@@ -112,7 +114,12 @@ static SDL_Rect         *displays;
 // Bit mask of mouse button state
 static unsigned int     mouse_button_state;
 
-static int              buttons[MAX_MOUSE_BUTTONS + 1] = { 0, 1, 4, 2, 8, 16, 32, 64, 128 };
+static int              buttons[MAX_MOUSE_BUTTONS + 1] =
+{
+    0x0000,
+    0x0001, 0x0004, 0x0002, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
+    0x0100, 0x0200, 0x0400, 0x0800, 0x1000, 0x2000, 0x4000, 0x8000
+};
 
 // Fullscreen width and height
 int                     screenwidth;
@@ -133,9 +140,6 @@ int                     displaycentery;
 dboolean                returntowidescreen = false;
 
 dboolean                window_focused;
-
-// Empty mouse cursor
-static SDL_Cursor       *cursors[2];
 
 #if !defined(WIN32)
 char                    envstring[255];
@@ -186,8 +190,6 @@ dboolean                alwaysrun = alwaysrun_default;
 
 extern dboolean         am_external;
 
-extern int              key_alwaysrun;
-
 extern int              windowborderwidth;
 extern int              windowborderheight;
 
@@ -231,22 +233,10 @@ static void UpdateFocus(void)
     }
 }
 
-// Show or hide the mouse cursor. We have to use different techniques
-// depending on the OS.
 static void SetShowCursor(dboolean show)
 {
-    // On Windows, using SDL_ShowCursor() adds lag to the mouse input,
-    // so work around this by setting an invisible cursor instead. On
-    // other systems, it isn't possible to change the cursor, so this
-    // hack has to be Windows-only. (Thanks to entryway for this)
-#if defined(WIN32)
-    SDL_SetCursor(cursors[show]);
-#else
-    SDL_ShowCursor(show);
-#endif
-
-    // When the cursor is hidden, grab the input.
     SDL_SetRelativeMouseMode(!show);
+    SDL_GetRelativeMouseState(NULL, NULL);
 }
 
 int translatekey[] =
@@ -350,15 +340,28 @@ void I_ShutdownGraphics(void)
     SDL_QuitSubSystem(SDL_INIT_VIDEO);
 }
 
+#if defined(X11)
+static void I_SetXKBCapslockState(dboolean enabled)
+{
+    Display     *dpy = XOpenDisplay(0);
+
+    XkbLockModifiers(dpy, XkbUseCoreKbd, 2, enabled * 2);
+    XFlush(dpy);
+    XCloseDisplay(dpy);
+}
+#endif
+
 void I_ShutdownKeyboard(void)
 {
 #if defined(WIN32)
+    if (key_alwaysrun == KEY_CAPSLOCK && (GetKeyState(VK_CAPITAL) & 0x0001) && !capslock)
+    {
+        keybd_event(VK_CAPITAL, 0x45, KEYEVENTF_EXTENDEDKEY, (uintptr_t)0);
+        keybd_event(VK_CAPITAL, 0x45, (KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP), (uintptr_t)0);
+    }
+#elif defined(X11)
     if (key_alwaysrun == KEY_CAPSLOCK)
-        if ((GetKeyState(VK_CAPITAL) & 0x0001) && !capslock)
-        {
-            keybd_event(VK_CAPITAL, 0x45, KEYEVENTF_EXTENDEDKEY, (uintptr_t)0);
-            keybd_event(VK_CAPITAL, 0x45, (KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP), (uintptr_t)0);
-        }
+        I_SetXKBCapslockState(false);
 #endif
 }
 
@@ -524,13 +527,12 @@ static void I_GetEvent(void)
                         case SDL_WINDOWEVENT_SIZE_CHANGED:
                             if (!vid_fullscreen)
                             {
-                                char        buffer[16] = "";
+                                char    size[16] = "";
 
                                 windowwidth = Event->window.data1;
                                 windowheight = Event->window.data2;
-                                M_snprintf(buffer, sizeof(buffer), "%ix%i", windowwidth,
-                                    windowheight);
-                                vid_windowsize = strdup(buffer);
+                                M_snprintf(size, sizeof(size), "%ix%i", windowwidth, windowheight);
+                                vid_windowsize = strdup(size);
                                 M_SaveCVARs();
 
                                 displaywidth = windowwidth;
@@ -543,12 +545,12 @@ static void I_GetEvent(void)
                         case SDL_WINDOWEVENT_MOVED:
                             if (!vid_fullscreen && !manuallypositioning)
                             {
-                                char        buffer[16] = "";
+                                char        pos[16] = "";
 
                                 windowx = Event->window.data1;
                                 windowy = Event->window.data2;
-                                M_snprintf(buffer, sizeof(buffer), "(%i,%i)", windowx, windowy);
-                                vid_windowposition = strdup(buffer);
+                                M_snprintf(pos, sizeof(pos), "(%i,%i)", windowx, windowy);
+                                vid_windowposition = strdup(pos);
 
                                 vid_display = SDL_GetWindowDisplayIndex(window) + 1;
                                 M_SaveCVARs();
@@ -636,12 +638,10 @@ static void GetUpscaledTextureSize(int width, int height)
 
 void I_Blit(void)
 {
-    static int      pitch = SCREENWIDTH * sizeof(Uint32);
-
     UpdateGrab();
 
     SDL_LowerBlit(surface, &src_rect, buffer, &src_rect);
-    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, pitch);
+    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, SCREENWIDTH * 4);
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, texture, &src_rect, NULL);
     SDL_RenderPresent(renderer);
@@ -649,12 +649,10 @@ void I_Blit(void)
 
 void I_Blit_NearestLinear(void)
 {
-    static int      pitch = SCREENWIDTH * sizeof(Uint32);
-
     UpdateGrab();
 
     SDL_LowerBlit(surface, &src_rect, buffer, &src_rect);
-    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, pitch);
+    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, SCREENWIDTH * 4);
     SDL_RenderClear(renderer);
     SDL_SetRenderTarget(renderer, texture_upscaled);
     SDL_RenderCopy(renderer, texture, &src_rect, NULL);
@@ -663,13 +661,12 @@ void I_Blit_NearestLinear(void)
     SDL_RenderPresent(renderer);
 }
 
+static int      frames = -1;
+static Uint32   starttime;
+static Uint32   currenttime;
+
 void I_Blit_ShowFPS(void)
 {
-    static int      pitch = SCREENWIDTH * sizeof(Uint32);
-    static int      frames = -1;
-    static Uint32   starttime;
-    static Uint32   currenttime;
-
     UpdateGrab();
 
     ++frames;
@@ -683,7 +680,7 @@ void I_Blit_ShowFPS(void)
     C_UpdateFPS();
 
     SDL_LowerBlit(surface, &src_rect, buffer, &src_rect);
-    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, pitch);
+    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, SCREENWIDTH * 4);
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, texture, &src_rect, NULL);
     SDL_RenderPresent(renderer);
@@ -691,11 +688,6 @@ void I_Blit_ShowFPS(void)
 
 void I_Blit_NearestLinear_ShowFPS(void)
 {
-    static int      pitch = SCREENWIDTH * sizeof(Uint32);
-    static int      frames = -1;
-    static Uint32   starttime;
-    static Uint32   currenttime;
-
     UpdateGrab();
 
     ++frames;
@@ -709,7 +701,7 @@ void I_Blit_NearestLinear_ShowFPS(void)
     C_UpdateFPS();
 
     SDL_LowerBlit(surface, &src_rect, buffer, &src_rect);
-    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, pitch);
+    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, SCREENWIDTH * 4);
     SDL_RenderClear(renderer);
     SDL_SetRenderTarget(renderer, texture_upscaled);
     SDL_RenderCopy(renderer, texture, &src_rect, NULL);
@@ -720,30 +712,28 @@ void I_Blit_NearestLinear_ShowFPS(void)
 
 void I_Blit_Shake(void)
 {
-    static int      pitch = SCREENWIDTH * sizeof(Uint32);
+    static int  angle = 1;
 
     UpdateGrab();
 
     SDL_LowerBlit(surface, &src_rect, buffer, &src_rect);
-    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, pitch);
+    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, SCREENWIDTH * 4);
     SDL_RenderClear(renderer);
-    SDL_RenderCopyEx(renderer, texture, &src_rect, NULL, M_RandomInt(-1000, 1000) / 1000.0, NULL,
-        SDL_FLIP_NONE);
+    SDL_RenderCopyEx(renderer, texture, &src_rect, NULL, (angle = -angle), NULL, SDL_FLIP_NONE);
     SDL_RenderPresent(renderer);
 }
 
 void I_Blit_NearestLinear_Shake(void)
 {
-    static int      pitch = SCREENWIDTH * sizeof(Uint32);
+    static int  angle = 1;
 
     UpdateGrab();
 
     SDL_LowerBlit(surface, &src_rect, buffer, &src_rect);
-    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, pitch);
+    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, SCREENWIDTH * 4);
     SDL_RenderClear(renderer);
     SDL_SetRenderTarget(renderer, texture_upscaled);
-    SDL_RenderCopyEx(renderer, texture, &src_rect, NULL, M_RandomInt(-1000, 1000) / 1000.0, NULL,
-        SDL_FLIP_NONE);
+    SDL_RenderCopyEx(renderer, texture, &src_rect, NULL, (angle = -angle), NULL, SDL_FLIP_NONE);
     SDL_SetRenderTarget(renderer, NULL);
     SDL_RenderCopy(renderer, texture_upscaled, NULL, NULL);
     SDL_RenderPresent(renderer);
@@ -751,10 +741,7 @@ void I_Blit_NearestLinear_Shake(void)
 
 void I_Blit_ShowFPS_Shake(void)
 {
-    static int      pitch = SCREENWIDTH * sizeof(Uint32);
-    static int      frames = -1;
-    static Uint32   starttime;
-    static Uint32   currenttime;
+    static int  angle = 1;
 
     UpdateGrab();
 
@@ -769,19 +756,15 @@ void I_Blit_ShowFPS_Shake(void)
     C_UpdateFPS();
 
     SDL_LowerBlit(surface, &src_rect, buffer, &src_rect);
-    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, pitch);
+    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, SCREENWIDTH * 4);
     SDL_RenderClear(renderer);
-    SDL_RenderCopyEx(renderer, texture, &src_rect, NULL, M_RandomInt(-1000, 1000) / 1000.0, NULL,
-        SDL_FLIP_NONE);
+    SDL_RenderCopyEx(renderer, texture, &src_rect, NULL, (angle = -angle), NULL, SDL_FLIP_NONE);
     SDL_RenderPresent(renderer);
 }
 
 void I_Blit_NearestLinear_ShowFPS_Shake(void)
 {
-    static int      pitch = SCREENWIDTH * sizeof(Uint32);
-    static int      frames = -1;
-    static Uint32   starttime;
-    static Uint32   currenttime;
+    static int  angle = 1;
 
     UpdateGrab();
 
@@ -796,11 +779,10 @@ void I_Blit_NearestLinear_ShowFPS_Shake(void)
     C_UpdateFPS();
 
     SDL_LowerBlit(surface, &src_rect, buffer, &src_rect);
-    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, pitch);
+    SDL_UpdateTexture(texture, &src_rect, buffer->pixels, SCREENWIDTH * 4);
     SDL_RenderClear(renderer);
     SDL_SetRenderTarget(renderer, texture_upscaled);
-    SDL_RenderCopyEx(renderer, texture, &src_rect, NULL, M_RandomInt(-1000, 1000) / 1000.0, NULL,
-        SDL_FLIP_NONE);
+    SDL_RenderCopyEx(renderer, texture, &src_rect, NULL, (angle = -angle), NULL, SDL_FLIP_NONE);
     SDL_SetRenderTarget(renderer, NULL);
     SDL_RenderCopy(renderer, texture_upscaled, NULL, NULL);
     SDL_RenderPresent(renderer);
@@ -814,10 +796,9 @@ void I_UpdateBlitFunc(void)
 
 void I_Blit_Automap(void)
 {
-    static int      pitch = SCREENWIDTH * sizeof(Uint32);
-
     SDL_LowerBlit(mapsurface, &map_rect, mapbuffer, &map_rect);
-    SDL_UpdateTexture(maptexture, &map_rect, mapbuffer->pixels, pitch);
+    SDL_UpdateTexture(maptexture, &map_rect, mapbuffer->pixels, SCREENWIDTH * 4);
+    SDL_RenderClear(maprenderer);
     SDL_RenderCopy(maprenderer, maptexture, &map_rect, NULL);
     SDL_RenderPresent(maprenderer);
 }
@@ -849,17 +830,6 @@ void I_SetPalette(byte *playpal)
     SDL_SetPaletteColors(palette, colors, 0, 256);
 }
 
-static void CreateCursors(void)
-{
-    static Uint8        empty_cursor_data;
-
-    // Save the default cursor so it can be recalled later
-    cursors[1] = SDL_GetCursor();
-
-    // Create an empty cursor
-    cursors[0] = SDL_CreateCursor(&empty_cursor_data, &empty_cursor_data, 1, 1, 0, 0);
-}
-
 void I_RestoreFocus(void)
 {
 #if defined(WIN32)
@@ -879,7 +849,7 @@ void I_CreateExternalAutomap(dboolean output)
 
     if (numdisplays == 1 && output)
     {
-        C_Warning("Unable to find more than one display. No external automap was created.");
+        C_Warning("Only one display was found. No external automap was created.");
         return;
     }
 
@@ -974,12 +944,12 @@ void GetWindowSize(void)
     if (width < ORIGINALWIDTH + windowborderwidth
         || height < ORIGINALWIDTH * 3 / 4 + windowborderheight)
     {
-        char    buffer[16] = "";
+        char    size[16] = "";
 
         windowwidth = ORIGINALWIDTH + windowborderwidth;
         windowheight = ORIGINALWIDTH * 3 / 4 + windowborderheight;
-        M_snprintf(buffer, sizeof(buffer), "%ix%i", windowwidth, windowheight);
-        vid_windowsize = strdup(buffer);
+        M_snprintf(size, sizeof(size), "%ix%i", windowwidth, windowheight);
+        vid_windowsize = strdup(size);
 
         M_SaveCVARs();
     }
@@ -1139,7 +1109,7 @@ static void SetVideoMode(dboolean output)
     {
         const char      *displayname = SDL_GetDisplayName(displayindex);
 
-        if (displayname[0])
+        if (*displayname)
             C_Output("Using display %i of %i called \"%s\".", displayindex + 1, numdisplays,
                 displayname);
         else
@@ -1165,8 +1135,7 @@ static void SetVideoMode(dboolean output)
         SDL_SetHintWithPriority(SDL_HINT_RENDER_SCALE_QUALITY, vid_scalefilter, SDL_HINT_OVERRIDE);
     }
 
-    if (vid_scaledriver[0])
-        SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, vid_scaledriver, SDL_HINT_OVERRIDE);
+    SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, vid_scaledriver, SDL_HINT_OVERRIDE);
 
     GetWindowPosition();
     GetWindowSize();
@@ -1188,8 +1157,8 @@ static void SetVideoMode(dboolean output)
                 SDL_WINDOWPOS_UNDEFINED_DISPLAY(displayindex), 0, 0,
                 (SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE));
             if (output)
-                C_Output("Staying at the desktop resolution of %ix%i%s%s%s with a %s aspect "
-                    "ratio.", width, height, (acronym[0] ? " (" : " "), acronym,
+                C_Output("Staying at the desktop resolution of %s\xD7%s%s%s%s with a %s aspect "
+                    "ratio.", commify(width), commify(height), (acronym[0] ? " (" : " "), acronym,
                     (acronym[0] ? ")" : ""), ratio);
             GetUpscaledTextureSize(width, height);
         }
@@ -1207,8 +1176,9 @@ static void SetVideoMode(dboolean output)
                 SDL_WINDOWPOS_UNDEFINED_DISPLAY(displayindex), width, height,
                 (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_RESIZABLE));
             if (output)
-                C_Output("Switched to a resolution of %ix%i%s%s%s with a %s aspect ratio.", width,
-                    height, (acronym[0] ? " (" : " "), acronym, (acronym[0] ? ")" : ""), ratio);
+                C_Output("Switched to a resolution of %s\xD7%s%s%s%s with a %s aspect ratio.",
+                    commify(width), commify(height), (acronym[0] ? " (" : " "), acronym,
+                    (acronym[0] ? ")" : ""), ratio);
             GetUpscaledTextureSize(width, height);
         }
     }
@@ -1229,16 +1199,16 @@ static void SetVideoMode(dboolean output)
                 SDL_WINDOWPOS_CENTERED_DISPLAY(displayindex), width, height,
                 (SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL));
             if (output)
-                C_Output("Created a resizable window with dimensions %ix%i centered on the "
-                    "screen.", width, height);
+                C_Output("Created a resizable window with dimensions %s\xD7%s centered on the "
+                    "screen.", commify(width), commify(height));
         }
         else
         {
             window = SDL_CreateWindow(PACKAGE_NAME, windowx, windowy, width, height,
                 (SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL));
             if (output)
-                C_Output("Created a resizable window with dimensions %ix%i at (%i,%i).", width,
-                    height, windowx, windowy);
+                C_Output("Created a resizable window with dimensions %s\xD7%s at (%i,%i).",
+                    commify(width), commify(height), windowx, windowy);
         }
         GetUpscaledTextureSize(windowwidth, windowheight);
     }
@@ -1269,41 +1239,40 @@ static void SetVideoMode(dboolean output)
 
         if (nearestlinear)
         {
-            C_Output("The %ix%i screen is scaled up to %ix%i using nearest-neighbor "
+            C_Output("The %i\xD7%i screen is scaled up to %i\xD7%i using nearest-neighbor "
                 "interpolation,", SCREENWIDTH, SCREENHEIGHT, upscaledwidth * SCREENWIDTH,
                 upscaledheight * SCREENHEIGHT);
-            C_Output("    and then down to %ix%i using linear filtering.", height * 4 / 3, height);
+            C_Output("    and then down to %s\xD7%s using linear filtering.",
+                commify(height * 4 / 3), commify(height));
         }
         else if (M_StringCompare(vid_scalefilter, vid_scalefilter_linear))
-            C_Output("The %ix%i screen is scaled up to %ix%i using linear filtering.", SCREENWIDTH,
-                SCREENHEIGHT, height * 4 / 3, height);
+            C_Output("The %i\xD7%i screen is scaled up to %s\xD7%s using linear filtering.",
+                SCREENWIDTH, SCREENHEIGHT, commify(height * 4 / 3), commify(height));
         else
-            C_Output("The %ix%i screen is scaled up to %ix%i using nearest-neighbor "
-                "interpolation.", SCREENWIDTH, SCREENHEIGHT, height * 4 / 3, height);
+            C_Output("The %i\xD7%i screen is scaled up to %i\xD7%i using nearest-neighbor "
+                "interpolation.", SCREENWIDTH, SCREENHEIGHT, commify(height * 4 / 3),
+                commify(height));
 
         if (vid_capfps)
             C_Output("The framerate is capped at %i FPS.", TICRATE);
+        else if (rendererinfo.flags & SDL_RENDERER_PRESENTVSYNC)
+        {
+            SDL_DisplayMode displaymode;
+
+            SDL_GetWindowDisplayMode(window, &displaymode);
+            C_Output("The framerate is capped at the display's refresh rate of %iHz.",
+                displaymode.refresh_rate);
+        }
         else
         {
-            if (rendererinfo.flags & SDL_RENDERER_PRESENTVSYNC)
+            if (vid_vsync)
             {
-                SDL_DisplayMode displaymode;
-
-                SDL_GetWindowDisplayMode(window, &displaymode);
-                C_Output("The framerate is capped at the display's refresh rate of %iHz.",
-                    displaymode.refresh_rate);
+                if (M_StringCompare(rendererinfo.name, "software"))
+                    C_Warning("Vertical synchronization can't be enabled in software.");
+                else
+                    C_Warning("Vertical synchronization can't be enabled.");
             }
-            else
-            {
-                if (vid_vsync)
-                {
-                    if (M_StringCompare(rendererinfo.name, "software"))
-                        C_Warning("Vertical synchronization can't be enabled in software.");
-                    else
-                        C_Warning("Vertical synchronization can't be enabled.");
-                }
-                C_Output("The framerate is uncapped.");
-            }
+            C_Output("The framerate is uncapped.");
         }
 
         C_Output("Using the 256-color palette from the PLAYPAL lump in %s file %s.",
@@ -1313,13 +1282,16 @@ static void SetVideoMode(dboolean output)
             C_Output("Gamma correction is off.");
         else
         {
-            static char     buffer[128];
+            static char     text[128];
 
-            M_snprintf(buffer, sizeof(buffer), "The gamma correction level is %.2f.",
+            M_snprintf(text, sizeof(text), "The gamma correction level is %.2f.",
                 gammalevels[gammaindex]);
-            if (buffer[strlen(buffer) - 1] == '0' && buffer[strlen(buffer) - 2] == '0')
-                buffer[strlen(buffer) - 1] = '\0';
-            C_Output(buffer);
+            if (text[strlen(text) - 2] == '0' && text[strlen(text) - 3] == '0')
+            {
+                text[strlen(text) - 2] = '.';
+                text[strlen(text) - 1] = '\0';
+            }
+            C_Output(text);
         }
     }
 
@@ -1399,12 +1371,12 @@ void I_ToggleFullscreen(void)
     if (vid_fullscreen)
     {
         SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
-        C_Input("%s on", stringize(vid_fullscreen));
+        C_StrCVAROutput(stringize(vid_fullscreen), "on");
     }
     else
     {
         SDL_SetWindowFullscreen(window, SDL_FALSE);
-        C_Input("%s off", stringize(vid_fullscreen));
+        C_StrCVAROutput(stringize(vid_fullscreen), "off");
 
         SDL_SetWindowSize(window, windowwidth, windowheight);
 
@@ -1426,20 +1398,33 @@ void I_InitGammaTables(void)
     int i;
     int j;
 
-    for (i = 0; i < GAMMALEVELS; i++)
-        if (gammalevels[i] == 1.0)
-            for (j = 0; j < 256; j++)
-                gammatable[i][j] = j;
-        else
-            for (j = 0; j < 256; j++)
-                gammatable[i][j] = (byte)(pow((j + 1) / 256.0, 1.0 / gammalevels[i]) * 255.0);
+    for (i = 0; i < GAMMALEVELS; ++i)
+        for (j = 0; j < 256; ++j)
+            gammatable[i][j] = (byte)(pow(j / 255.0, 1.0 / gammalevels[i]) * 255.0 + 0.5);
+}
+
+void I_SetGamma(float value)
+{
+    gammaindex = 0;
+    while (gammaindex < GAMMALEVELS)
+    {
+        if (gammalevels[gammaindex] == value)
+            break;
+        ++gammaindex;
+    }
+    if (gammaindex == GAMMALEVELS)
+    {
+        gammaindex = 0;
+        while (gammalevels[gammaindex] != r_gamma_default)
+            ++gammaindex;
+    }
 }
 
 void I_InitKeyboard(void)
 {
-#if defined(WIN32)
     if (key_alwaysrun == KEY_CAPSLOCK)
     {
+#if defined(WIN32)
         capslock = (GetKeyState(VK_CAPITAL) & 0x0001);
 
         if ((alwaysrun && !capslock) || (!alwaysrun && capslock))
@@ -1447,8 +1432,15 @@ void I_InitKeyboard(void)
             keybd_event(VK_CAPITAL, 0x45, KEYEVENTF_EXTENDEDKEY, (uintptr_t)0);
             keybd_event(VK_CAPITAL, 0x45, (KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP), (uintptr_t)0);
         }
-    }
+#elif defined(X11)
+        capslock = (SDL_GetModState() & KMOD_CAPS);
+
+        if (alwaysrun && !capslock)
+            I_SetXKBCapslockState(true);
+        else if (!alwaysrun && capslock)
+            I_SetXKBCapslockState(false);
 #endif
+    }
 }
 
 void I_InitGraphics(void)
@@ -1495,13 +1487,10 @@ void I_InitGraphics(void)
     if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0)
         I_Error("I_InitGraphics: %s", SDL_GetError());
 
-    CreateCursors();
-    SDL_SetCursor(cursors[0]);
-
     numdisplays = SDL_GetNumVideoDisplays();
     displays = Z_Malloc(numdisplays, PU_STATIC, NULL);
 
-#if defined (_DEBUG)
+#if defined(_DEBUG)
     vid_fullscreen = false;
 #endif
 
@@ -1522,8 +1511,6 @@ void I_InitGraphics(void)
     if (mappalette)
         SDL_SetPaletteColors(mappalette, colors, 0, 256);
 
-    UpdateFocus();
-
     screens[0] = surface->pixels;
     if (!mapwindow)
     {
@@ -1535,4 +1522,7 @@ void I_InitGraphics(void)
     blitfunc();
 
     while (SDL_PollEvent(&dummy));
+
+    UpdateFocus();
+    UpdateGrab();
 }

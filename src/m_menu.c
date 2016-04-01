@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -70,25 +70,15 @@
 #include "w_wad.h"
 #include "z_zone.h"
 
-extern patch_t  *hu_font[HU_FONTSIZE];
-extern dboolean message_dontfuckwithme;
-
-extern int      st_palette;
-
-extern dboolean wipe;
-extern dboolean r_hud;
-
-extern dboolean splashscreen;
-
-extern dboolean skipaction;
-extern dboolean skippsprinterp;
+#define SKULLXOFF       -32
+#define LINEHEIGHT      17
+#define OFFSET          (vid_widescreen ? 0 : 17)
 
 //
 // defaulted values
 //
 int             m_sensitivity = m_sensitivity_default;
 int             gp_sensitivity = gp_sensitivity_default;
-float           gamepadsensitivityf;
 
 // Show messages has default, false = off, true = on
 dboolean        messages = messages_default;
@@ -125,10 +115,6 @@ dboolean        menuactive;
 dboolean        savegames = false;
 dboolean        startingnewgame = false;
 
-#define SKULLXOFF       -32
-#define LINEHEIGHT      17
-#define OFFSET          (vid_widescreen ? 0 : 17)
-
 char            savegamestrings[10][SAVESTRINGSIZE];
 
 patch_t         *pipechar;
@@ -161,6 +147,19 @@ byte            *blurscreen2;
 
 dboolean        blurred = false;
 dboolean        blurredmap = false;
+
+extern patch_t  *hu_font[HU_FONTSIZE];
+extern dboolean message_dontfuckwithme;
+
+extern int      st_palette;
+
+extern dboolean wipe;
+extern dboolean r_hud;
+
+extern dboolean splashscreen;
+
+extern dboolean skipaction;
+extern dboolean skippsprinterp;
 
 //
 // PROTOTYPES
@@ -541,7 +540,7 @@ void M_DarkBackground(void)
         for (i = 0; i < height; ++i)
             mapscreen[i] = tinttab50[blurscreen2[i]];
 
-    if (r_detail == lowdetail)
+    if (r_detail == r_detail_low)
         V_LowGraphicDetail(height);
 }
 
@@ -671,9 +670,9 @@ void M_DrawString(int x, int y, char *str)
 
     for (i = 0; (unsigned int)i < strlen(str); ++i)
     {
-        int     j = -1;
-        int     k = 0;
-        dboolean overlapping = false;
+        int             j = -1;
+        int             k = 0;
+        dboolean        overlapping = false;
 
         if (str[i] < 123)
             j = chartoi[(int)str[i]];
@@ -1183,7 +1182,8 @@ void M_UpdateSaveGameName(int i)
                     if (bfgedition)
                     {
                         for (j = 0; j < 33; ++j)
-                            if (M_StringCompare(savegamestrings[i], RemoveMapNum(*mapnames2_bfg[j])))
+                            if (M_StringCompare(savegamestrings[i],
+                                RemoveMapNum(*mapnames2_bfg[j])))
                             {
                                 match = true;
                                 break;
@@ -1241,6 +1241,11 @@ void M_UpdateSaveGameName(int i)
             --len;
         }
     }
+}
+
+char *M_GetSaveGameName(int i)
+{
+    return savegamestrings[i];
 }
 
 void M_SaveSelect(int choice)
@@ -1398,20 +1403,20 @@ void M_SfxVol(int choice)
             case 0:
                 if (sfxVolume > 0)
                 {
-                    S_SetSfxVolume((int)(--sfxVolume * (127.0f / 15.0f)));
+                    S_SetSfxVolume((int)(--sfxVolume * 127.0f / 15.0f));
                     S_StartSound(NULL, sfx_stnmov);
                     s_sfxvolume = sfxVolume * 100 / 15;
-                    C_Input("%s %i%%", stringize(s_sfxvolume), s_sfxvolume);
+                    C_PctCVAROutput(stringize(s_sfxvolume), s_sfxvolume);
                     M_SaveCVARs();
                 }
                 break;
             case 1:
                 if (sfxVolume < 15)
                 {
-                    S_SetSfxVolume((int)(++sfxVolume * (127.0f / 15.0f)));
+                    S_SetSfxVolume((int)(++sfxVolume * 127.0f / 15.0f));
                     S_StartSound(NULL, sfx_stnmov);
                     s_sfxvolume = sfxVolume * 100 / 15;
-                    C_Input("%s %i%%", stringize(s_sfxvolume), s_sfxvolume);
+                    C_PctCVAROutput(stringize(s_sfxvolume), s_sfxvolume);
                     M_SaveCVARs();
                 }
                 break;
@@ -1428,20 +1433,20 @@ void M_MusicVol(int choice)
             case 0:
                 if (musicVolume > 0)
                 {
-                    S_SetMusicVolume((int)(--musicVolume * (127.0f / 15.0f)));
+                    S_SetMusicVolume((int)(--musicVolume * 127.0f / 15.0f));
                     S_StartSound(NULL, sfx_stnmov);
                     s_musicvolume = musicVolume * 100 / 15;
-                    C_Input("%s %i%%", stringize(s_musicvolume), s_musicvolume);
+                    C_PctCVAROutput(stringize(s_musicvolume), s_musicvolume);
                     M_SaveCVARs();
                 }
                 break;
             case 1:
                 if (musicVolume < 15)
                 {
-                    S_SetMusicVolume((int)(++musicVolume * (127.0f / 15.0f)));
+                    S_SetMusicVolume((int)(++musicVolume * 127.0f / 15.0f));
                     S_StartSound(NULL, sfx_stnmov);
                     s_musicvolume = musicVolume * 100 / 15;
-                    C_Input("%s %i%%", stringize(s_musicvolume), s_musicvolume);
+                    C_PctCVAROutput(stringize(s_musicvolume), s_musicvolume);
                     M_SaveCVARs();
                 }
                 break;
@@ -1666,21 +1671,21 @@ void M_DrawOptions(void)
             M_DrawString(OptionsDef.x + 125, OptionsDef.y + 16 * msgs + OFFSET, s_M_OFF);
     }
 
-    if (r_detail == highdetail)
-    {
-        if (M_GDHIGH)
-            M_DrawPatchWithShadow(OptionsDef.x + 180, OptionsDef.y + 16 * detail + OFFSET,
-                W_CacheLumpName("M_GDHIGH", PU_CACHE));
-        else
-            M_DrawString(OptionsDef.x + 177, OptionsDef.y + 16 * detail + OFFSET, s_M_HIGH);
-    }
-    else
+    if (r_detail == r_detail_low)
     {
         if (M_GDLOW)
             M_DrawPatchWithShadow(OptionsDef.x + 180, OptionsDef.y + 16 * detail + OFFSET,
                 W_CacheLumpName("M_GDLOW", PU_CACHE));
         else
             M_DrawString(OptionsDef.x + 177, OptionsDef.y + 16 * detail + OFFSET, s_M_LOW);
+    }
+    else
+    {
+        if (M_GDHIGH)
+            M_DrawPatchWithShadow(OptionsDef.x + 180, OptionsDef.y + 16 * detail + OFFSET,
+                W_CacheLumpName("M_GDHIGH", PU_CACHE));
+        else
+            M_DrawString(OptionsDef.x + 177, OptionsDef.y + 16 * detail + OFFSET, s_M_HIGH);
     }
 
     M_DrawThermo(OptionsDef.x - 1, OptionsDef.y + 16 * (scrnsize + 1) + OFFSET + !hacx, 9,
@@ -1703,7 +1708,7 @@ void M_Options(int choice)
 //
 // Toggle messages on/off
 //
-dboolean message_dontpause = false;
+dboolean        message_dontpause = false;
 
 void M_ChangeMessages(int choice)
 {
@@ -1711,7 +1716,7 @@ void M_ChangeMessages(int choice)
     messages = !messages;
     if (menuactive)
         message_dontpause = true;
-    C_Input("%s %s", stringize(messages), (messages ? "on" : "off"));
+    C_StrCVAROutput(stringize(messages), (messages ? "on" : "off"));
     HU_PlayerMessage((messages ? s_MSGON : s_MSGOFF), false);
     message_dontfuckwithme = true;
     M_SaveCVARs();
@@ -1720,7 +1725,7 @@ void M_ChangeMessages(int choice)
 //
 // M_EndGame
 //
-dboolean endinggame = false;
+dboolean        endinggame = false;
 
 void M_EndingGame(void)
 {
@@ -1891,9 +1896,8 @@ void M_ChangeSensitivity(int choice)
                     if (gp_sensitivity & 1)
                         ++gp_sensitivity;
                     gp_sensitivity -= 2;
-                    gamepadsensitivityf = (!gp_sensitivity ? 0.0f : GP_SENSITIVITY_OFFSET
-                        + gp_sensitivity / (float)gp_sensitivity_max * GP_SENSITIVITY_FACTOR);
-                    C_Input("%s %i", stringize(gp_sensitivity), gp_sensitivity);
+                    I_SetGamepadSensitivity(gp_sensitivity);
+                    C_IntCVAROutput(stringize(gp_sensitivity), gp_sensitivity);
                     M_SliderSound();
                     M_SaveCVARs();
                 }
@@ -1905,9 +1909,8 @@ void M_ChangeSensitivity(int choice)
                     if (gp_sensitivity & 1)
                         --gp_sensitivity;
                     gp_sensitivity += 2;
-                    gamepadsensitivityf = GP_SENSITIVITY_OFFSET
-                        + gp_sensitivity / (float)gp_sensitivity_max * GP_SENSITIVITY_FACTOR;
-                    C_Input("%s %i", stringize(gp_sensitivity), gp_sensitivity);
+                    I_SetGamepadSensitivity(gp_sensitivity);
+                    C_IntCVAROutput(stringize(gp_sensitivity), gp_sensitivity);
                     M_SliderSound();
                     M_SaveCVARs();
                 }
@@ -1924,7 +1927,7 @@ void M_ChangeSensitivity(int choice)
                     if (m_sensitivity & 1)
                         ++m_sensitivity;
                     m_sensitivity -= 2;
-                    C_Input("%s %i", stringize(m_sensitivity), m_sensitivity);
+                    C_IntCVAROutput(stringize(m_sensitivity), m_sensitivity);
                     M_SliderSound();
                     M_SaveCVARs();
                 }
@@ -1936,7 +1939,7 @@ void M_ChangeSensitivity(int choice)
                     if (m_sensitivity & 1)
                         --m_sensitivity;
                     m_sensitivity += 2;
-                    C_Input("%s %i", stringize(m_sensitivity), m_sensitivity);
+                    C_IntCVAROutput("m_sensitivity", m_sensitivity);
                     M_SliderSound();
                     M_SaveCVARs();
                 }
@@ -1949,14 +1952,14 @@ void M_ChangeDetail(int choice)
 {
     blurred = false;
     r_detail = !r_detail;
-    C_Input("%s %s", stringize(r_detail), (r_detail == highdetail ? "high" : "low"));
+    C_StrCVAROutput(stringize(r_detail), (r_detail == r_detail_low ? "low" : "high"));
     if (!menuactive)
     {
-        HU_PlayerMessage((r_detail == highdetail ? s_DETAILHI : s_DETAILLO), false);
+        HU_PlayerMessage((r_detail == r_detail_low ? s_DETAILLO : s_DETAILHI), false);
         message_dontfuckwithme = true;
     }
     else
-        C_Output(r_detail == highdetail ? s_DETAILHI : s_DETAILLO);
+        C_Output(r_detail == r_detail_low ? s_DETAILLO : s_DETAILHI);
     M_SaveCVARs();
 }
 
@@ -1970,12 +1973,12 @@ void M_SizeDisplay(int choice)
                 if (!r_hud)
                 {
                     r_hud = true;
-                    C_Input("%s on", stringize(r_hud));
+                    C_StrCVAROutput(stringize(r_hud), "on");
                 }
                 else
                 {
                     R_SetViewSize(--r_screensize);
-                    C_Input("%s %i", stringize(r_screensize), r_screensize);
+                    C_IntCVAROutput(stringize(r_screensize), r_screensize);
                 }
                 S_StartSound(NULL, sfx_stnmov);
                 M_SaveCVARs();
@@ -1985,12 +1988,12 @@ void M_SizeDisplay(int choice)
                 if (!r_hud)
                 {
                     r_hud = true;
-                    C_Input("%s on", stringize(r_hud));
+                    C_StrCVAROutput(stringize(r_hud), "on");
                 }
                 else if (vid_widescreen)
                 {
                     I_ToggleWidescreen(false);
-                    C_Input("%s off", stringize(vid_widescreen));
+                    C_StrCVAROutput(stringize(vid_widescreen), "off");
                 }
                 else
                     returntowidescreen = false;
@@ -2000,7 +2003,7 @@ void M_SizeDisplay(int choice)
             else if (r_screensize > r_screensize_min)
             {
                 R_SetViewSize(--r_screensize);
-                C_Input("%s %i", stringize(r_screensize), r_screensize);
+                C_IntCVAROutput(stringize(r_screensize), r_screensize);
                 S_StartSound(NULL, sfx_stnmov);
                 M_SaveCVARs();
             }
@@ -2013,7 +2016,7 @@ void M_SizeDisplay(int choice)
                 if (r_hud)
                 {
                     r_hud = false;
-                    C_Input("%s off", stringize(r_hud));
+                    C_StrCVAROutput(stringize(r_hud), "off");
                     S_StartSound(NULL, sfx_stnmov);
                     M_SaveCVARs();
                 }
@@ -2031,11 +2034,11 @@ void M_SizeDisplay(int choice)
                     {
                         I_ToggleWidescreen(true);
                         if (vid_widescreen)
-                            C_Input("%s on", stringize(vid_widescreen));
+                            C_StrCVAROutput(stringize(vid_widescreen), "on");
                         else
                         {
                             R_SetViewSize(++r_screensize);
-                            C_Input("%s %i", stringize(r_screensize), r_screensize);
+                            C_IntCVAROutput(stringize(r_screensize), r_screensize);
                         }
                     }
                 }
@@ -2045,7 +2048,7 @@ void M_SizeDisplay(int choice)
             else if (r_screensize < r_screensize_max)
             {
                 R_SetViewSize(++r_screensize);
-                C_Input("%s %i", stringize(r_screensize), r_screensize);
+                C_IntCVAROutput(stringize(r_screensize), r_screensize);
                 S_StartSound(NULL, sfx_stnmov);
                 M_SaveCVARs();
             }
@@ -2249,15 +2252,15 @@ void M_ChangeGamma(dboolean shift)
         S_StartSound(NULL, sfx_stnmov);
 
         if (r_gamma == 1.0f)
-            C_Input("%s off", stringize(r_gamma));
+            C_StrCVAROutput(stringize(r_gamma), "off");
         else
         {
             static char buf[128];
 
-            M_snprintf(buf, sizeof(buf), "%s %.2f", stringize(r_gamma), r_gamma);
+            M_snprintf(buf, sizeof(buf), "%.2f", r_gamma);
             if (buf[strlen(buf) - 1] == '0' && buf[strlen(buf) - 2] == '0')
                 buf[strlen(buf) - 1] = '\0';
-            C_Input(buf);
+            C_StrCVAROutput(stringize(r_gamma), buf);
         }
     }
 
@@ -2289,9 +2292,9 @@ void M_ChangeGamma(dboolean shift)
 //
 // M_Responder
 //
-int     gamepadwait = 0;
-int     mousewait = 0;
-dboolean gamepadpress = false;
+int             gamepadwait = 0;
+int             mousewait = 0;
+dboolean        gamepadpress = false;
 
 dboolean M_Responder(event_t *ev)
 {
@@ -2320,7 +2323,7 @@ dboolean M_Responder(event_t *ev)
             // previous/exit menu
             else if (gamepadbuttons & GAMEPAD_B)
             {
-                key = KEY_ESCAPE;
+                key = KEY_BACKSPACE;
                 gamepadwait = I_GetTime() + 8;
                 gamepadpress = true;
                 usinggamepad = true;
@@ -2329,7 +2332,7 @@ dboolean M_Responder(event_t *ev)
             // exit menu
             else if (gamepadbuttons & gamepadmenu)
             {
-                key = KEY_ESCAPE;
+                key = key_menu;
                 currentMenu = &MainDef;
                 itemOn = MainDef.lastOn;
                 gamepadwait = I_GetTime() + 8;
@@ -2382,7 +2385,7 @@ dboolean M_Responder(event_t *ev)
             // open menu
             if (gamepadbuttons & gamepadmenu)
             {
-                key = KEY_ESCAPE;
+                key = key_menu;
                 gamepadwait = I_GetTime() + 8;
                 usinggamepad = true;
             }
@@ -2401,7 +2404,7 @@ dboolean M_Responder(event_t *ev)
         // previous menu
         else if (ev->data1 & MOUSE_RIGHTBUTTON)
         {
-            key = KEY_ESCAPE;
+            key = KEY_BACKSPACE;
             mousewait = I_GetTime() + 5;
             usinggamepad = false;
         }
@@ -2449,8 +2452,10 @@ dboolean M_Responder(event_t *ev)
                 keydown = key;
                 if (saveCharIndex > 0)
                 {
-                    for (i = saveCharIndex - 1; (unsigned int)i < strlen(savegamestrings[saveSlot]); ++i)
-                        savegamestrings[saveSlot][i] = savegamestrings[saveSlot][i + 1];
+                    size_t      j;
+
+                    for (j = saveCharIndex - 1; j < strlen(savegamestrings[saveSlot]); ++j)
+                        savegamestrings[saveSlot][j] = savegamestrings[saveSlot][j + 1];
                     saveCharIndex--;
                     caretwait = I_GetTimeMS() + caretblinktime;
                     showcaret = true;
@@ -2462,8 +2467,10 @@ dboolean M_Responder(event_t *ev)
                 keydown = key;
                 if ((unsigned int)saveCharIndex < strlen(savegamestrings[saveSlot]))
                 {
-                    for (i = saveCharIndex; (unsigned int)i < strlen(savegamestrings[saveSlot]); ++i)
-                        savegamestrings[saveSlot][i] = savegamestrings[saveSlot][i + 1];
+                    size_t      j;
+
+                    for (j = saveCharIndex; j < strlen(savegamestrings[saveSlot]); ++j)
+                        savegamestrings[saveSlot][j] = savegamestrings[saveSlot][j + 1];
                     caretwait = I_GetTimeMS() + caretblinktime;
                     showcaret = true;
                 }
@@ -2544,8 +2551,8 @@ dboolean M_Responder(event_t *ev)
 
             default:
                 ch = toupper(ch);
-                if (ch >= ' ' && ch <= '_'
-                    && M_StringWidth(savegamestrings[saveSlot]) + M_CharacterWidth(ch, 0) <= SAVESTRINGPIXELWIDTH
+                if (ch >= ' ' && ch <= '_' && M_StringWidth(savegamestrings[saveSlot])
+                    + M_CharacterWidth(ch, 0) <= SAVESTRINGPIXELWIDTH
                     && !(modstate & (KMOD_ALT | KMOD_CTRL)))
                 {
                     keydown = key;
@@ -2564,7 +2571,7 @@ dboolean M_Responder(event_t *ev)
     if (messageToPrint && !keydown)
     {
         keydown = key;
-        if (messageNeedsInput && key != KEY_ESCAPE && tolower(key) != 'y' && tolower(key) != 'n'
+        if (messageNeedsInput && key != key_menu && tolower(key) != 'y' && tolower(key) != 'n'
             && !(modstate & (KMOD_ALT | KMOD_CTRL)) && key != functionkey)
         {
             functionkey = 0;
@@ -2607,10 +2614,10 @@ dboolean M_Responder(event_t *ev)
         }
 
         // Console
-        else if (key == KEY_TILDE && !keydown)
+        else if (key == key_console && !keydown)
         {
             keydown = key;
-            if (consoleheight < CONSOLEHEIGHT && consoledirection == -1 && !inhelpscreens)
+            if (consoleheight < CONSOLEHEIGHT && consoledirection == -1 && !inhelpscreens && !wipe)
             {
                 consoleheight = MAX(1, consoleheight);
                 consoledirection = 1;
@@ -2620,8 +2627,7 @@ dboolean M_Responder(event_t *ev)
         }
 
         // Help key
-        else if (key == KEY_F1 && (!functionkey || functionkey == KEY_F1)
-                 && !keydown)
+        else if (key == KEY_F1 && (!functionkey || functionkey == KEY_F1) && !keydown)
         {
             keydown = key;
             if (functionkey == KEY_F1)
@@ -2795,7 +2801,7 @@ dboolean M_Responder(event_t *ev)
     // Pop-up menu?
     if (!menuactive)
     {
-        if (key == KEY_ESCAPE && !keydown && !splashscreen)
+        if (key == key_menu && !keydown && !splashscreen && !consoleheight)
         {
             keydown = key;
             if (paused)
@@ -3011,7 +3017,7 @@ dboolean M_Responder(event_t *ev)
             return skipaction;
         }
 
-        else if ((key == KEY_ESCAPE || key == KEY_BACKSPACE) && !keydown)
+        else if ((key == key_menu || key == KEY_BACKSPACE) && !keydown)
         {
             // Deactivate menu or go back to previous menu
             keydown = key;
@@ -3059,7 +3065,8 @@ dboolean M_Responder(event_t *ev)
                         return true;
                     if (currentMenu == &OptionsDef && !i && !usergame)
                         return true;
-                    if (currentMenu == &LoadDef && M_StringCompare(savegamestrings[i], s_EMPTYSTRING))
+                    if (currentMenu == &LoadDef && M_StringCompare(savegamestrings[i],
+                        s_EMPTYSTRING))
                         return true;
                     if (itemOn != i)
                         S_StartSound(NULL, sfx_pstop);
@@ -3108,7 +3115,8 @@ dboolean M_Responder(event_t *ev)
                         return true;
                     if (currentMenu == &OptionsDef && !i && !usergame)
                         return true;
-                    if (currentMenu == &LoadDef && M_StringCompare(savegamestrings[i], s_EMPTYSTRING))
+                    if (currentMenu == &LoadDef && M_StringCompare(savegamestrings[i],
+                        s_EMPTYSTRING))
                         return true;
                     if (itemOn != i)
                         S_StartSound(NULL, sfx_pstop);
@@ -3260,7 +3268,7 @@ void M_Drawer(void)
     {
         char    *name = currentMenu->menuitems[i].name;
 
-        if (name[0])
+        if (*name)
         {
             if (!strcmp(name, "M_NMARE"))
             {

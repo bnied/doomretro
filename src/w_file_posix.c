@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -97,7 +97,7 @@ static wad_file_t *W_POSIX_OpenFile(char *path)
 
     // Create a new posix_wad_file_t to hold the file handle.
 
-    result = Z_Malloc(sizeof(posix_wad_file_t), PU_STATIC, 0);
+    result = Z_Malloc(sizeof(posix_wad_file_t), PU_STATIC, NULL);
     result->wad.file_class = &posix_wad_file;
     result->wad.length = GetFileLength(handle);
     result->handle = handle;
@@ -148,7 +148,7 @@ size_t W_POSIX_Read(wad_file_t *wad, unsigned int offset, void *buffer, size_t b
             perror("W_POSIX_Read");
             break;
         }
-        else if (result == 0)
+        else if (!result)
             break;
 
         // Successfully read some bytes

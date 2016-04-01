@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -152,14 +152,14 @@ void T_PlatRaise(plat_t *plat)
 // Do Platforms
 //  "amount" is only used for SOME platforms.
 //
-int EV_DoPlat(line_t *line, plattype_e type, int amount)
+dboolean EV_DoPlat(line_t *line, plattype_e type, int amount)
 {
     plat_t      *plat;
     int         secnum = -1;
-    int         rtn = 0;
+    dboolean    rtn = false;
     sector_t    *sec = NULL;
 
-    //  Activate all <type> plats that are in_stasis
+    // Activate all <type> plats that are in_stasis
     switch (type)
     {
         case perpetualRaise:
@@ -168,7 +168,7 @@ int EV_DoPlat(line_t *line, plattype_e type, int amount)
 
         case toggleUpDn:
             P_ActivateInStasis(line->tag);
-            rtn = 1;
+            rtn = true;
             break;
 
         default:
@@ -183,9 +183,8 @@ int EV_DoPlat(line_t *line, plattype_e type, int amount)
             continue;
 
         // Find lowest & highest floors around sector
-        rtn = 1;
-        plat = Z_Malloc(sizeof(*plat), PU_LEVSPEC, 0);
-        memset(plat, 0, sizeof(*plat));
+        rtn = true;
+        plat = Z_Calloc(1, sizeof(*plat), PU_LEVSPEC, NULL);
         P_AddThinker(&plat->thinker);
 
         plat->type = type;
@@ -258,7 +257,7 @@ int EV_DoPlat(line_t *line, plattype_e type, int amount)
                     plat->high = sec->floorheight;
 
                 plat->wait = TICRATE * PLATWAIT;
-                plat->status = (plat_e)(P_Random() & 1);
+                plat->status = (plat_e)(M_Random() & 1);
 
                 S_StartSectorSound(&sec->soundorg, sfx_pstart);
                 break;
@@ -310,7 +309,7 @@ void P_ActivateInStasis(int tag)
 
     for (platlist = activeplats; platlist; platlist = platlist->next)   // search the active plats
     {
-        plat_t  *plat = platlist->plat;                         // for one in stasis with right tag
+        plat_t  *plat = platlist->plat;                 // for one in stasis with right tag
 
         if (plat->tag == tag && plat->status == in_stasis)
         {
@@ -333,11 +332,11 @@ dboolean EV_StopPlat(line_t *line)
 
     for (platlist = activeplats; platlist; platlist = platlist->next)   // search the active plats
     {
-        plat_t  *plat = platlist->plat;                         // for one with the tag not in stasis
+        plat_t  *plat = platlist->plat;                 // for one with the tag not in stasis
 
         if (plat->status != in_stasis && plat->tag == line->tag)
         {
-            plat->oldstatus = plat->status;                     // put it in stasis
+            plat->oldstatus = plat->status;             // put it in stasis
             plat->status = in_stasis;
             plat->thinker.function = NULL;
         }
@@ -351,9 +350,8 @@ dboolean EV_StopPlat(line_t *line)
 //
 void P_AddActivePlat(plat_t *plat)
 {
-    platlist_t  *list;
+    platlist_t  *list = malloc(sizeof(*list));
 
-    list = malloc(sizeof(*list));
     list->plat = plat;
     plat->list = list;
     if ((list->next = activeplats))

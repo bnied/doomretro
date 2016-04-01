@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -537,6 +537,27 @@ void R_DrawPlayerSpriteColumn(void)
 }
 
 void R_DrawSuperShotgunColumn(void)
+{
+    int32_t             count = dc_yh - dc_yl + 1;
+    byte                *dest = R_ADDRESS(0, dc_x, dc_yl);
+    fixed_t             frac = dc_texturefrac;
+    const fixed_t       fracstep = dc_iscale;
+    const byte          *source = dc_source;
+    const lighttable_t  *colormap = dc_colormap;
+
+    while (--count)
+    {
+        byte    dot = source[frac >> FRACBITS];
+
+        if (dot != 71)
+            *dest = colormap[dot];
+        dest += SCREENWIDTH;
+        frac += fracstep;
+    }
+    *dest = colormap[source[frac >> FRACBITS]];
+}
+
+void R_DrawTranslucentSuperShotgunColumn(void)
 {
     int32_t             count = dc_yh - dc_yl + 1;
     byte                *dest = R_ADDRESS(0, dc_x, dc_yl);
@@ -1221,7 +1242,7 @@ void R_InitTranslationTables(void)
 {
     int i;
 
-    translationtables = Z_Malloc(256 * 3, PU_STATIC, 0);
+    translationtables = Z_Malloc(256 * 3, PU_STATIC, NULL);
 
     // translate just the 16 green colors
     for (i = 0; i < 256; i++)
@@ -1277,6 +1298,34 @@ void R_DrawSpan(void)
     const byte          *source = ds_source;
     const lighttable_t  *colormap = ds_colormap;
 
+    while (count >= 8)
+    {
+        *dest++ = colormap[source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)]];
+        xfrac += xstep;
+        yfrac += ystep;
+        *dest++ = colormap[source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)]];
+        xfrac += xstep;
+        yfrac += ystep;
+        *dest++ = colormap[source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)]];
+        xfrac += xstep;
+        yfrac += ystep;
+        *dest++ = colormap[source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)]];
+        xfrac += xstep;
+        yfrac += ystep;
+        *dest++ = colormap[source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)]];
+        xfrac += xstep;
+        yfrac += ystep;
+        *dest++ = colormap[source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)]];
+        xfrac += xstep;
+        yfrac += ystep;
+        *dest++ = colormap[source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)]];
+        xfrac += xstep;
+        yfrac += ystep;
+        *dest++ = colormap[source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)]];
+        xfrac += xstep;
+        yfrac += ystep;
+        count -= 8;
+    }
     while (count >= 4)
     {
         *dest++ = colormap[source[((xfrac >> 16) & 63) | ((yfrac >> 10) & 4032)]];

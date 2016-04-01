@@ -1,13 +1,13 @@
 /*
 ========================================================================
 
-                               DOOM Retro
+                           D O O M  R e t r o
          The classic, refined DOOM source port. For Windows PC.
 
 ========================================================================
 
-  Copyright © 1993-2012 id Software LLC, a ZeniMax Media company.
-  Copyright © 2013-2016 Brad Harding.
+  Copyright Â© 1993-2012 id Software LLC, a ZeniMax Media company.
+  Copyright Â© 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
   For a list of credits, see the accompanying AUTHORS file.
@@ -281,7 +281,8 @@ dboolean                        idmus = false;
 
 dboolean                        samelevel;
 
-int                             faceback = faceback_default;
+int                             facebackcolor = facebackcolor_default;
+int                             r_berserkintensity = r_berserkintensity_default;
 
 unsigned int                    stat_cheated = 0;
 
@@ -322,6 +323,7 @@ static dboolean actionkey(char key)
         || key == key_straferight
         || key == key_fire
         || key == key_use
+        || key == key_use2
         || key == key_strafe
         || key == key_run
         || key == key_prevweapon
@@ -429,7 +431,7 @@ void ST_refreshBackground(void)
 {
     if (st_statusbaron)
     {
-        if (STBAR || r_detail == lowdetail)
+        if (STBAR || r_detail == r_detail_low)
             V_DrawPatch(ST_X, 0, BG, sbar);
         else
             V_DrawBigPatch(ST_X, 0, BG, sbar2);
@@ -462,14 +464,13 @@ extern int      cardsfound;
 dboolean ST_Responder(event_t *ev)
 {
     // if a user keypress...
-    if (ev->type == ev_keydown || consolecheat[0])
+    if (ev->type == ev_keydown || *consolecheat)
     {
         if (!menuactive && !paused)     // [BH] no cheats when in menu or paused
         {
             int i;
 
-            if (!consolecheat[0] && cht_CheckCheat(&cheat_mus, ev->data2) && !nomusic
-                && musicVolume)
+            if (!*consolecheat && cht_CheckCheat(&cheat_mus, ev->data2) && !nomusic && musicVolume)
                 idmus = true;
 
             // 'dqd' cheat for toggleable god mode
@@ -1312,7 +1313,7 @@ void ST_doPaletteStuff(void)
         if (plyr->bonuscount)
             palette = STARTBONUSPALS + MIN((plyr->bonuscount + 7) >> 3, NUMBONUSPALS - 1);
         else
-            palette = STARTREDPALS + MIN((count + 14) >> 3, NUMREDPALS - 1);
+            palette = MIN((count >> 3) + NUMREDPALS * r_berserkintensity / 100, NUMREDPALS);
     }
     else if (count)
         palette = STARTREDPALS + MIN((count + 7) >> 3, NUMREDPALS - 1);
@@ -1351,7 +1352,7 @@ void ST_drawWidgets(dboolean refresh)
 
     STlib_updatePercent(&w_armor, refresh);
 
-    if (STBAR || r_detail == lowdetail)
+    if (STBAR || r_detail == r_detail_low)
         STlib_updateBinIcon(&w_armsbg, refresh);
     else
         STlib_updateBigBinIcon(&w_armsbg2, refresh);
@@ -1363,8 +1364,9 @@ void ST_drawWidgets(dboolean refresh)
     for (i = 0; i < armsnum; i++)
         STlib_updateArmsIcon(&w_arms[i], refresh, i);
 
-    if (faceback != faceback_default)
-        V_FillRect(0, ST_FACEBACKX, ST_FACEBACKY, ST_FACEBACKWIDTH, ST_FACEBACKHEIGHT, faceback);
+    if (facebackcolor != facebackcolor_default)
+        V_FillRect(0, ST_FACEBACKX, ST_FACEBACKY, ST_FACEBACKWIDTH, ST_FACEBACKHEIGHT,
+            facebackcolor);
 
     STlib_updateMultIcon(&w_faces, refresh);
 
@@ -1442,6 +1444,11 @@ static void ST_loadUnloadGraphics(load_callback_t callback)
     callback("STARMS", &armsbg);
     callback("STARMS2", &armsbg2);
 
+    armsbg->leftoffset = 0;
+    armsbg->topoffset = 0;
+    armsbg2->leftoffset = 0;
+    armsbg2->topoffset = 0;
+
     // arms ownership widgets
     // [BH] now manually drawn
     for (i = 0; i < 6; i++)
@@ -1458,6 +1465,11 @@ static void ST_loadUnloadGraphics(load_callback_t callback)
     // status bar background bits
     callback("STBAR", &sbar);
     callback("STBAR2", &sbar2); // [BH] double resolution
+
+    sbar->leftoffset = 0;
+    sbar->topoffset = 0;
+    sbar2->leftoffset = 0;
+    sbar2->topoffset = 0;
 
     // face states
     facenum = 0;
@@ -1497,9 +1509,11 @@ static void ST_loadUnloadGraphics(load_callback_t callback)
 static void ST_loadCallback(char *lumpname, patch_t **variable)
 {
     if (M_StringCompare(lumpname, "STARMS") && STARMS)
-        *variable = W_CacheLumpNum(W_GetNumForNameX("STARMS", (FREEDOOM ? 1 : 2)), PU_STATIC);
+        *variable = W_CacheLumpNum(W_GetNumForNameX("STARMS", (FREEDOOM || hacx ? 1 : 2)),
+            PU_STATIC);
     else if (M_StringCompare(lumpname, "STBAR") && STBAR)
-        *variable = W_CacheLumpNum(W_GetNumForNameX("STBAR", (FREEDOOM ? 1 : 2)), PU_STATIC);
+        *variable = W_CacheLumpNum(W_GetNumForNameX("STBAR", (FREEDOOM || hacx ? 1 : 2)),
+            PU_STATIC);
     else
         *variable = W_CacheLumpName(lumpname, PU_STATIC);
 }
@@ -1550,8 +1564,6 @@ void ST_initData(void)
 
     for (i = 0; i < 3; i++)
         keyboxes[i] = -1;
-
-    STlib_init();
 }
 
 void ST_createWidgets(void)
@@ -1589,9 +1601,12 @@ void ST_createWidgets(void)
         &st_statusbaron, tallpercent);
 
     // keyboxes 0-2
-    STlib_initMultIcon(&w_keyboxes[0], ST_KEY0X, ST_KEY0Y, keys, &keyboxes[0], &st_statusbaron);
-    STlib_initMultIcon(&w_keyboxes[1], ST_KEY1X, ST_KEY1Y, keys, &keyboxes[1], &st_statusbaron);
-    STlib_initMultIcon(&w_keyboxes[2], ST_KEY2X, ST_KEY2Y, keys, &keyboxes[2], &st_statusbaron);
+    STlib_initMultIcon(&w_keyboxes[0], ST_KEY0X + STBAR, ST_KEY0Y, keys, &keyboxes[0],
+        &st_statusbaron);
+    STlib_initMultIcon(&w_keyboxes[1], ST_KEY1X + STBAR, ST_KEY1Y, keys, &keyboxes[1],
+        &st_statusbaron);
+    STlib_initMultIcon(&w_keyboxes[2], ST_KEY2X + STBAR, ST_KEY2Y, keys, &keyboxes[2],
+        &st_statusbaron);
 
     // ammo count (all four kinds)
     STlib_initNum(&w_ammo[0], ST_AMMO0X, ST_AMMO0Y, shortnum, &plyr->ammo[0], &st_statusbaron,
@@ -1641,7 +1656,7 @@ void ST_Init(void)
     int    i;
 
     ST_loadData();
-    screens[4] = Z_Malloc(ST_WIDTH * SBARHEIGHT, PU_STATIC, 0);
+    screens[4] = Z_Malloc(ST_WIDTH * SBARHEIGHT, PU_STATIC, NULL);
 
     // [BH] fix evil grin being displayed when picking up first item after
     // loading save game or entering IDFA/IDKFA cheat
