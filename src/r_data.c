@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -37,14 +37,12 @@
 */
 
 #include "c_console.h"
-#include "d_deh.h"
 #include "doomstat.h"
 #include "i_swap.h"
 #include "i_system.h"
 #include "m_misc.h"
 #include "p_local.h"
 #include "p_tick.h"
-#include "r_patch.h"
 #include "r_sky.h"
 #include "w_wad.h"
 #include "z_zone.h"
@@ -189,7 +187,7 @@ static struct
     { "SW1STARG", redonly        }, { "SW1STON1", redonly        }, { "SW1STON2", redonly        },
     { "SW1STONE", redonly        }, { "SW1STRTN", redonly        }, { "SW2BLUE",  redonly        },
     { "SW2BRCOM", greenonly2     }, { "SW2BRIK",  greenonly1     }, { "SW2BRN1",  greenonly1     },
-    { "SW2BRN2",  greenonly1     }, { "SW2BRNGN", notgray        }, { "SW2COMM",  greenonly1     },
+    { "SW2BRN2",  greenonly1     }, { "SW2BRNGN", greenonly2     }, { "SW2COMM",  greenonly1     },
     { "SW2COMP",  redonly        }, { "SW2DIRT",  greenonly1     }, { "SW2EXIT",  notgray        },
     { "SW2GRAY",  notgray        }, { "SW2GRAY1", notgray        }, { "SW2GSTON", redonly        },
     { "SW2MARB",  greenonly1     }, { "SW2MET2",  greenonly1     }, { "SW2METAL", greenonly3     },
@@ -326,7 +324,7 @@ void R_InitTextures(void)
             patch->originy = SHORT(mpatch->originy);
             patch->patch = patchlookup[SHORT(mpatch->patch)];
             if (patch->patch == -1)
-                C_Warning("Missing patch %d in texture %.8s.", SHORT(mpatch->patch),
+                C_Warning("Patch %i is missing in the %.8s texture.", SHORT(mpatch->patch),
                     texture->name);     // killough 4/17/98
         }
 
@@ -354,7 +352,7 @@ void R_InitTextures(void)
         textures[i]->index = -1;
     while (--i >= 0)
     {
-        int     j = W_LumpNameHash(textures[i]->name) % (unsigned int)numtextures;
+        j = W_LumpNameHash(textures[i]->name) % (unsigned int)numtextures;
 
         textures[i]->next = textures[j]->index; // Prepend to chain
         textures[j]->index = i;
@@ -481,6 +479,9 @@ void R_InitSpriteLumps(void)
         mobjinfo[MT_INS].flags2 &= ~(MF2_TRANSLUCENT_33 | MF2_FLOATBOB | MF2_NOFOOTCLIP);
         mobjinfo[MT_MISC14].flags2 &= ~(MF2_FLOATBOB | MF2_NOFOOTCLIP);
         mobjinfo[MT_BFG].flags2 &= ~MF2_TRANSLUCENT;
+        mobjinfo[MT_HEAD].blood = MT_BLOOD;
+        mobjinfo[MT_BRUISER].blood = MT_BLOOD;
+        mobjinfo[MT_KNIGHT].blood = MT_BLOOD;
     }
 }
 
@@ -492,7 +493,7 @@ void R_InitSpriteLumps(void)
 //
 // killough 4/4/98: Add support for C_START/C_END markers
 //
-extern int FindNearestColor(byte *palette, int red, int green, int blue);
+int FindNearestColor(byte *palette, int red, int green, int blue);
 
 byte grays[256];
 
@@ -522,8 +523,8 @@ void R_InitColormaps(void)
         colormaps[0] = W_CacheLumpName("COLORMAP", PU_STATIC);
     }
     colormapwad = lumpinfo[W_CheckNumForName("COLORMAP")]->wad_file;
-    C_Output("Using the COLORMAP lump in %s file %s.",
-        (colormapwad->type == IWAD ? "IWAD" : "PWAD"), uppercase(colormapwad->path));
+    C_Output("Using the <b>COLORMAP</b> lump in %s file <b>%s</b>.",
+        (colormapwad->type == IWAD ? "IWAD" : "PWAD"), colormapwad->path);
 
     // [BH] There's a typo in dcolors.c, the source code of the utility Id
     // Software used to construct the palettes and colormaps for DOOM (see
@@ -595,7 +596,7 @@ int R_FlatNumForName(char *name)
 
     if (i == -1)
     {
-        C_Warning("%.8s flat not found.", uppercase(name));
+        C_Warning("The %.8s flat can't be found.", uppercase(name));
         return skyflatnum;
     }
     return (i - firstflat);
@@ -623,7 +624,7 @@ int R_CheckFlatNumForName(char *name)
 //
 int R_CheckTextureNumForName(char *name)
 {
-    int i = NO_TEXTURE;
+    int i = 0;
 
     if (*name != '-')
     {
@@ -645,7 +646,7 @@ int R_TextureNumForName(char *name)
 
     if (i == -1)
     {
-        C_Warning("%.8s texture not found.", uppercase(name));
+        C_Warning("The %.8s texture can't be found.", uppercase(name));
         return 0;
     }
     return i;
@@ -657,7 +658,7 @@ int R_TextureNumForName(char *name)
 //
 void R_PrecacheLevel(void)
 {
-    byte        *hitlist = malloc(MAX(numtextures, MAX(numflats, numsprites)));
+    byte        *hitlist = malloc(MAX(numtextures, MAX(numflats, NUMSPRITES)));
     thinker_t   *th;
     int         i;
     int         j;
@@ -704,12 +705,12 @@ void R_PrecacheLevel(void)
         }
 
     // Precache sprites.
-    memset(hitlist, 0, numsprites);
+    memset(hitlist, 0, NUMSPRITES);
 
     for (th = thinkerclasscap[th_mobj].cnext; th != &thinkerclasscap[th_mobj]; th = th->cnext)
         hitlist[((mobj_t *)th)->sprite] = 1;
 
-    for (i = 0; i < numsprites; i++)
+    for (i = 0; i < NUMSPRITES; i++)
         if (hitlist[i])
             for (j = 0; j < sprites[i].numframes; j++)
             {

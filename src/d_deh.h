@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -41,7 +41,7 @@
 
 #include "doomtype.h"
 
-typedef enum
+enum
 {
     p_GOTARMOR = 33, p_GOTMEGA, p_GOTHTHBONUS, p_GOTARMBONUS, p_GOTSTIM, p_GOTMEDINEED,
     p_GOTMEDINEED2, p_GOTMEDIKIT, p_GOTSUPER, p_GOTBLUECARD, p_GOTYELWCARD, p_GOTREDCARD,
@@ -51,7 +51,7 @@ typedef enum
     p_GOTSHELLS, p_GOTSHELLSX2, p_GOTSHELLBOX, p_GOTBACKPACK, p_GOTBFG9000, p_GOTCHAINGUN,
     p_GOTCHAINSAW, p_GOTLAUNCHER, p_GOTMSPHERE, p_GOTPLASMA, p_GOTSHOTGUN, p_GOTSHOTGUN2,
     p_PD_BLUEO, p_PD_REDO, p_PD_YELLOWO, p_PD_BLUEK, p_PD_REDK, p_PD_YELLOWK
-} pickupmessage_t;
+};
 
 typedef struct
 {
@@ -322,6 +322,7 @@ extern char     *s_STSTR_BEHOLD;
 extern char     *s_STSTR_BEHOLDX;
 extern char     *s_STSTR_BEHOLDON;
 extern char     *s_STSTR_BEHOLDOFF;
+extern char     *s_STSTR_BUDDHA;
 extern char     *s_STSTR_CHOPPERS;
 extern char     *s_STSTR_CLEV;
 extern char     *s_STSTR_CLEVSAME;
@@ -336,6 +337,8 @@ extern char     *s_STSTR_PSON;
 extern char     *s_STSTR_PSOFF;
 extern char     *s_STSTR_FMON;
 extern char     *s_STSTR_FMOFF;
+extern char     *s_STSTR_RION;
+extern char     *s_STSTR_RIOFF;
 extern char     *s_STSTR_RMON;
 extern char     *s_STSTR_RMOFF;
 
@@ -441,6 +444,7 @@ extern char     *s_CAPTION_BFGEDITION;
 extern char     *s_CAPTION_PLUTONIA;
 extern char     *s_CAPTION_TNT;
 extern char     *s_CAPTION_CHEX;
+extern char     *s_CAPTION_CHEX2;
 extern char     *s_CAPTION_HACX;
 extern char     *s_CAPTION_FREEDOOM1;
 extern char     *s_CAPTION_FREEDOOM2;
@@ -448,6 +452,11 @@ extern char     *s_CAPTION_FREEDM;
 extern char     *s_CAPTION_BTSXE1;
 extern char     *s_CAPTION_BTSXE2;
 extern char     *s_CAPTION_BTSXE3;
+extern char     *s_CAPTION_E1M4B;
+extern char     *s_CAPTION_E1M8B;
+
+extern char     *s_AUTHOR_BESTOR;
+extern char     *s_AUTHOR_ROMERO;
 
 extern char     *bgflatE1;
 extern char     *bgflatE2;

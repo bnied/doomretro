@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -40,12 +40,9 @@
 #include "i_swap.h"
 #include "m_config.h"
 #include "st_lib.h"
-#include "st_stuff.h"
 #include "v_video.h"
-#include "w_wad.h"
-#include "z_zone.h"
 
-extern int r_detail;
+extern int      r_detail;
 
 void STlib_initNum(st_number_t *n, int x, int y, patch_t **pl, int *num, dboolean *on, int width)
 {
@@ -159,7 +156,7 @@ void STlib_drawNum(st_number_t *n)
 
     patch_t     *patch = n->p[0];
     int         w = SHORT(patch->width);
-    dboolean    smallnum = (SHORT(patch->height) == 6 && !STYSNUM0);
+    dboolean    smallnum = (SHORT(patch->height) == 6 && !STYSNUM0 && STBAR == 2);
     int         x = n->x;
 
     n->oldnum = *n->num;
@@ -244,7 +241,7 @@ void STlib_updateArmsIcon(st_multicon_t *mi, dboolean refresh, int i)
 {
     if (*mi->on && (mi->oldinum != *mi->inum || refresh) && *mi->inum != -1)
     {
-        if (STYSNUM0)
+        if (STYSNUM0 || STBAR > 2)
             V_DrawPatch(mi->x, mi->y, FG, mi->p[*mi->inum]);
         else
         {

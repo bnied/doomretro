@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -37,16 +37,16 @@
 */
 
 #include <ctype.h>
-#include <math.h>
-#include <time.h>
 
+#include "am_map.h"
 #include "c_console.h"
+#include "d_deh.h"
 #include "doomstat.h"
-#include "g_game.h"
 #include "i_swap.h"
 #include "i_system.h"
 #include "m_argv.h"
 #include "m_bbox.h"
+#include "m_menu.h"
 #include "m_misc.h"
 #include "m_random.h"
 #include "p_fix.h"
@@ -58,6 +58,7 @@
 #include "w_wad.h"
 #include "z_zone.h"
 
+#define RMAPINFO_SCRIPT_NAME    "RMAPINFO"
 #define MAPINFO_SCRIPT_NAME     "MAPINFO"
 
 #define NUMLIQUIDS              256
@@ -197,7 +198,8 @@ static int mapcmdids[] =
 
 dboolean        canmodify;
 dboolean        transferredsky;
-dboolean        MAPINFO;
+lumpindex_t     RMAPINFO;
+lumpindex_t     MAPINFO;
 
 dboolean        r_fixmaperrors = r_fixmaperrors_default;
 
@@ -215,6 +217,9 @@ extern fixed_t  animatedliquidxdir;
 extern fixed_t  animatedliquidydir;
 extern fixed_t  animatedliquidxoffs;
 extern fixed_t  animatedliquidyoffs;
+
+extern menu_t   MainDef;
+extern menu_t   NewDef;
 
 static fixed_t GetOffset(vertex_t *v1, vertex_t *v2)
 {
@@ -293,6 +298,9 @@ void P_LoadVertexes(int lump)
                 {
                     vertexes[i].x = SHORT(vertexfix[j].newx) << FRACBITS;
                     vertexes[i].y = SHORT(vertexfix[j].newy) << FRACBITS;
+                    if (devparm)
+                        C_Warning("The position of vertex %s has been changed to (%i,%i).",
+                            commify(vertexfix[j].vertex), vertexfix[j].newx, vertexfix[j].newy);
                     break;
                 }
                 j++;
@@ -345,7 +353,7 @@ void P_LoadSegs(int lump)
         // e6y: fix wrong side index
         if (side != 0 && side != 1)
         {
-            C_Warning("Seg %s has a wrong side index of %s. It has been replaced with 1.",
+            C_Warning("Seg %s has a wrong side index of %s. It has been changed to 1.",
                 commify(i), commify(side));
             side = 1;
         }
@@ -383,7 +391,7 @@ void P_LoadSegs(int lump)
         // http://www.doomworld.com/idgames/index.php?id=12647
         if (v1 >= numvertexes || v2 >= numvertexes)
         {
-            char buffer[] = "Seg %s references an invalid vertex of %s.";
+            char        *buffer = "Seg %s references an invalid vertex of %s.";
 
             if (v1 >= numvertexes)
                 C_Warning(buffer, commify(i), commify(v1));
@@ -412,7 +420,7 @@ void P_LoadSegs(int lump)
         if (li->linedef->special >= BOOMLINESPECIALS)
             boomlinespecials = true;
 
-        // Apply any map-specific fixes.
+        // [BH] Apply any map-specific fixes.
         if (canmodify && r_fixmaperrors)
         {
             int j = 0;
@@ -425,32 +433,66 @@ void P_LoadSegs(int lump)
                     && gamemap == linefix[j].map
                     && side == linefix[j].side)
                 {
-                    if (linefix[j].toptexture[0] != '\0')
+                    if (*linefix[j].toptexture)
+                    {
                         li->sidedef->toptexture = R_TextureNumForName(linefix[j].toptexture);
-                    if (linefix[j].middletexture[0] != '\0')
+                        if (devparm)
+                            C_Warning("The top texture of linedef %s has been changed to %s.",
+                                commify(linefix[j].linedef), linefix[j].toptexture);
+                    }
+                    if (*linefix[j].middletexture)
+                    {
                         li->sidedef->midtexture = R_TextureNumForName(linefix[j].middletexture);
-                    if (linefix[j].bottomtexture[0] != '\0')
+                        if (devparm)
+                            C_Warning("The middle texture of linedef %s has been changed to %s.",
+                                commify(linefix[j].linedef), linefix[j].middletexture);
+                    }
+                    if (*linefix[j].bottomtexture)
+                    {
                         li->sidedef->bottomtexture = R_TextureNumForName(linefix[j].bottomtexture);
+                        if (devparm)
+                            C_Warning("The bottom texture of linedef %s has been changed to %s.",
+                                commify(linefix[j].linedef), linefix[j].bottomtexture);
+                    }
                     if (linefix[j].offset != DEFAULT)
                     {
                         li->offset = SHORT(linefix[j].offset) << FRACBITS;
                         li->sidedef->textureoffset = 0;
+                        if (devparm)
+                            C_Warning("The offset of linedef %s has been changed to %s.",
+                                commify(linefix[j].linedef), commify(linefix[j].offset));
                     }
                     if (linefix[j].rowoffset != DEFAULT)
+                    {
                         li->sidedef->rowoffset = SHORT(linefix[j].rowoffset) << FRACBITS;
-                    if (linefix[j].flags & ML_DONTDRAW)
-                        li->linedef->hidden = true;
+                        if (devparm)
+                            C_Warning("The row offset of linedef %s has been changed to %s.",
+                                commify(linefix[j].linedef), commify(linefix[j].rowoffset));
+                    }
                     if (linefix[j].flags != DEFAULT)
                     {
                         if (li->linedef->flags & linefix[j].flags)
                             li->linedef->flags &= ~linefix[j].flags;
                         else
                             li->linedef->flags |= linefix[j].flags;
+                        if (devparm)
+                            C_Warning("The flags of linedef %s have been changed to %s.",
+                                commify(linefix[j].linedef), commify(li->linedef->flags));
                     }
                     if (linefix[j].special != DEFAULT)
+                    {
                         li->linedef->special = linefix[j].special;
+                        if (devparm)
+                            C_Warning("The special of linedef %s has been changed to %s.",
+                                commify(linefix[j].linedef), commify(linefix[j].special));
+                    }
                     if (linefix[j].tag != DEFAULT)
+                    {
                         li->linedef->tag = linefix[j].tag;
+                        if (devparm)
+                            C_Warning("The tag of linedef %s has been changed to %s.",
+                                commify(linefix[j].linedef), commify(linefix[j].tag));
+                    }
                     break;
                 }
                 j++;
@@ -502,7 +544,7 @@ static void P_LoadSegs_V4(int lump)
         // e6y: fix wrong side index
         if (side != 0 && side != 1)
         {
-            C_Warning("Seg %s has a wrong side index of %s. It has been replaced with 1.",
+            C_Warning("Seg %s has a wrong side index of %s. It has been changed to 1.",
                 commify(i), commify(side));
             side = 1;
         }
@@ -526,7 +568,7 @@ static void P_LoadSegs_V4(int lump)
         }
 
         // killough 5/3/98: ignore 2s flag if second sidedef missing:
-        if ((ldef->flags & ML_TWOSIDED) && ldef->sidenum[side ^ 1] != -1)
+        if ((ldef->flags & ML_TWOSIDED) && ldef->sidenum[side ^ 1] != NO_INDEX)
             li->backsector = sides[ldef->sidenum[side ^ 1]].sector;
         else
         {
@@ -540,7 +582,7 @@ static void P_LoadSegs_V4(int lump)
         // http://www.doomworld.com/idgames/index.php?id=12647
         if (v1 >= numvertexes || v2 >= numvertexes)
         {
-            char buffer[] = "Seg %s references an invalid vertex of %s.";
+            char        *buffer = "Seg %s references an invalid vertex of %s.";
 
             if (v1 >= numvertexes)
                 C_Warning(buffer, commify(i), commify(v1));
@@ -635,8 +677,8 @@ void P_LoadSectors(int lump)
 
     for (i = 0; i < numsectors; i++)
     {
-        sector_t    *ss = sectors + i;
-        mapsector_t *ms = (mapsector_t *)data + i;
+        sector_t        *ss = sectors + i;
+        mapsector_t     *ms = (mapsector_t *)data + i;
 
         ss->floorheight = SHORT(ms->floorheight) << FRACBITS;
         ss->ceilingheight = SHORT(ms->ceilingheight) << FRACBITS;
@@ -652,30 +694,63 @@ void P_LoadSectors(int lump)
         ss->floorlightsec = -1; // sector used to get floor lighting
         ss->ceilinglightsec = -1;
 
-        // Apply any level-specific fixes.
+        // [BH] Apply any level-specific fixes.
         if (canmodify && r_fixmaperrors)
         {
             int j = 0;
 
             while (sectorfix[j].mission != -1)
             {
-                if (i == sectorfix[j].sector
-                    && gamemission == sectorfix[j].mission
-                    && gameepisode == sectorfix[j].epsiode
-                    && gamemap == sectorfix[j].map)
+                if (i == sectorfix[j].sector && gamemission == sectorfix[j].mission
+                    && gameepisode == sectorfix[j].epsiode && gamemap == sectorfix[j].map)
                 {
-                    if (sectorfix[j].floorpic[0] != '\0')
+                    if (*sectorfix[j].floorpic)
+                    {
                         ss->floorpic = R_FlatNumForName(sectorfix[j].floorpic);
-                    if (sectorfix[j].ceilingpic[0] != '\0')
+                        if (devparm)
+                            C_Warning("The floor texture of sector %s has been changed to %s.",
+                                commify(sectorfix[j].sector), sectorfix[j].floorpic);
+                    }
+
+                    if (*sectorfix[j].ceilingpic)
+                    {
                         ss->ceilingpic = R_FlatNumForName(sectorfix[j].ceilingpic);
+                        if (devparm)
+                            C_Warning("The ceiling texture of sector %s has been changed to %s.",
+                                commify(sectorfix[j].sector), sectorfix[j].ceilingpic);
+                    }
+
                     if (sectorfix[j].floorheight != DEFAULT)
+                    {
                         ss->floorheight = SHORT(sectorfix[j].floorheight) << FRACBITS;
+                        if (devparm)
+                            C_Warning("The floor height of sector %s has been changed to %s.",
+                                commify(sectorfix[j].sector), commify(sectorfix[j].floorheight));
+                    }
+
                     if (sectorfix[j].ceilingheight != DEFAULT)
+                    {
                         ss->ceilingheight = SHORT(sectorfix[j].ceilingheight) << FRACBITS;
+                        if (devparm)
+                            C_Warning("The ceiling height of sector %s has been changed to %s.",
+                                commify(sectorfix[j].sector), commify(sectorfix[j].ceilingheight));
+                    }
+
                     if (sectorfix[j].special != DEFAULT)
+                    {
                         ss->special = SHORT(sectorfix[j].special) << FRACBITS;
+                        if (devparm)
+                            C_Warning("The special of sector %s has been changed to %s.",
+                                commify(sectorfix[j].sector), commify(sectorfix[j].special));
+                    }
+
                     if (sectorfix[j].tag != DEFAULT)
+                    {
                         ss->tag = SHORT(sectorfix[j].tag) << FRACBITS;
+                        if (devparm)
+                            C_Warning("The tag of sector %s has been changed to %s.",
+                                commify(sectorfix[j].sector), commify(sectorfix[j].tag));
+                    }
                     break;
                 }
                 j++;
@@ -708,10 +783,12 @@ void P_LoadNodes(int lump)
     data = (byte *)W_CacheLumpNum(lump, PU_STATIC);
 
     if (!data || !numnodes)
+    {
         if (numsubsectors == 1)
             C_Warning("This map has no nodes and only one subsector.");
         else
             I_Error("This map has no nodes.");
+    }
 
     for (i = 0; i < numnodes; i++)
     {
@@ -770,10 +847,12 @@ static void P_LoadNodes_V4(int lump)
     data = data + 8;
 
     if (!data || !numnodes)
+    {
         if (numsubsectors == 1)
             C_Warning("This map has no nodes and only one subsector.");
         else
             I_Error("This map has no nodes.");
+    }
 
     for (i = 0; i < numnodes; i++)
     {
@@ -830,7 +909,7 @@ static void P_LoadZSegs(const byte *data)
         // e6y: fix wrong side index
         if (side != 0 && side != 1)
         {
-            C_Warning("Seg %s has a wrong side index of %s. It has been replaced with 1.",
+            C_Warning("Seg %s has a wrong side index of %s. It has been changed to 1.",
                 commify(i), commify(side));
             side = 1;
         }
@@ -925,21 +1004,19 @@ static void P_LoadZNodes(int lump)
     }
     else
     {
-        int     size = newVerts * (sizeof(newvertarray[0].x) + sizeof(newvertarray[0].y));
-
-        data += size;
+        data += newVerts * (sizeof(newvertarray[0].x) + sizeof(newvertarray[0].y));
 
         // P_LoadVertexes reset numvertexes, need to increase it again
         numvertexes = orgVerts + newVerts;
     }
 
     // Read the subsectors
-    numSubs = *((const unsigned int*)data);
+    numSubs = *((const unsigned int *)data);
     data += sizeof(numSubs);
 
     numsubsectors = numSubs;
     if (numsubsectors <= 0)
-        I_Error("There are no subsectors in this map.");
+        I_Error("This map has no subsectors.");
 
     subsectors = calloc_IfSameLevel(subsectors, numsubsectors, sizeof(subsector_t));
 
@@ -954,7 +1031,7 @@ static void P_LoadZNodes(int lump)
     data += numSubs * sizeof(mapsubsector_znod_t);
 
     // Read the segs
-    numSegs = *((const unsigned int*)data);
+    numSegs = *((const unsigned int *)data);
     data += sizeof(numSegs);
 
     // The number of segs stored should match the number of
@@ -969,7 +1046,7 @@ static void P_LoadZNodes(int lump)
     data += numsegs * sizeof(mapseg_znod_t);
 
     // Read nodes
-    numNodes = *((const unsigned int*)data);
+    numNodes = *((const unsigned int *)data);
     data += sizeof(numNodes);
 
     numnodes = numNodes;
@@ -1047,7 +1124,7 @@ void P_LoadThings(int lump)
         mt.type = SHORT(mt.type);
         mt.options = SHORT(mt.options);
 
-        // Apply any level-specific fixes.
+        // [BH] Apply any level-specific fixes.
         if (canmodify && r_fixmaperrors)
         {
             int j = 0;
@@ -1068,11 +1145,24 @@ void P_LoadThings(int lump)
                     {
                         mt.x = SHORT(thingfix[j].newx);
                         mt.y = SHORT(thingfix[j].newy);
+                        if (devparm)
+                            C_Warning("The position of thing %s has been changed to (%i,%i).",
+                                commify(thingfix[j].thing), mt.x, mt.y);
                     }
                     if (thingfix[j].angle != DEFAULT)
+                    {
                         mt.angle = SHORT(thingfix[j].angle);
+                        if (devparm)
+                            C_Warning("The angle of thing %s has been changed to %i.",
+                                commify(thingfix[j].thing), thingfix[j].angle);
+                    }
                     if (thingfix[j].options != DEFAULT)
+                    {
                         mt.options = thingfix[j].options;
+                        if (devparm)
+                            C_Warning("The flags of thing %s have been changed to %i.",
+                                commify(thingfix[j].thing), thingfix[j].options);
+                    }
                     break;
                 }
                 j++;
@@ -1087,7 +1177,7 @@ void P_LoadThings(int lump)
             P_SpawnMapThing(&mt, i);
     }
 
-    srand((unsigned int)time(NULL));
+    M_ClearRandom();
 
     W_ReleaseLumpNum(lump);
 }
@@ -1113,7 +1203,6 @@ static void P_LoadLineDefs(int lump)
         vertex_t                *v1, *v2;
 
         ld->flags = (unsigned short)SHORT(mld->flags);
-        ld->hidden = false;
 
         ld->special = SHORT(mld->special);
 
@@ -1125,8 +1214,8 @@ static void P_LoadLineDefs(int lump)
 
         ld->tranlump = -1;   // killough 4/11/98: no translucency by default
 
-        ld->slopetype = !ld->dx ? ST_VERTICAL : !ld->dy ? ST_HORIZONTAL :
-            FixedDiv(ld->dy, ld->dx) > 0 ? ST_POSITIVE : ST_NEGATIVE;
+        ld->slopetype = (!ld->dx ? ST_VERTICAL : (!ld->dy ? ST_HORIZONTAL :
+            (FixedDiv(ld->dy, ld->dx) > 0 ? ST_POSITIVE : ST_NEGATIVE)));
 
         if (v1->x < v2->x)
         {
@@ -1397,11 +1486,11 @@ static void P_CreateBlockMap(void)
             int dy = (ady < 0 ? -1 : 1);
 
             // difference in preferring to move across y (>0) instead of x (<0)
-            int diff = !adx ? 1 : !ady ? -1 :
+            int diff = (!adx ? 1 : (!ady ? -1 :
                 (((x >> MAPBTOFRAC) << MAPBTOFRAC)
                 + (dx > 0 ? MAPBLOCKUNITS - 1 : 0) - x) * (ady = abs(ady)) * dx
                 - (((y >> MAPBTOFRAC) << MAPBTOFRAC)
-                + (dy > 0 ? MAPBLOCKUNITS - 1 : 0) - y) * (adx = abs(adx)) * dy;
+                + (dy > 0 ? MAPBLOCKUNITS - 1 : 0) - y) * (adx = abs(adx)) * dy));
 
             // starting block, and pointer to its blocklist structure
             int b = (y >> MAPBTOFRAC) * bmapwidth + (x >> MAPBTOFRAC);
@@ -1823,13 +1912,13 @@ extern int      dehcount;
 void P_MapName(int ep, int map)
 {
     dboolean    mapnumonly = false;
-    char        *mapinfoname = P_GetMapName((ep - 1) * 10 + map);
+    char        *mapinfoname = trimwhitespace(P_GetMapName((ep - 1) * 10 + map));
 
     switch (gamemission)
     {
         case doom:
-            M_snprintf(mapnum, sizeof(mapnum), "E%iM%i%s", ep, map, (E1M8B && ep == 1 && map == 8 ?
-                "B" : ""));
+            M_snprintf(mapnum, sizeof(mapnum), "E%iM%i%s", ep, map, ((E1M4B && ep == 1 && map == 4)
+                || (E1M8B && ep == 1 && map == 8) ? "B" : ""));
             if (*mapinfoname)
                 M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else if (W_CheckMultipleLumps(mapnum) > 1 && dehcount == 1 && !chex)
@@ -1841,12 +1930,13 @@ void P_MapName(int ep, int map)
                     leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
             else
-                M_StringCopy(maptitle, *mapnames[(ep - 1) * 9 + map - 1], sizeof(maptitle));
+                M_StringCopy(maptitle, trimwhitespace(*mapnames[(ep - 1) * 9 + map - 1]),
+                    sizeof(maptitle));
             break;
 
         case doom2:
             M_snprintf(mapnum, sizeof(mapnum), "MAP%02i", map);
-            if (*mapinfoname)
+            if (*mapinfoname && !BTSX)
                 M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else if (W_CheckMultipleLumps(mapnum) > 1 && (!nerve || map > 9) && dehcount == 1)
             {
@@ -1857,7 +1947,7 @@ void P_MapName(int ep, int map)
                     leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
             else
-                M_StringCopy(maptitle, (bfgedition ? *mapnames2_bfg[map - 1] :
+                M_StringCopy(maptitle, trimwhitespace(bfgedition ? *mapnames2_bfg[map - 1] :
                     *mapnames2[map - 1]), sizeof(maptitle));
             break;
 
@@ -1866,7 +1956,7 @@ void P_MapName(int ep, int map)
             if (*mapinfoname)
                 M_snprintf(maptitle, sizeof(maptitle), "%s: %s", mapnum, mapinfoname);
             else
-                M_StringCopy(maptitle, *mapnamesn[map - 1], sizeof(maptitle));
+                M_StringCopy(maptitle, trimwhitespace(*mapnamesn[map - 1]), sizeof(maptitle));
             break;
 
         case pack_plut:
@@ -1882,7 +1972,7 @@ void P_MapName(int ep, int map)
                     leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
             else
-                M_StringCopy(maptitle, *mapnamesp[map - 1], sizeof(maptitle));
+                M_StringCopy(maptitle, trimwhitespace(*mapnamesp[map - 1]), sizeof(maptitle));
             break;
 
         case pack_tnt:
@@ -1898,7 +1988,7 @@ void P_MapName(int ep, int map)
                     leafname(lumpinfo[W_GetNumForName(mapnum)]->wad_file->path), mapnum);
             }
             else
-                M_StringCopy(maptitle, *mapnamest[map - 1], sizeof(maptitle));
+                M_StringCopy(maptitle, trimwhitespace(*mapnamest[map - 1]), sizeof(maptitle));
             break;
 
         default:
@@ -1906,7 +1996,9 @@ void P_MapName(int ep, int map)
     }
 
     if (strlen(maptitle) >= 4)
-        if (M_StringStartsWith(uppercase(maptitle), "MAP") && isdigit(maptitle[3]))
+    {
+        if (toupper(maptitle[0]) == 'M' && toupper(maptitle[1]) == 'A'
+            && toupper(maptitle[2]) == 'P' && isdigit(maptitle[3]))
         {
             maptitle[0] = 'M';
             maptitle[1] = 'A';
@@ -1918,12 +2010,13 @@ void P_MapName(int ep, int map)
             maptitle[0] = 'E';
             maptitle[2] = 'M';
         }
+    }
 
     if (!mapnumonly)
     {
-        char    *pos;
+        char    *pos = strchr(maptitle, ':');
 
-        if ((pos = strchr(maptitle, ':')))
+        if (pos)
         {
             if (M_StringStartsWith(uppercase(maptitle), "LEVEL"))
             {
@@ -1948,6 +2041,8 @@ void P_MapName(int ep, int map)
             M_StringCopy(mapnumandtitle, mapnum, sizeof(mapnumandtitle));
         M_StringCopy(automaptitle, mapnumandtitle, sizeof(automaptitle));
     }
+
+
 }
 
 static mapformat_t P_CheckMapFormat(int lumpnum)
@@ -1975,6 +2070,7 @@ static mapformat_t P_CheckMapFormat(int lumpnum)
 }
 
 extern dboolean idclev;
+extern dboolean massacre;
 
 //
 // P_SetupLevel
@@ -1983,15 +2079,24 @@ void P_SetupLevel(int ep, int map)
 {
     char        lumpname[6];
     int         lumpnum;
+    player_t    *player = &players[0];
 
     totalkills = totalitems = totalsecret = 0;
     memset(monstercount, 0, sizeof(int) * NUMMOBJTYPES);
     wminfo.partime = 0;
-    players[0].killcount = players[0].secretcount = players[0].itemcount = 0;
+    player->killcount = 0;
+    player->secretcount = 0;
+    player->itemcount = 0;
 
     // Initial height of PointOfView
     // will be set by player think.
-    players[0].viewz = 1;
+    player->viewz = 1;
+
+    if (!samelevel)
+    {
+        player->cheats &= ~CF_ALLMAP;
+        player->cheats &= ~CF_ALLMAP_THINGS;
+    }
 
     idclev = false;
 
@@ -2091,7 +2196,13 @@ void P_SetupLevel(int ep, int map)
     P_CalcSegsLength();
 
     r_bloodsplats_total = 0;
-    memset(bloodsplats, 0, sizeof(mobj_t *) * r_bloodsplats_max);
+    P_BloodSplatSpawner = (r_blood == r_blood_none || !r_bloodsplats_max ?
+        P_NullBloodSplatSpawner : P_SpawnBloodSplat);
+
+    pathpointnum = 0;
+    pathpointnum_max = 0;
+
+    massacre = false;
 
     P_SetLiquids();
     P_GetMapLiquids((ep - 1) * 10 + map);
@@ -2099,7 +2210,7 @@ void P_SetupLevel(int ep, int map)
 
     P_LoadThings(lumpnum + ML_THINGS);
 
-    P_InitCards(&players[0]);
+    P_InitCards(player);
 
     // set up world state
     P_SpawnSpecials();
@@ -2110,6 +2221,9 @@ void P_SetupLevel(int ep, int map)
     R_PrecacheLevel();
 
     S_Start();
+
+    if (gamemode != shareware)
+        S_ParseMusInfo(lumpname);
 }
 
 int     liquidlumps = 0;
@@ -2124,8 +2238,12 @@ static void InitMapInfo(void)
     int         mcmdvalue;
     mapinfo_t   *info;
 
-    if (!(MAPINFO = (W_CheckNumForName(MAPINFO_SCRIPT_NAME) >= 0)))
+    if (M_ParmExists("-nomapinfo"))
         return;
+
+    if ((RMAPINFO = MAPINFO = W_CheckNumForName(RMAPINFO_SCRIPT_NAME)) < 0)
+        if ((MAPINFO = W_CheckNumForName(MAPINFO_SCRIPT_NAME)) < 0)
+            return;
 
     info = mapinfo;
 
@@ -2145,7 +2263,7 @@ static void InitMapInfo(void)
         info->noliquid[i] = -1;
     }
 
-    SC_Open(MAPINFO_SCRIPT_NAME);
+    SC_Open(RMAPINFO >= 0 ? RMAPINFO_SCRIPT_NAME : MAPINFO_SCRIPT_NAME);
     while (SC_GetString())
     {
         if (!SC_Compare("MAP"))
@@ -2170,7 +2288,23 @@ static void InitMapInfo(void)
             }
         }
         if (map < 1 || map > 99)
-            SC_ScriptError(NULL);
+        {
+            if (M_StringCompare(leafname(lumpinfo[MAPINFO]->wad_file->path), "NERVE.WAD"))
+            {
+                C_Warning("The map markers in PWAD %s are invalid.",
+                    lumpinfo[MAPINFO]->wad_file->path);
+                nerve = false;
+                NewDef.prevMenu = &MainDef;
+                MAPINFO = -1;
+                return;
+            }
+            else
+            {
+                C_Warning("The MAPINFO lump contains an invalid map marker.");
+                continue;
+            }
+
+        }
 
         info = &mapinfo[map];
 
@@ -2299,6 +2433,10 @@ static void InitMapInfo(void)
     }
     SC_Close();
     mapcount = mapmax;
+
+    C_Output("Parsed the <b>%sMAPINFO</b> lump in %s file <b>%s</b>.",
+        (RMAPINFO >= 0 ? "R" : ""), (lumpinfo[MAPINFO]->wad_file->type == IWAD ? "IWAD" : "PWAD"),
+        lumpinfo[MAPINFO]->wad_file->path);
 }
 
 static int QualifyMap(int map)
@@ -2308,14 +2446,14 @@ static int QualifyMap(int map)
 
 char *P_GetMapAuthor(int map)
 {
-    return (MAPINFO && mapinfo[QualifyMap(map)].author[0] ? mapinfo[QualifyMap(map)].author :
-        (breach && map == 1 ? "Alun \"Viggles\" Bestor" :
-        (E1M8B && map == 8 ? "John Romero" : "")));
+    return (MAPINFO && mapinfo[QualifyMap(map)].author[0] ? mapinfo[QualifyMap(map)].author
+        : (breach && map == 1 ? s_AUTHOR_BESTOR : ((E1M4B && map == 4) || (E1M8B && map == 8)
+        ? s_AUTHOR_ROMERO : "")));
 }
 
 void P_GetMapLiquids(int map)
 {
-    int i = 0;
+    int i;
 
     for (i = 0; i < liquidlumps; ++i)
         isliquid[mapinfo[QualifyMap(map)].liquid[i]] = true;
@@ -2328,7 +2466,8 @@ int P_GetMapMusic(int map)
 
 char *P_GetMapName(int map)
 {
-    return (MAPINFO ? mapinfo[QualifyMap(map)].name : (E1M8B && map == 8 ? "Tech Gone Bad" : ""));
+    return (MAPINFO ? mapinfo[QualifyMap(map)].name : (E1M4B && map == 4 ? s_CAPTION_E1M4B
+        : (E1M8B && map == 8 ? s_CAPTION_E1M8B : "")));
 }
 
 int P_GetMapNext(int map)
@@ -2338,7 +2477,7 @@ int P_GetMapNext(int map)
 
 void P_GetMapNoLiquids(int map)
 {
-    int i = 0;
+    int i;
 
     for (i = 0; i < noliquidlumps; ++i)
         isliquid[mapinfo[QualifyMap(map)].noliquid[i]] = false;
@@ -2382,5 +2521,5 @@ void P_Init(void)
     P_InitSwitchList();
     P_InitPicAnims();
     InitMapInfo();
-    R_InitSprites(sprnames);
+    R_InitSprites();
 }

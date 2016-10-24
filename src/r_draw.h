@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -74,7 +74,7 @@ extern byte             *tinttabblue;
 extern byte             *tinttabred33;
 extern byte             *tinttabredwhite50;
 extern byte             *tinttabgreen33;
-extern byte             *tinttabblue33;
+extern byte             *tinttabblue25;
 
 // The span blitting interface.
 // Hook in assembler or system specific BLT
@@ -95,7 +95,7 @@ void R_DrawTranslucentRedWhite50Column(void);
 void R_DrawTranslucentBlueColumn(void);
 void R_DrawTranslucentGreen33Column(void);
 void R_DrawTranslucentRed33Column(void);
-void R_DrawTranslucentBlue33Column(void);
+void R_DrawTranslucentBlue25Column(void);
 void R_DrawRedToBlueColumn(void);
 void R_DrawTranslucentRedToBlue33Column(void);
 void R_DrawRedToGreenColumn(void);
@@ -104,7 +104,7 @@ void R_DrawPlayerSpriteColumn(void);
 void R_DrawSuperShotgunColumn(void);
 void R_DrawTranslucentSuperShotgunColumn(void);
 void R_DrawShadowColumn(void);
-void R_DrawSpectreShadowColumn(void);
+void R_DrawFuzzyShadowColumn(void);
 void R_DrawSolidShadowColumn(void);
 void R_DrawBloodSplatColumn(void);
 void R_DrawSolidBloodSplatColumn(void);

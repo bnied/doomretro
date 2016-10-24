@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -37,7 +37,6 @@
 */
 
 #include "doomstat.h"
-#include "m_random.h"
 #include "p_fix.h"
 #include "p_local.h"
 #include "p_tick.h"
@@ -555,12 +554,9 @@ dboolean EV_DoFloor(line_t *line, floor_e floortype)
 //
 dboolean EV_DoChange(line_t *line, change_e changetype)
 {
-    int         secnum;
-    dboolean    rtn;
+    int         secnum = -1;
+    dboolean    rtn = false;
     sector_t    *secm;
-
-    secnum = -1;
-    rtn = false;
 
     // change all sectors with the same tag as the linedef
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)
@@ -587,6 +583,7 @@ dboolean EV_DoChange(line_t *line, change_e changetype)
                     sec->special = secm->special;
                 }
                 break;
+
             default:
                 break;
         }
@@ -658,6 +655,7 @@ dboolean EV_BuildStairs(line_t *line, stair_e type)
                 stairsize = 8 * FRACUNIT;
                 crushing = false;
                 break;
+
             case turbo16:
                 speed = FLOORSPEED * 4;
                 stairsize = 16 * FRACUNIT;
@@ -744,13 +742,10 @@ dboolean EV_BuildStairs(line_t *line, stair_e type)
 //
 dboolean EV_DoElevator(line_t *line, elevator_e elevtype)
 {
-    int         secnum;
-    dboolean    rtn;
+    int         secnum = -1;
+    dboolean    rtn = false;
     sector_t    *sec;
     elevator_t  *elevator;
-
-    secnum = -1;
-    rtn = false;
 
     // act on all sectors with the same tag as the triggering linedef
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)

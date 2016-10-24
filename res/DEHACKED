@@ -10,7 +10,7 @@
 #  Copyright © 2013-2016 Brad Harding.
 #
 #  DOOM Retro is a fork of Chocolate DOOM.
-#  For a list of credits, see the accompanying AUTHORS file.
+#  For a list of credits, see <http://credits.doomretro.com>.
 #
 #  This file is part of DOOM Retro.
 #
@@ -25,7 +25,7 @@
 #  General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+#  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 #
 #  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
 #  company, in the US and/or other countries and is used without
@@ -117,7 +117,7 @@ PD_ALL6 = %s need%s all six keys to open this door.
 GGSAVED = "%s" saved
 GGLOADED = "%s" loaded
 GGAUTOLOADED = "%s" autoloaded
-GSCREENSHOT = "%s" saved
+GSCREENSHOT = %s saved
 ALWAYSRUNOFF = Always run OFF
 ALWAYSRUNON = Always run ON
 HUSTR_E1M1 = Hangar
@@ -283,6 +283,7 @@ STSTR_NCOFF = No clipping mode OFF
 STSTR_BEHOLD = inVuln, bSrk, Inviso, Rad, Allmap or Lite-amp?
 STSTR_BEHOLDON = Power-up toggled ON
 STSTR_BEHOLDOFF = Power-up toggled OFF
+STSTR_BUDDHA = Que saudade!
 STSTR_CHOPPERS = "...doesn't suck." - GM
 STSTR_CLEV = Warping to %s...
 STSTR_CLEVSAME = Restarting %s...
@@ -297,6 +298,8 @@ STSTR_PSON = Pistol start ON.
 STSTR_PSOFF = Pistol start OFF.
 STSTR_FMON = Fast monsters ON.
 STSTR_FMOFF = Fast monsters OFF.
+STSTR_RION = Respawn items ON.
+STSTR_RIOFF = Respawn items OFF.
 STSTR_RMON = Respawn monsters ON.
 STSTR_RMOFF = Respawn monsters OFF.
 E1TEXT = Once you beat the big badasses and\nclean out the moon base, you're supposed\nto win, aren't you? Aren't you? Where's\nyour fat reward and ticket home? What\nthe Hell is this? It's not supposed to\nend this way!\n\nIt stinks like rotten meat, but looks\nlike the lost Deimos base. It looks like\nyou're stuck on The Shores of Hell.\nThe only way out is through.\n\nTo continue the DOOM experience, play\nThe Shores of Hell and its amazing\nsequel, Inferno!\n
@@ -397,6 +400,7 @@ CAPTION_BFGEDITION = BFG Edition
 CAPTION_PLUTONIA = Final DOOM: The Plutonia Experiment
 CAPTION_TNT = Final DOOM: TNT - Evilution
 CAPTION_CHEX = Chex Quest
+CAPTION_CHEX2 = Chex Quest 2: Flemoids Take Chextropolis
 CAPTION_HACX = HacX: Twitch 'n Kill
 CAPTION_FREEDOOM1 = Freedoom: Phase 1
 CAPTION_FREEDOOM2 = Freedoom: Phase 2
@@ -404,3 +408,7 @@ CAPTION_FREEDM = FreeDM
 CAPTION_BTSXE1 = Back To Saturn X E1: Get Out Of My Stations
 CAPTION_BTSXE2 = Back To Saturn X E2: Tower In The Fountain Of Sparks
 CAPTION_BTSXE3 = Back To Saturn X E3: Instructions To The Rusty Time Machine
+CAPTION_E1M4B = Phobos Mission Control
+CAPTION_E1M8B = Tech Gone Bad
+AUTHOR_BESTOR = Alun "Viggles" Bestor
+AUTHOR_ROMERO = John Romero

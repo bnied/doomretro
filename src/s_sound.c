@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,6 +36,8 @@
 ========================================================================
 */
 
+#include <ctype.h>
+
 #include "c_console.h"
 #include "doomstat.h"
 #include "m_argv.h"
@@ -45,6 +47,7 @@
 #include "p_setup.h"
 #include "w_wad.h"
 #include "s_sound.h"
+#include "sc_man.h"
 #include "z_zone.h"
 
 // when to clip out sounds
@@ -64,8 +67,9 @@
 // Stereo separation
 #define S_STEREO_SWING  (96 << FRACBITS)
 
-#define NORM_PRIORITY   64
 #define NORM_SEP        128
+
+#define TIDNUM(x)       ((int)(x->id & 0xFFFF)) // thing identifier
 
 typedef struct
 {
@@ -81,11 +85,23 @@ typedef struct
     int                 pitch;
 } channel_t;
 
+// [crispy] "sound objects" hold the coordinates of removed map objects
+typedef struct
+{
+    thinker_t           dummy;
+    fixed_t             x;
+    fixed_t             y;
+    fixed_t             z;
+} sobj_t;
+
 // The set of channels available
 static channel_t        *channels;
+static sobj_t           *sobjs;
 
 int                     s_musicvolume = s_musicvolume_default;
 int                     s_sfxvolume = s_sfxvolume_default;
+dboolean                s_randommusic = s_randommusic_default;
+dboolean                s_randompitch = s_randompitch_default;
 
 // Maximum volume of a sound effect.
 // Internal default is max out of 0-15.
@@ -94,23 +110,20 @@ int                     sfxVolume;
 // Maximum volume of music.
 int                     musicVolume;
 
-// Sound sample rate to use for digital output (Hz)
-int                     snd_samplerate = 44100;
-
 // Internal volume level, ranging from 0-127
 static int              snd_SfxVolume;
 
 // Whether songs are mus_paused
 static dboolean         mus_paused;
 
+// music currently should play
+static int              musicnum_current;
+
 // Music currently being played
 musicinfo_t             *mus_playing = NULL;
 
-// Number of channels to use
-int                     numChannels = 32;
-
-dboolean                s_randommusic = s_randommusic_default;
-dboolean                s_randompitch = s_randompitch_default;
+dboolean                nosfx = false;
+dboolean                nomusic = false;
 
 // Find and initialize a sound_module_t appropriate for the setting
 // in snd_sfxdevice.
@@ -118,12 +131,13 @@ static void InitSfxModule(void)
 {
     if (I_InitSound())
     {
-        C_Output("SFX playing at a sample rate of %.1fkHz on %i channels.",
-            snd_samplerate / 1000.0f, numChannels);
+        C_Output("Sound effects will play at a sample rate of %.1fkHz on %i channels.",
+            SAMPLERATE / 1000.0f, NUM_CHANNELS);
         return;
     }
 
-    C_Output("The initialization of SFX failed.");
+    C_Warning("Sound effects couldn't be initialized.");
+    nosfx = true;
 }
 
 // Initialize music according to snd_musicdevice.
@@ -137,11 +151,9 @@ static void InitMusicModule(void)
         return;
     }
 
-    C_Warning("The initialization of music failed.");
+    C_Warning("Music couldn't be initialized.");
+    nomusic = true;
 }
-
-dboolean nosfx = false;
-dboolean nomusic = false;
 
 //
 // Initializes sound stuff, including volume
@@ -150,23 +162,25 @@ dboolean nomusic = false;
 //
 void S_Init(int sfxvol, int musicvol)
 {
-    if (M_CheckParm("-nosound") > 0)
+    if (M_CheckParm("-nosound"))
     {
-        C_Output("\"-NOSOUND\" was found on the command-line. Both sound effects and music have "
-            "been disabled.");
+        C_Output("A <b>-nosound</b> parameter was found on the command-line. Both sound effects "
+            "and music have been disabled.");
         nomusic = true;
         nosfx = true;
     }
 
-    if (M_CheckParm("-nomusic") > 0)
+    if (M_CheckParm("-nomusic"))
     {
-        C_Output("\"-NOMUSIC\" was found on the command-line. Music has been disabled.");
+        C_Output("A <b>-nomusic</b> parameter was found on the command-line. Music has been "
+            "disabled.");
         nomusic = true;
     }
 
-    if (M_CheckParm("-nosfx") > 0)
+    if (M_CheckParm("-nosfx"))
     {
-        C_Output("\"-NOSFX\" was found on the command-line. Sound effects have been disabled.");
+        C_Output("A <b>-nosfx</b> parameter was found on the command-line. Sound effects have "
+            "been disabled.");
         nosfx = true;
     }
 
@@ -186,7 +200,8 @@ void S_Init(int sfxvol, int musicvol)
         // Allocating the internal channels for mixing
         // (the maximum number of sounds rendered
         // simultaneously) within zone memory.
-        channels = (channel_t *)calloc(numChannels, sizeof(channel_t));
+        channels = (channel_t *)Z_Calloc(NUM_CHANNELS, sizeof(channel_t), PU_STATIC, 0);
+        sobjs = Z_Malloc(NUM_CHANNELS * sizeof(sobj_t), PU_STATIC, 0);
 
         // Note that sounds have not been cached (yet).
         for (i = 1; i < NUMSFX; i++)
@@ -222,7 +237,7 @@ static void S_StopChannel(int cnum)
             I_StopSound(c->handle);
 
         // check to see if other channels are playing the sound
-        for (i = 0; i < numChannels; ++i)
+        for (i = 0; i < NUM_CHANNELS; ++i)
             if (cnum != i && c->sfxinfo == channels[i].sfxinfo)
                 break;
 
@@ -238,7 +253,7 @@ void S_StopSounds(void)
     if (nosfx)
         return;
 
-    for (cnum = 0; cnum < numChannels; cnum++)
+    for (cnum = 0; cnum < NUM_CHANNELS; cnum++)
         if (channels[cnum].sfxinfo)
             S_StopChannel(cnum);
 }
@@ -312,6 +327,33 @@ void S_Start(void)
     S_ChangeMusic(S_GetMusicNum(), !s_randommusic, false, true);
 }
 
+// [crispy] removed map objects may finish their sounds
+// When map objects are removed from the map by P_RemoveMobj(), instead of
+// stopping their sounds, their coordinates are transfered to "sound objects"
+// so stereo positioning and distance calculations continue to work even after
+// the corresponding map object has already disappeared.
+// Thanks to jeff-d and kb1 for discussing this feature and the former for the
+// original implementation idea: https://www.doomworld.com/vb/post/1585325
+void S_UnlinkSound(mobj_t *origin)
+{
+    int cnum;
+
+    if (nosfx)
+        return;
+
+    for (cnum = 0; cnum < NUM_CHANNELS; ++cnum)
+        if (channels[cnum].sfxinfo && channels[cnum].origin == origin)
+        {
+            sobj_t *const       sobj = &sobjs[cnum];
+
+            sobj->x = origin->x;
+            sobj->y = origin->y;
+            sobj->z = origin->z;
+            channels[cnum].origin = (mobj_t *)sobj;
+            break;
+        }
+}
+
 //
 // S_GetChannel :
 //   If none available, return -1. Otherwise channel #.
@@ -323,7 +365,7 @@ static int S_GetChannel(mobj_t *origin, sfxinfo_t *sfxinfo)
     channel_t   *c;
 
     // Find an open channel
-    for (cnum = 0; cnum < numChannels && channels[cnum].sfxinfo; ++cnum)
+    for (cnum = 0; cnum < NUM_CHANNELS && channels[cnum].sfxinfo; ++cnum)
         if (origin && channels[cnum].origin == origin
             && channels[cnum].sfxinfo->singularity == sfxinfo->singularity)
         {
@@ -332,14 +374,14 @@ static int S_GetChannel(mobj_t *origin, sfxinfo_t *sfxinfo)
         }
 
     // None available
-    if (cnum == numChannels)
+    if (cnum == NUM_CHANNELS)
     {
         // Look for lower priority
-        for (cnum = 0; cnum < numChannels; ++cnum)
+        for (cnum = 0; cnum < NUM_CHANNELS; ++cnum)
             if (channels[cnum].sfxinfo->priority >= sfxinfo->priority)
                 break;
 
-        if (cnum == numChannels)
+        if (cnum == NUM_CHANNELS)
             return -1;                  // FUCK! No lower priority. Sorry, Charlie.
         else
             S_StopChannel(cnum);        // Otherwise, kick out lower priority.
@@ -391,7 +433,7 @@ static int S_AdjustSoundParams(mobj_t *listener, mobj_t *source, int *vol, int *
     angle = R_PointToAngle2(listener->x, listener->y, source->x, source->y);
 
     if (angle <= listener->angle)
-        angle += 0xffffffff;
+        angle += 0xFFFFFFFF;
     angle -= listener->angle;
     angle >>= ANGLETOFINESHIFT;
 
@@ -407,7 +449,7 @@ static int S_AdjustSoundParams(mobj_t *listener, mobj_t *source, int *vol, int *
     return (*vol > 0);
 }
 
-void S_StartSoundAtVolume(mobj_t *origin, int sfx_id, int pitch, int volume)
+static void S_StartSoundAtVolume(mobj_t *origin, int sfx_id, int pitch, int volume)
 {
     sfxinfo_t   *sfx = &S_sfx[sfx_id];
     mobj_t      *player = players[0].mo;
@@ -431,7 +473,7 @@ void S_StartSoundAtVolume(mobj_t *origin, int sfx_id, int pitch, int volume)
     }
 
     // Check to see if it is audible,
-    //  and if not, modify the params
+    //  and if not, modify the parms
     if (!origin || origin == player)
         sep = NORM_SEP;
     else if (!S_AdjustSoundParams(player, origin, &volume, &sep))
@@ -440,8 +482,9 @@ void S_StartSoundAtVolume(mobj_t *origin, int sfx_id, int pitch, int volume)
         sep = NORM_SEP;
 
     // kill old sound
-    for (cnum = 0; cnum < numChannels; cnum++)
-        if (channels[cnum].sfxinfo && channels[cnum].sfxinfo->singularity == sfx->singularity
+    for (cnum = 0; cnum < NUM_CHANNELS; cnum++)
+        if (channels[cnum].sfxinfo
+            && channels[cnum].sfxinfo->singularity == sfx->singularity
             && channels[cnum].origin == origin)
         {
             S_StopChannel(cnum);
@@ -512,7 +555,7 @@ void S_UpdateSounds(mobj_t *listener)
 
     I_UpdateSound();
 
-    for (cnum = 0; cnum < numChannels; ++cnum)
+    for (cnum = 0; cnum < NUM_CHANNELS; ++cnum)
     {
         channel_t       *c = &channels[cnum];
         sfxinfo_t       *sfx = c->sfxinfo;
@@ -538,7 +581,7 @@ void S_UpdateSounds(mobj_t *listener)
                 }
 
                 // check non-local sounds for distance clipping
-                //  or modify their params
+                //  or modify their parms
                 if (c->origin && listener != c->origin)
                 {
                     if (!S_AdjustSoundParams(listener, c->origin, &volume, &sep))
@@ -578,6 +621,10 @@ void S_ChangeMusic(int music_id, dboolean looping, dboolean cheating, dboolean m
     void        *handle = NULL;
     int         mapinfomusic;
 
+    // current music which should play
+    musicnum_current = music_id;
+    musinfo.current_item = -1;
+
     if (nomusic || (mus_playing == music && !cheating))
         return;
 
@@ -604,7 +651,7 @@ void S_ChangeMusic(int music_id, dboolean looping, dboolean cheating, dboolean m
 
     if (!handle)
     {
-        C_Warning("D_%s music lump can't be played.", uppercase(music->name));
+        C_Warning("The D_%s music lump can't be played.", uppercase(music->name));
         return;
     }
 
@@ -628,5 +675,120 @@ void S_StopMusic(void)
         W_ReleaseLumpNum(mus_playing->lumpnum);
         mus_playing->data = NULL;
         mus_playing = NULL;
+    }
+}
+
+void S_ChangeMusInfoMusic(int lumpnum, int looping)
+{
+    musicinfo_t *music;
+
+    if (nomusic)
+        return;
+
+    if (mus_playing && mus_playing->lumpnum == lumpnum)
+        return;
+
+    music = &S_music[NUMMUSIC];
+
+    if (music->lumpnum == lumpnum)
+        return;
+
+    // shutdown old music
+    S_StopMusic();
+
+    // save lumpnum
+    music->lumpnum = lumpnum;
+
+    // load & register it
+    music->data = W_CacheLumpNum(music->lumpnum, PU_CACHE);
+    music->handle = I_RegisterSong(music->data, W_LumpLength(music->lumpnum));
+
+    // play it
+    I_PlaySong(music->handle, looping);
+
+    mus_playing = music;
+
+    musinfo.current_item = lumpnum;
+}
+
+musinfo_t musinfo;
+
+//
+// S_ParseMusInfo
+// Parses MUSINFO lump.
+//
+void S_ParseMusInfo(char *mapid)
+{
+    memset(&musinfo, 0, sizeof(musinfo));
+    musinfo.current_item = -1;
+
+    S_music[NUMMUSIC].lumpnum = -1;
+
+    if (W_CheckNumForName("MUSINFO") != -1)
+    {
+        unsigned int    num;
+        int             inMap = false;
+
+        SC_Open("MUSINFO");
+
+        while (SC_GetString())
+        {
+            if (inMap || SC_Compare(mapid))
+            {
+                if (!inMap)
+                {
+                    SC_GetString();
+                    inMap = true;
+                }
+
+                if (toupper(sc_String[0]) == 'E' || toupper(sc_String[0]) == 'M')
+                    break;
+
+                // Check number in range
+                if (M_StrToInt(sc_String, &num) && num > 0 && num < MAX_MUS_ENTRIES)
+                    if (SC_GetString())
+                    {
+                        int     lumpnum = W_CheckNumForName(sc_String);
+
+                        if (lumpnum >= 0)
+                            musinfo.items[num] = lumpnum;
+                    }
+            }
+        }
+
+        SC_Close();
+    }
+}
+
+void MusInfoThinker(mobj_t *thing)
+{
+    if (musinfo.mapthing != thing && thing->subsector->sector == players[0].mo->subsector->sector)
+    {
+        musinfo.lastmapthing = musinfo.mapthing;
+        musinfo.mapthing = thing;
+        musinfo.tics = 30;
+    }
+}
+
+void T_MAPMusic(void)
+{
+    if (musinfo.tics < 0 || !musinfo.mapthing)
+        return;
+
+    if (musinfo.tics > 0)
+        musinfo.tics--;
+    else if (!musinfo.tics && musinfo.lastmapthing != musinfo.mapthing)
+    {
+        int arraypt = TIDNUM(musinfo.mapthing);
+
+        if (arraypt >= 0 && arraypt < MAX_MUS_ENTRIES)
+        {
+            int lumpnum = musinfo.items[arraypt];
+
+            if (lumpnum >= 0 && lumpnum < numlumps)
+                S_ChangeMusInfoMusic(lumpnum, true);
+        }
+
+        musinfo.tics = -1;
     }
 }

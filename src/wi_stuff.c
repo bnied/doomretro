@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -40,7 +40,6 @@
 #include "doomstat.h"
 #include "g_game.h"
 #include "i_swap.h"
-#include "i_video.h"
 #include "m_misc.h"
 #include "m_random.h"
 #include "p_setup.h"
@@ -50,9 +49,6 @@
 #include "w_wad.h"
 #include "wi_stuff.h"
 #include "z_zone.h"
-
-// Ty 03/17/98: flag that new par times have been loaded in d_deh
-extern dboolean deh_pars;
 
 //
 // Data needed to add patches to full screen intermission pics.
@@ -362,8 +358,6 @@ void WI_drawWILVchar(int x, int y, int i)
 char            *mapname = "";
 char            *nextmapname = "";
 
-extern char     *mapnames[][6];
-
 int chartoi[130] =
 {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, // 000 - 009
@@ -434,7 +428,7 @@ void WI_drawLF(void)
         if (gamemode == commercial)
             M_snprintf(name, 9, "CWILV%2.2d", wbs->last);
         else
-            M_snprintf(name, 9, "WILV%d%d", wbs->epsd, wbs->last);
+            M_snprintf(name, 9, "WILV%i%i", wbs->epsd, wbs->last);
         if (W_CheckMultipleLumps(name) > 1 && !nerve)
         {
             V_DrawPatchWithShadow((ORIGINALWIDTH - SHORT(lnames[wbs->last]->width)) / 2 + 1, y + 1,
@@ -477,7 +471,7 @@ void WI_drawEL(void)
         if (gamemode == commercial)
             M_snprintf(name, 9, "CWILV%2.2d", wbs->next);
         else
-            M_snprintf(name, 9, "WILV%d%d", wbs->epsd, wbs->next);
+            M_snprintf(name, 9, "WILV%i%i", wbs->epsd, wbs->next);
         if (W_CheckMultipleLumps(name) > 1 && !nerve)
             V_DrawPatchWithShadow((ORIGINALWIDTH - SHORT(lnames[wbs->next]->width)) / 2 + 1, y + 1,
                 lnames[wbs->next], false);
@@ -825,7 +819,7 @@ void WI_initStats(void)
 void WI_updateStats(void)
 {
     //e6y
-    static dboolean     play_early_explosion = true;
+    static dboolean play_early_explosion = true;
 
     WI_updateAnimatedBack();
 
@@ -948,8 +942,6 @@ void WI_updateStats(void)
 
 void M_DrawString(int x, int y, char *str);
 
-extern dboolean canmodify;
-
 void WI_drawStats(void)
 {
     // line height
@@ -1069,7 +1061,7 @@ static void WI_loadUnloadData(load_callback_t callback)
     {
         for (i = 0; i < NUMMAPS; i++)
         {
-            M_snprintf(name, 9, "WILV%d%d", wbs->epsd, i);
+            M_snprintf(name, 9, "WILV%i%i", wbs->epsd, i);
             callback(name, &lnames[i]);
         }
 
@@ -1095,7 +1087,7 @@ static void WI_loadUnloadData(load_callback_t callback)
                     if (wbs->epsd != 1 || j != 8)
                     {
                         // animations
-                        M_snprintf(name, 9, "WIA%d%.2d%.2d", wbs->epsd, j, i);
+                        M_snprintf(name, 9, "WIA%i%.2d%.2d", wbs->epsd, j, i);
                         callback(name, &a->p[i]);
                     }
                     else
@@ -1112,7 +1104,7 @@ static void WI_loadUnloadData(load_callback_t callback)
     for (i = 0; i < 10; i++)
     {
         // numbers 0-9
-        M_snprintf(name, 9, "WINUM%d", i);
+        M_snprintf(name, 9, "WINUM%i", i);
         callback(name, &num[i]);
     }
 
@@ -1176,11 +1168,12 @@ void WI_loadData(void)
     // Background image
     if (gamemode == commercial || (gamemode == retail && wbs->epsd == 3))
     {
-        M_StringCopy(bg_lumpname, (DMENUPIC ? "DMENUPIC" : "INTERPIC"), sizeof(bg_lumpname));
+        M_StringCopy(bg_lumpname, (DMENUPIC && W_CheckMultipleLumps("INTERPIC") == 1 ?
+            "DMENUPIC" : "INTERPIC"), sizeof(bg_lumpname));
         bg_lumpname[8] = '\0';
     }
     else
-        M_snprintf(bg_lumpname, 9, "WIMAP%d", wbs->epsd);
+        M_snprintf(bg_lumpname, 9, "WIMAP%i", wbs->epsd);
     bg = (patch_t *)W_CacheLumpName(bg_lumpname, PU_CACHE);
     V_DrawPatch(0, 0, 1, bg);
 }

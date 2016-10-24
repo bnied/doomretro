@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -48,9 +48,8 @@
 
 // These are deliberately cast to signed values; this is the behavior
 // of the macros in the original source and some code relies on it.
-
-#define LE_SWAP16(x)    (SDL_SwapLE16(x))
-#define LE_SWAP32(x)    (SDL_SwapLE32(x))
+#define LE_SWAP16(x)    SDL_SwapLE16(x)
+#define LE_SWAP32(x)    SDL_SwapLE32(x)
 
 #define SHORT(x)        ((signed short)LE_SWAP16(x))
 #define LONG(x)         ((signed long)LE_SWAP32(x))

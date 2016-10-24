@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,10 +36,7 @@
 ========================================================================
 */
 
-#include <stdlib.h>
-
 #include "doomstat.h"
-#include "i_system.h"
 #include "m_bbox.h"
 #include "m_random.h"
 #include "p_local.h"
@@ -91,6 +88,8 @@ dboolean        infight;
 
 mobj_t          *onmobj;
 
+unsigned int    stat_distancetraveled = 0;
+
 extern dboolean successfulshot;
 extern dboolean stat_shotshit;
 
@@ -135,7 +134,7 @@ dboolean PIT_StompThing(mobj_t *thing)
             return true;    // underneath
     }
 
-    P_DamageMobj(thing, tmthing, tmthing, 10000);       // Stomp!
+    P_DamageMobj(thing, tmthing, tmthing, 10000, true);   // Stomp!
 
     return true;
 }
@@ -320,13 +319,14 @@ dboolean P_TeleportMove(mobj_t *thing, fixed_t x, fixed_t y, fixed_t z, dboolean
 //
 //
 // killough 11/98: reformatted
+// [BH] Allow pain elementals to shoot lost souls through 2-sided walls with an ML_BLOCKMONSTERS
+//  flag. This is a compromise between BOOM and Vanilla DOOM behaviors, and allows pain elementals
+//  at the end of REQUIEM.WAD's MAP04 to do their thing.
 static dboolean PIT_CrossLine(line_t *ld)
 {
-    return (!((ld->flags ^ ML_TWOSIDED) & (ML_TWOSIDED | ML_BLOCKING | ML_BLOCKMONSTERS))
-        || tmbbox[BOXLEFT]   > ld->bbox[BOXRIGHT]
-        || tmbbox[BOXRIGHT]  < ld->bbox[BOXLEFT]
-        || tmbbox[BOXTOP]    < ld->bbox[BOXBOTTOM]
-        || tmbbox[BOXBOTTOM] > ld->bbox[BOXTOP]
+    return (!((ld->flags ^ ML_TWOSIDED) & (ML_TWOSIDED | ML_BLOCKING/* | ML_BLOCKMONSTERS*/))
+        || tmbbox[BOXLEFT] > ld->bbox[BOXRIGHT] || tmbbox[BOXRIGHT] < ld->bbox[BOXLEFT]
+        || tmbbox[BOXTOP] < ld->bbox[BOXBOTTOM] || tmbbox[BOXBOTTOM] > ld->bbox[BOXTOP]
         || P_PointOnLineSide(pe_x, pe_y, ld) == P_PointOnLineSide(ls_x, ls_y, ld));
 }
 
@@ -351,10 +351,8 @@ static int untouched(line_t *ld)
 //
 static dboolean PIT_CheckLine(line_t *ld)
 {
-    if (tmbbox[BOXRIGHT] <= ld->bbox[BOXLEFT]
-        || tmbbox[BOXLEFT] >= ld->bbox[BOXRIGHT]
-        || tmbbox[BOXTOP] <= ld->bbox[BOXBOTTOM]
-        || tmbbox[BOXBOTTOM] >= ld->bbox[BOXTOP])
+    if (tmbbox[BOXRIGHT] <= ld->bbox[BOXLEFT] || tmbbox[BOXLEFT] >= ld->bbox[BOXRIGHT]
+        || tmbbox[BOXTOP] <= ld->bbox[BOXBOTTOM] || tmbbox[BOXBOTTOM] >= ld->bbox[BOXTOP])
         return true;                                    // didn't hit it
 
     if (P_BoxOnLineSide(tmbbox, ld) != -1)
@@ -459,7 +457,7 @@ dboolean PIT_CheckThing(mobj_t *thing)
 
     // [BH] specify standard radius of 20 for pickups here as thing->radius
     // has been changed to allow better clipping
-    blockdist = ((flags & MF_SPECIAL) ? 20 * FRACUNIT : thing->radius) + tmthing->radius;
+    blockdist = thing->info->pickupradius + tmthing->radius;
 
     if (ABS(thing->x - tmx) >= blockdist || ABS(thing->y - tmy) >= blockdist)
         return true;            // didn't hit it
@@ -489,7 +487,7 @@ dboolean PIT_CheckThing(mobj_t *thing)
     {
         damage = ((M_Random() % 8) + 1) * tmthing->info->damage;
 
-        P_DamageMobj(thing, tmthing, tmthing, damage);
+        P_DamageMobj(thing, tmthing, tmthing, damage, true);
 
         tmthing->flags &= ~MF_SKULLFLY;
         tmthing->momx = tmthing->momy = tmthing->momz = 0;
@@ -531,9 +529,10 @@ dboolean PIT_CheckThing(mobj_t *thing)
 
         // damage / explode
         damage = ((M_Random() % 8) + 1) * tmthing->info->damage;
-        P_DamageMobj(thing, tmthing, tmthing->target, damage);
+        P_DamageMobj(thing, tmthing, tmthing->target, damage, true);
 
         if (thing->type != MT_BARREL)
+        {
             if (tmthing->type == MT_PLASMA)
             {
                 players[0].shotshit++;
@@ -548,6 +547,7 @@ dboolean PIT_CheckThing(mobj_t *thing)
                 }
                 tmthing->nudge++;
             }
+        }
 
         // don't traverse anymore
         return false;
@@ -556,11 +556,9 @@ dboolean PIT_CheckThing(mobj_t *thing)
     // check for special pickup
     if (flags & MF_SPECIAL)
     {
-        dboolean solid = ((flags & MF_SOLID) != 0);
-
         if (tmflags & MF_PICKUP)
-            P_TouchSpecialThing(thing, tmthing);                // can remove thing
-        return !solid;
+            P_TouchSpecialThing(thing, tmthing, true);          // can remove thing
+        return !(flags & MF_SOLID);
     }
 
     // [BH] don't hit if either thing is a corpse, which may still be solid if
@@ -705,8 +703,7 @@ dboolean P_CheckPosition(mobj_t *thing, fixed_t x, fixed_t y)
     int         bx;
     int         by;
     subsector_t *newsubsec;
-    fixed_t     radius = ((thing->flags & MF_SPECIAL) ? MIN(20 * FRACUNIT, thing->radius) :
-                    thing->radius);
+    fixed_t     radius = thing->radius;
 
     tmthing = thing;
 
@@ -754,6 +751,14 @@ dboolean P_CheckPosition(mobj_t *thing, fixed_t x, fixed_t y)
                 return false;
 
     // check lines
+    if (!(thing->flags & MF_DROPPED))
+    {
+        radius = thing->info->pickupradius;
+        tmbbox[BOXTOP] = y + radius;
+        tmbbox[BOXBOTTOM] = y - radius;
+        tmbbox[BOXRIGHT] = x + radius;
+        tmbbox[BOXLEFT] = x - radius;
+    }
     xl = (tmbbox[BOXLEFT] - bmaporgx) >> MAPBLOCKSHIFT;
     xh = (tmbbox[BOXRIGHT] - bmaporgx) >> MAPBLOCKSHIFT;
     yl = (tmbbox[BOXBOTTOM] - bmaporgy) >> MAPBLOCKSHIFT;
@@ -894,6 +899,7 @@ dboolean P_TryMove(mobj_t *thing, fixed_t x, fixed_t y, dboolean dropoff)
     fixed_t     oldx;
     fixed_t     oldy;
     sector_t    *newsec;
+    int         flags = thing->flags;
 
     felldown = false;           // killough 11/98
     floatok = false;
@@ -901,16 +907,16 @@ dboolean P_TryMove(mobj_t *thing, fixed_t x, fixed_t y, dboolean dropoff)
     if (!P_CheckPosition(thing, x, y))
         return false;           // solid wall or thing
 
-    if (!(thing->flags & MF_NOCLIP))
+    if (!(flags & MF_NOCLIP))
     {
         // killough 7/26/98: reformatted slightly
         // killough 8/1/98: Possibly allow escape if otherwise stuck
         if (tmceilingz - tmfloorz < thing->height       // doesn't fit
             // mobj must lower to fit
-            || (floatok = true, !(thing->flags & MF_TELEPORT)
+            || (floatok = true, !(flags & MF_TELEPORT)
                 && tmceilingz - thing->z < thing->height)
             // too big a step up
-            || (!(thing->flags & MF_TELEPORT)
+            || (!(flags & MF_TELEPORT)
                 && tmfloorz - thing->z > 24 * FRACUNIT))
         {
             return (tmunstuck
@@ -923,7 +929,7 @@ dboolean P_TryMove(mobj_t *thing, fixed_t x, fixed_t y, dboolean dropoff)
         // Prevent monsters from getting stuck hanging off ledges
         // killough 10/98: Allow dropoffs in controlled circumstances
         // killough 11/98: Improve symmetry of clipping on stairs
-        if (!(thing->flags & (MF_DROPOFF | MF_FLOAT)))
+        if (!(flags & (MF_DROPOFF | MF_FLOAT)))
         {
             if (!dropoff)
             {
@@ -932,19 +938,14 @@ dboolean P_TryMove(mobj_t *thing, fixed_t x, fixed_t y, dboolean dropoff)
                     return false;
             }
             else
-            {
                 // dropoff allowed -- check for whether it fell more than 24
-                felldown = (!(thing->flags & MF_NOGRAVITY) && thing->z - tmfloorz > 24 * FRACUNIT);
-            }
+                felldown = (!(flags & MF_NOGRAVITY) && thing->z - tmfloorz > 24 * FRACUNIT);
         }
 
         // killough 11/98: prevent falling objects from going up too many steps
-        if ((thing->flags2 & MF2_FALLING)
-            && tmfloorz - thing->z > FixedMul(thing->momx, thing->momx) +
-                                     FixedMul(thing->momy, thing->momy))
-        {
+        if ((thing->flags2 & MF2_FALLING) && tmfloorz - thing->z
+             > FixedMul(thing->momx, thing->momx) + FixedMul(thing->momy, thing->momy))
             return false;
-        }
     }
 
     // the move is ok,
@@ -961,6 +962,17 @@ dboolean P_TryMove(mobj_t *thing, fixed_t x, fixed_t y, dboolean dropoff)
 
     P_SetThingPosition(thing);
 
+    if (thing->player)
+    {
+        fixed_t dist = (fixed_t)hypot((x - oldx) >> FRACBITS, (y - oldy) >> FRACBITS);
+
+        if (dist)
+        {
+            stat_distancetraveled = SafeAdd(stat_distancetraveled, dist);
+            thing->player->distancetraveled += dist;
+        }
+    }
+
     newsec = thing->subsector->sector;
 
     // [BH] check if new sector is liquid and clip/unclip feet as necessary
@@ -971,7 +983,6 @@ dboolean P_TryMove(mobj_t *thing, fixed_t x, fixed_t y, dboolean dropoff)
 
     // if any special lines were hit, do the effect
     if (!(thing->flags & (MF_TELEPORT | MF_NOCLIP)))
-    {
         while (numspechit--)
         {
             // see if the line was crossed
@@ -981,7 +992,6 @@ dboolean P_TryMove(mobj_t *thing, fixed_t x, fixed_t y, dboolean dropoff)
             if (oldside != P_PointOnLineSide(thing->x, thing->y, ld) && ld->special)
                 P_CrossSpecialLine(ld, oldside, thing);
         }
-    }
 
     // [BH] update shadow position as well
     if (thing->shadow)
@@ -1360,7 +1370,6 @@ void P_SlideMove(mobj_t *mo)
             PT_ADDLINES, PTR_SlideTraverse);
 
         // move up to the wall
-
         if (bestslidefrac == FRACUNIT + 1)
         {
             // the move must have hit the middle, so stairstep
@@ -1514,6 +1523,8 @@ dboolean PTR_AimTraverse(intercept_t *in)
     return false;                       // don't go any farther
 }
 
+dboolean        hitwall;
+
 //
 // PTR_ShootTraverse
 //
@@ -1584,6 +1595,8 @@ hitline:
         // Spawn bullet puffs.
         P_SpawnPuff(x, y, z, shootangle);
 
+        hitwall = true;
+
         // don't go any farther
         return false;
     }
@@ -1622,11 +1635,11 @@ hitline:
         P_SpawnPuff(x, y, z, shootangle);
     else
     {
-        mobjtype_t type = th->type;
+        mobjtype_t      type = th->type;
 
         if (type == MT_SKULL)
             P_SpawnPuff(x, y, z - FRACUNIT * 8, shootangle);
-        else if (r_blood != r_blood_none)
+        else if (r_blood != r_blood_none && th->blood)
         {
             if (type != MT_PLAYER)
                 P_SpawnBlood(x, y, z, shootangle, la_damage, th);
@@ -1644,7 +1657,7 @@ hitline:
     if (la_damage)
     {
         successfulshot = true;
-        P_DamageMobj(th, shootthing, shootthing, la_damage);
+        P_DamageMobj(th, shootthing, shootthing, la_damage, true);
     }
 
     // don't go any farther
@@ -1800,6 +1813,7 @@ int     bombdamage;
 dboolean PIT_RadiusAttack(mobj_t *thing)
 {
     fixed_t     dist;
+    mobjtype_t  type;
 
     if (!(thing->flags & MF_SHOOTABLE)
         // [BH] allow corpses to react to blast damage
@@ -1808,12 +1822,13 @@ dboolean PIT_RadiusAttack(mobj_t *thing)
 
     // Boss spider and cyborg
     // take no damage from concussion.
-    if (thing->type == MT_CYBORG || thing->type == MT_SPIDER)
+    type = thing->type;
+    if (type == MT_CYBORG || type == MT_SPIDER)
         return true;
 
     dist = MAX(ABS(thing->x - bombspot->x), ABS(thing->y - bombspot->y)) - thing->radius;
 
-    if (thing->type == MT_BOSSBRAIN)
+    if (type == MT_BOSSBRAIN)
     {
         // [BH] if killing boss in DOOM II MAP30, use old code that
         //  doesn't use z height in blast radius
@@ -1840,10 +1855,10 @@ dboolean PIT_RadiusAttack(mobj_t *thing)
     if (P_CheckSight(thing, bombspot))
     {
         // must be in direct path
-        P_DamageMobj(thing, bombspot, bombsource, bombdamage - dist);
+        P_DamageMobj(thing, bombspot, bombsource, bombdamage - dist, true);
 
         // [BH] count number of times player's rockets hit a monster
-        if (bombspot->type == MT_ROCKET && thing->type != MT_BARREL && !(thing->flags & MF_CORPSE))
+        if (bombspot->type == MT_ROCKET && type != MT_BARREL && !(thing->flags & MF_CORPSE))
         {
             if (bombspot->nudge == 1)
             {
@@ -1896,8 +1911,6 @@ static dboolean crushchange;
 static dboolean nofit;
 static dboolean isliquidsector;
 
-void (*P_BloodSplatSpawner)(fixed_t, fixed_t, int, int, mobj_t *);
-
 //
 // PIT_ChangeSector
 //
@@ -1906,7 +1919,7 @@ void PIT_ChangeSector(mobj_t *thing)
     int flags = thing->flags;
     int flags2 = thing->flags2;
 
-    if (isliquidsector && !(flags2 & MF2_NOFOOTCLIP))
+    if (isliquidsector && !(flags2 & MF2_NOFOOTCLIP) && !(thing->info->flags & MF_SPAWNCEILING))
         thing->flags2 |= MF2_FEETARECLIPPED;
     else
         thing->flags2 &= ~MF2_FEETARECLIPPED;
@@ -1923,7 +1936,7 @@ void PIT_ChangeSector(mobj_t *thing)
             return;
         }
 
-        if (!(flags & MF_FUZZ) && !(flags & MF_NOBLOOD))
+        if (!(flags & MF_FUZZ) && !(flags & MF_NOBLOOD) && thing->blood)
         {
             int radius = ((spritewidth[sprites[thing->sprite].spriteframes[0].lump[0]]
                          >> FRACBITS) >> 1) + 12;
@@ -1967,7 +1980,7 @@ void PIT_ChangeSector(mobj_t *thing)
     nofit = true;
 
     if (crushchange && !(leveltime & 3))
-        P_DamageMobj(thing, NULL, NULL, 10);
+        P_DamageMobj(thing, NULL, NULL, 10, true);
 
     // keep checking (crush other things)
     return;
@@ -2281,10 +2294,11 @@ void P_CreateSecNodeList(mobj_t *thing, fixed_t x, fixed_t y)
     tmy = saved_tmy;
     if (tmthing)
     {
-        tmbbox[BOXTOP] = tmy + tmthing->radius;
-        tmbbox[BOXBOTTOM] = tmy - tmthing->radius;
-        tmbbox[BOXRIGHT] = tmx + tmthing->radius;
-        tmbbox[BOXLEFT] = tmx - tmthing->radius;
+        radius = tmthing->radius;
+        tmbbox[BOXTOP] = tmy + radius;
+        tmbbox[BOXBOTTOM] = tmy - radius;
+        tmbbox[BOXRIGHT] = tmx + radius;
+        tmbbox[BOXLEFT] = tmx - radius;
     }
 }
 

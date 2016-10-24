@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -74,7 +74,7 @@ void P_CrossSpecialLine(line_t *line, int side, mobj_t *thing);
 
 void P_PlayerInSpecialSector(player_t *player);
 
-int twoSided(int sector, int line);
+dboolean twoSided(int sector, int line);
 
 sector_t *getSector(int currentSector, int line, int side);
 
@@ -168,12 +168,12 @@ void T_LightFlash(lightflash_t *flash);
 void P_SpawnLightFlash(sector_t *sector);
 void T_StrobeFlash(strobe_t *flash);
 
-void P_SpawnStrobeFlash(sector_t *sector, int fastOrSlow, int inSync);
+void P_SpawnStrobeFlash(sector_t *sector, int fastOrSlow, dboolean inSync);
 
-int EV_StartLightStrobing(line_t *line);
-int EV_TurnTagLightsOff(line_t *line);
+dboolean EV_StartLightStrobing(line_t *line);
+dboolean EV_TurnTagLightsOff(line_t *line);
 
-int EV_LightTurnOn(line_t *line, int bright);
+dboolean EV_LightTurnOn(line_t *line, int bright);
 
 void EV_LightTurnOnPartway(line_t *line, fixed_t level);        // killough 10/10/98
 void EV_LightByAdjacentSectors(sector_t *sector, fixed_t level);
@@ -389,7 +389,7 @@ typedef enum
     genSilentCrusher
 } ceiling_e;
 
-typedef struct ceiling_s
+typedef struct
 {
     thinker_t                   thinker;
     ceiling_e                   type;
@@ -618,7 +618,7 @@ dboolean EV_SilentLineTeleport(line_t *line, int side, mobj_t *thing, dboolean r
 // generalized linedef types
 #define GenFloorBase          0x6000
 #define GenCeilingBase        0x4000
-#define GenDoorBase           0x3c00
+#define GenDoorBase           0x3C00
 #define GenLockedBase         0x3800
 #define GenLiftBase           0x3400
 #define GenStairsBase         0x3000
@@ -629,7 +629,7 @@ dboolean EV_SilentLineTeleport(line_t *line, int side, mobj_t *thing, dboolean r
 
 // define masks and shifts for the floor type fields
 #define FloorCrush            0x1000
-#define FloorChange           0x0c00
+#define FloorChange           0x0C00
 #define FloorTarget           0x0380
 #define FloorDirection        0x0040
 #define FloorModel            0x0020
@@ -644,7 +644,7 @@ dboolean EV_SilentLineTeleport(line_t *line, int side, mobj_t *thing, dboolean r
 
 // define masks and shifts for the ceiling type fields
 #define CeilingCrush          0x1000
-#define CeilingChange         0x0c00
+#define CeilingChange         0x0C00
 #define CeilingTarget         0x0380
 #define CeilingDirection      0x0040
 #define CeilingModel          0x0020
@@ -659,7 +659,7 @@ dboolean EV_SilentLineTeleport(line_t *line, int side, mobj_t *thing, dboolean r
 
 // define masks and shifts for the lift type fields
 #define LiftTarget            0x0300
-#define LiftDelay             0x00c0
+#define LiftDelay             0x00C0
 #define LiftMonster           0x0020
 #define LiftSpeed             0x0018
 
@@ -671,7 +671,7 @@ dboolean EV_SilentLineTeleport(line_t *line, int side, mobj_t *thing, dboolean r
 // define masks and shifts for the stairs type fields
 #define StairIgnore           0x0200
 #define StairDirection        0x0100
-#define StairStep             0x00c0
+#define StairStep             0x00C0
 #define StairMonster          0x0020
 #define StairSpeed            0x0018
 
@@ -703,7 +703,7 @@ dboolean EV_SilentLineTeleport(line_t *line, int side, mobj_t *thing, dboolean r
 
 // define masks and shifts for the locked door type fields
 #define LockedNKeys           0x0200
-#define LockedKey             0x01c0
+#define LockedKey             0x01C0
 #define LockedKind            0x0020
 #define LockedSpeed           0x0018
 
@@ -836,4 +836,5 @@ dboolean EV_DoGenCrusher(line_t *line);
 dboolean EV_DoGenDoor(line_t *line);
 
 dboolean EV_DoGenLockedDoor(line_t *line);
+
 #endif

@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -43,13 +43,14 @@
 
 #include "c_console.h"
 #include "d_deh.h"
-#include "d_main.h"
 #include "doomstat.h"
 #include "i_swap.h"
-#include "i_video.h"
+#include "i_system.h"
 #include "m_config.h"
 #include "m_misc.h"
 #include "m_random.h"
+#include "r_main.h"
+#include "SDL_image.h"
 #include "v_video.h"
 #include "version.h"
 #include "w_wad.h"
@@ -60,9 +61,13 @@
 // Each screen is [SCREENWIDTH * SCREENHEIGHT];
 byte            *screens[5];
 
+fixed_t         DX, DY, DXI, DYI;
+
 int             pixelwidth;
 int             pixelheight;
 char            *r_lowpixelsize = r_lowpixelsize_default;
+
+char            screenshotfolder[MAX_PATH] = "";
 
 extern dboolean r_translucency;
 
@@ -72,13 +77,10 @@ extern dboolean r_translucency;
 void V_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int destx, int desty,
     int destscrn)
 {
-    byte        *src;
-    byte        *dest;
+    byte        *src = screens[srcscrn] + srcy * SCREENWIDTH + srcx;
+    byte        *dest = screens[destscrn] + desty * SCREENWIDTH + destx;
 
-    src = screens[srcscrn] + SCREENWIDTH * srcy + srcx;
-    dest = screens[destscrn] + SCREENWIDTH * desty + destx;
-
-    for (; height > 0; height--)
+    while (height--)
     {
         memcpy(dest, src, width);
         src += SCREENWIDTH;
@@ -89,7 +91,7 @@ void V_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int dest
 //
 // V_FillRect
 //
-void V_FillRect(int scrn, int x, int y, int width, int height, byte color)
+void V_FillRect(int scrn, int x, int y, int width, int height, int color)
 {
     byte        *dest = screens[scrn] + y * SCREENWIDTH + x;
 
@@ -100,9 +102,9 @@ void V_FillRect(int scrn, int x, int y, int width, int height, byte color)
     }
 }
 
-void V_FillTransRect(int x, int y, int width, int height, int color)
+void V_FillTransRect(int scrn, int x, int y, int width, int height, int color)
 {
-    byte        *dest = screens[0] + y * SCREENWIDTH + x;
+    byte        *dest = screens[scrn] + y * SCREENWIDTH + x;
     byte        *dot;
     int         xx, yy;
 
@@ -165,7 +167,7 @@ void V_DrawPatch(int x, int y, int scrn, patch_t *patch)
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
@@ -218,7 +220,7 @@ void V_DrawTranslucentPatch(int x, int y, int scrn, patch_t *patch)
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
@@ -253,7 +255,7 @@ void V_DrawShadowPatch(int x, int y, patch_t *patch)
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *dest = desttop + ((column->topdelta * DY / 10) >> FRACBITS) * SCREENWIDTH;
             int         count = ((column->length * DY / 10) >> FRACBITS) + 1;
@@ -291,7 +293,7 @@ void V_DrawSolidShadowPatch(int x, int y, patch_t *patch)
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *dest = desttop + ((column->topdelta * DY / 10) >> FRACBITS) * SCREENWIDTH;
             int         count = ((column->length * DY / 10) >> FRACBITS) + 1;
@@ -329,7 +331,7 @@ void V_DrawSpectreShadowPatch(int x, int y, patch_t *patch)
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *dest = desttop + ((column->topdelta * DY / 10) >> FRACBITS) * SCREENWIDTH;
             int         count = ((column->length * DY / 10) >> FRACBITS) + 1;
@@ -389,8 +391,8 @@ void V_DrawBigPatch(int x, int y, int scrn, patch_t *patch)
 
 int     italicize[15] = { 0, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, -1, -1, -1 };
 
-void V_DrawConsoleChar(int x, int y, patch_t *patch, int color1, int color2, dboolean italics,
-    byte *tinttab)
+void V_DrawConsolePatch(int x, int y, patch_t *patch, int color, int backgroundcolor,
+    dboolean italics, byte *tinttab)
 {
     int         col = 0;
     byte        *desttop = screens[0] + y * SCREENWIDTH + x;
@@ -402,7 +404,7 @@ void V_DrawConsoleChar(int x, int y, patch_t *patch, int color1, int color2, dbo
         byte            topdelta;
 
         // step through the posts in a column
-        while ((topdelta = column->topdelta) != 0xff)
+        while ((topdelta = column->topdelta) != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + topdelta * SCREENWIDTH;
@@ -415,19 +417,21 @@ void V_DrawConsoleChar(int x, int y, patch_t *patch, int color1, int color2, dbo
 
                 if (y + height > CONSOLETOP)
                 {
-                    if (color2 == -1)
+                    if (backgroundcolor == NOBACKGROUNDCOLOR)
                     {
                         if (*source)
+                        {
                             if (italics)
-                                *(dest + italicize[height]) = (!tinttab ? color1 :
-                                    tinttab[(color1 << 8) + *(dest + italicize[height])]);
+                                *(dest + italicize[height]) = (!tinttab ? color :
+                                    tinttab[(color << 8) + *(dest + italicize[height])]);
                             else
-                                *dest = (!tinttab ? color1 : tinttab[(color1 << 8) + *dest]);
+                                *dest = (!tinttab ? color : tinttab[(color << 8) + *dest]);
+                        }
                     }
                     else if (*source == WHITE)
-                        *dest = color1;
-                    else if (*dest != color1)
-                        *dest = color2;
+                        *dest = color;
+                    else if (*dest != color)
+                        *dest = backgroundcolor;
                 }
                 ++source;
                 dest += SCREENWIDTH;
@@ -447,7 +451,7 @@ dboolean V_EmptyPatch(patch_t *patch)
         column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             if (column->length)
                 return false;
@@ -477,7 +481,7 @@ void V_DrawPatchToTempScreen(int x, int y, patch_t *patch)
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
@@ -513,7 +517,7 @@ void V_DrawPatchWithShadow(int x, int y, patch_t *patch, dboolean flag)
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
@@ -559,7 +563,7 @@ void V_DrawHUDPatch(int x, int y, patch_t *patch, byte *tinttab)
         column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + column->topdelta * SCREENWIDTH;
@@ -592,7 +596,7 @@ void V_DrawHighlightedHUDNumberPatch(int x, int y, patch_t *patch, byte *tinttab
         column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + column->topdelta * SCREENWIDTH;
@@ -627,7 +631,7 @@ void V_DrawYellowHUDPatch(int x, int y, patch_t *patch, byte *tinttab)
         column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + column->topdelta * SCREENWIDTH;
@@ -654,7 +658,7 @@ void V_DrawTranslucentHUDPatch(int x, int y, patch_t *patch, byte *tinttab)
         column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + column->topdelta * SCREENWIDTH;
@@ -681,7 +685,7 @@ void V_DrawTranslucentHUDNumberPatch(int x, int y, patch_t *patch, byte *tinttab
         column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + column->topdelta * SCREENWIDTH;
@@ -710,7 +714,7 @@ void V_DrawTranslucentYellowHUDPatch(int x, int y, patch_t *patch, byte *tinttab
         column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + column->topdelta * SCREENWIDTH;
@@ -732,14 +736,12 @@ void V_DrawAltHUDPatch(int x, int y, patch_t *patch, int from, int to)
     byte        *desttop = screens[0] + y * SCREENWIDTH + x;
     int         w = SHORT(patch->width);
 
-    to <<= 8;
-
     for (; col < w; ++col, ++desttop)
     {
         column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + column->topdelta * SCREENWIDTH;
@@ -750,7 +752,41 @@ void V_DrawAltHUDPatch(int x, int y, patch_t *patch, int from, int to)
             {
                 byte    dot = *source++;
 
-                *dest = tinttab60[(dot == from ? to : (dot << 8)) + *dest];
+                if (dot)
+                    *dest = (dot == from ? to : dot);
+                dest += SCREENWIDTH;
+            }
+            column = (column_t *)((byte *)column + length + 4);
+        }
+    }
+}
+
+void V_DrawTranslucentAltHUDPatch(int x, int y, patch_t *patch, int from, int to)
+{
+    int         col = 0;
+    byte        *desttop = screens[0] + y * SCREENWIDTH + x;
+    int         w = SHORT(patch->width);
+
+    to <<= 8;
+
+    for (; col < w; ++col, ++desttop)
+    {
+        column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
+
+        // step through the posts in a column
+        while (column->topdelta != 0xFF)
+        {
+            byte        *source = (byte *)column + 3;
+            byte        *dest = desttop + column->topdelta * SCREENWIDTH;
+            byte        length = column->length;
+            byte        count = length;
+
+            while (count--)
+            {
+                byte    dot = *source++;
+
+                if (dot)
+                    *dest = tinttab60[(dot == from ? to : (dot << 8)) + *dest];
                 dest += SCREENWIDTH;
             }
             column = (column_t *)((byte *)column + length + 4);
@@ -774,7 +810,7 @@ void V_DrawTranslucentRedPatch(int x, int y, patch_t *patch)
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
@@ -822,7 +858,7 @@ void V_DrawFlippedPatch(int x, int y, patch_t *patch)
                             + LONG(patch->columnofs[SHORT(patch->width) - 1 - (col >> FRACBITS)]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
@@ -858,7 +894,7 @@ void V_DrawFlippedShadowPatch(int x, int y, patch_t *patch)
                             + LONG(patch->columnofs[SHORT(patch->width) - 1 - (col >> FRACBITS)]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *dest = desttop + ((column->topdelta * DY / 10) >> FRACBITS) * SCREENWIDTH;
             int         count = ((column->length * DY / 10) >> FRACBITS) + 1;
@@ -897,7 +933,7 @@ void V_DrawFlippedSolidShadowPatch(int x, int y, patch_t *patch)
             + LONG(patch->columnofs[SHORT(patch->width) - 1 - (col >> FRACBITS)]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *dest = desttop + ((column->topdelta * DY / 10) >> FRACBITS) * SCREENWIDTH;
             int         count = ((column->length * DY / 10) >> FRACBITS) + 1;
@@ -936,7 +972,7 @@ void V_DrawFlippedSpectreShadowPatch(int x, int y, patch_t *patch)
             + LONG(patch->columnofs[SHORT(patch->width) - 1 - (col >> FRACBITS)]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *dest = desttop + ((column->topdelta * DY / 10) >> FRACBITS) * SCREENWIDTH;
             int         count = ((column->length * DY / 10) >> FRACBITS) + 1;
@@ -977,7 +1013,7 @@ void V_DrawFlippedTranslucentRedPatch(int x, int y, patch_t *patch)
                             + LONG(patch->columnofs[SHORT(patch->width) - 1 - (col >> FRACBITS)]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
@@ -1001,8 +1037,6 @@ void V_DrawFlippedTranslucentRedPatch(int x, int y, patch_t *patch)
 const int       _fuzzrange[3] = { -SCREENWIDTH, 0, SCREENWIDTH };
 
 extern int      fuzztable[SCREENWIDTH * SCREENHEIGHT];
-extern dboolean menuactive;
-extern dboolean paused;
 
 void V_DrawFuzzPatch(int x, int y, patch_t *patch)
 {
@@ -1020,7 +1054,7 @@ void V_DrawFuzzPatch(int x, int y, patch_t *patch)
     {
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
             int         count = (column->length * DY) >> FRACBITS;
@@ -1055,7 +1089,7 @@ void V_DrawFlippedFuzzPatch(int x, int y, patch_t *patch)
         column_t    *column = (column_t *)((byte *)patch
                         + LONG(patch->columnofs[SHORT(patch->width) - 1 - (col >> FRACBITS)]));
 
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
             int         count = (column->length * DY) >> FRACBITS;
@@ -1101,7 +1135,7 @@ void V_DrawNoGreenPatchWithShadow(int x, int y, patch_t *patch)
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
@@ -1152,7 +1186,7 @@ void V_DrawTranslucentNoGreenPatch(int x, int y, patch_t *patch)
         column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col >> FRACBITS]));
 
         // step through the posts in a column
-        while (column->topdelta != 0xff)
+        while (column->topdelta != 0xFF)
         {
             byte        *source = (byte *)column + 3;
             byte        *dest = desttop + ((column->topdelta * DY) >> FRACBITS) * SCREENWIDTH;
@@ -1227,7 +1261,7 @@ void V_DrawPixel(int x, int y, byte color, dboolean shadow)
     }
 }
 
-void GetPixelSize(void)
+void GetPixelSize(dboolean reset)
 {
     int     width = -1;
     int     height = -1;
@@ -1246,7 +1280,7 @@ void GetPixelSize(void)
         pixelwidth = width;
         pixelheight = height;
     }
-    else
+    else if (reset)
     {
         pixelwidth = 2;
         pixelheight = 2;
@@ -1256,19 +1290,21 @@ void GetPixelSize(void)
     }
 }
 
-void V_LowGraphicDetail(int height)
+void V_LowGraphicDetail(void)
 {
     int x, y;
-    int h = pixelheight * SCREENWIDTH;
+    int w = viewwindowx + viewwidth;
+    int h = (viewwindowy + viewheight) * SCREENWIDTH;
+    int hh = pixelheight * SCREENWIDTH;
 
-    for (y = 0; y < height; y += h)
-        for (x = 0; x < SCREENWIDTH; x += pixelwidth)
+    for (y = viewwindowy * SCREENWIDTH; y < h; y += hh)
+        for (x = viewwindowx; x < w; x += pixelwidth)
         {
-            byte        *dot = screens[0] + y + x;
+            byte        *dot = *screens + y + x;
             int         xx, yy;
 
-            for (yy = 0; yy < h; yy += SCREENWIDTH)
-                for (xx = 0; xx < pixelwidth; xx++)
+            for (yy = 0; yy < hh && y + yy < h; yy += SCREENWIDTH)
+                for (xx = 0; xx < pixelwidth && x + xx < w; ++xx)
                     *(dot + yy + xx) = *dot;
         }
 }
@@ -1278,8 +1314,22 @@ void V_LowGraphicDetail(int height)
 //
 void V_Init(void)
 {
-    int         i;
-    byte        *base = Z_Malloc(SCREENWIDTH * SCREENHEIGHT * 4, PU_STATIC, NULL);
+    int                 i;
+    byte                *base = Z_Malloc(SCREENWIDTH * SCREENHEIGHT * 4, PU_STATIC, NULL);
+    const SDL_version   *linked = IMG_Linked_Version();
+#if defined(WIN32) && !defined(PORTABILITY)
+    char                buffer[MAX_PATH];
+#endif
+
+    if (linked->major != SDL_IMAGE_MAJOR_VERSION || linked->minor != SDL_IMAGE_MINOR_VERSION)
+        I_Error("The wrong version of sdl2_image.dll was found. "PACKAGE_NAME" requires "
+            "v%i.%i.%i, not v%i.%i.%i.", linked->major, linked->minor, linked->patch,
+            SDL_IMAGE_MAJOR_VERSION, SDL_IMAGE_MINOR_VERSION, SDL_IMAGE_PATCHLEVEL);
+
+    if (linked->patch != SDL_IMAGE_PATCHLEVEL)
+        C_Warning("The wrong version of sdl2_image.dll was found. <i>"PACKAGE_NAME"</i> requires "
+            "v%i.%i.%i, not v%i.%i.%i.", linked->major, linked->minor, linked->patch,
+            SDL_IMAGE_MAJOR_VERSION, SDL_IMAGE_MINOR_VERSION, SDL_IMAGE_PATCHLEVEL);
 
     for (i = 0; i < 4; i++)
         screens[i] = base + i * SCREENWIDTH * SCREENHEIGHT;
@@ -1289,55 +1339,62 @@ void V_Init(void)
     DY = (SCREENHEIGHT << FRACBITS) / ORIGINALHEIGHT;
     DYI = (ORIGINALHEIGHT << FRACBITS) / SCREENHEIGHT;
 
-    GetPixelSize();
+    GetPixelSize(true);
+
+#if defined(WIN32) && !defined(PORTABILITY)
+    if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_MYPICTURES, NULL, SHGFP_TYPE_CURRENT, buffer)))
+        M_snprintf(screenshotfolder, sizeof(screenshotfolder), "%s"DIR_SEPARATOR_S PACKAGE_NAME,
+            buffer);
+    else
+        M_snprintf(screenshotfolder, sizeof(screenshotfolder), "%s"DIR_SEPARATOR_S PACKAGE_NAME,
+            M_GetExecutableFolder());
+#else
+        M_snprintf(screenshotfolder, sizeof(screenshotfolder), "%s"DIR_SEPARATOR_S"screenshots",
+            M_GetAppDataFolder());
+#endif
 }
 
-#if !defined(MAX_PATH)
-#define MAX_PATH        260
-#endif
+char            lbmname1[MAX_PATH];
+char            lbmname2[MAX_PATH];
+char            lbmpath1[MAX_PATH];
+char            lbmpath2[MAX_PATH];
 
-char                    lbmname[MAX_PATH];
-char                    lbmpath[MAX_PATH];
+extern dboolean vid_widescreen;
+extern dboolean inhelpscreens;
+extern char     maptitle[128];
+extern dboolean splashscreen;
+extern int      titlesequence;
 
-extern dboolean         vid_widescreen;
-extern dboolean         inhelpscreens;
-extern char             maptitle[128];
-extern dboolean         splashscreen;
-extern int              titlesequence;
-
-dboolean V_SaveBMP(SDL_Window *window, char *path)
+dboolean V_SavePNG(SDL_Window *window, char *path)
 {
-    dboolean            result = false;
-    SDL_Surface         *surface = SDL_GetWindowSurface(window);
+    dboolean    result = false;
 
-    if (surface)
+    if (renderer)
     {
-        unsigned char   *pixels = malloc(surface->w * surface->h * 4);
+        int     rendererwidth;
+        int     rendererheight;
 
-        if (pixels)
+        if (!SDL_GetRendererOutputSize(renderer, &rendererwidth, &rendererheight))
         {
-            SDL_Renderer        *renderer = SDL_GetRenderer(window);
-            SDL_Rect            rect = surface->clip_rect;
+            int         width = (vid_widescreen ? rendererheight * 16 / 10 : rendererheight * 4 / 3);
+            int         height = rendererheight;
+            SDL_Surface *screenshot;
 
-            rect.w = (vid_widescreen ? rect.h * 16 / 10 : rect.h * 4 / 3);
-            rect.x = (surface->w - rect.w) / 2;
-            if (renderer && !SDL_RenderReadPixels(renderer, &rect, SDL_PIXELFORMAT_ARGB8888,
-                pixels, rect.w * 4))
+            if (width > rendererwidth)
             {
-                SDL_Surface     *screenshot = SDL_CreateRGBSurfaceFrom(pixels, rect.w, rect.h, 32,
-                    rect.w * 4, 0, 0, 0, 0);
-
-                if (screenshot)
-                {
-                    result = !SDL_SaveBMP(screenshot, path);
-                    SDL_FreeSurface(screenshot);
-                }
+                width = rendererwidth;
+                height = (vid_widescreen ? rendererwidth * 10 / 16 : rendererwidth * 3 / 4);
             }
 
-            free(pixels);
-        }
+            if ((screenshot = SDL_CreateRGBSurface(0, width, height, 32, 0, 0, 0, 0)))
+            {
+                if (!SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888,
+                    screenshot->pixels, screenshot->pitch))
+                    result = !IMG_SavePNG(screenshot, path);
 
-        SDL_FreeSurface(surface);
+                SDL_FreeSurface(screenshot);
+            }
+        }
     }
 
     return result;
@@ -1347,15 +1404,7 @@ dboolean V_ScreenShot(void)
 {
     dboolean    result = false;
     char        mapname[128];
-    char        folder[MAX_PATH] = "";
     int         count = 0;
-
-#if defined(WIN32)
-    HRESULT     hr = SHGetFolderPath(NULL, CSIDL_MYPICTURES, NULL, SHGFP_TYPE_CURRENT, folder);
-
-    if (hr != S_OK)
-        return false;
-#endif
 
     switch (gamestate)
     {
@@ -1385,82 +1434,32 @@ dboolean V_ScreenShot(void)
     do
     {
         if (!count)
-            M_snprintf(lbmname, sizeof(lbmname), "%s.bmp", makevalidfilename(mapname));
+            M_snprintf(lbmname1, sizeof(lbmname1), "%s.png", makevalidfilename(mapname));
         else
-            M_snprintf(lbmname, sizeof(lbmname), "%s (%i).bmp", makevalidfilename(mapname), count);
+            M_snprintf(lbmname1, sizeof(lbmname1), "%s (%i).png", makevalidfilename(mapname),
+                count);
         ++count;
-        M_snprintf(lbmpath, sizeof(lbmpath), "%s" DIR_SEPARATOR_S PACKAGE_NAME, folder);
-        M_MakeDirectory(lbmpath);
-        M_snprintf(lbmpath, sizeof(lbmpath), "%s" DIR_SEPARATOR_S "%s", lbmpath, lbmname);
-    } while (M_FileExists(lbmpath));
+        M_MakeDirectory(screenshotfolder);
+        M_snprintf(lbmpath1, sizeof(lbmpath1), "%s"DIR_SEPARATOR_S"%s", screenshotfolder,
+            lbmname1);
+    } while (M_FileExists(lbmpath1));
 
-    result = V_SaveBMP(window, lbmpath);
+    result = V_SavePNG(window, lbmpath1);
 
+    lbmpath2[0] = '\0';
     if (mapwindow && result && gamestate == GS_LEVEL)
     {
-        C_Output(s_GSCREENSHOT, lbmname);
-
         do
         {
-            M_snprintf(lbmname, sizeof(lbmname), "%s (%i).bmp", makevalidfilename(mapname), count);
+            M_snprintf(lbmname2, sizeof(lbmname2), "%s (%i).png", makevalidfilename(mapname),
+                count);
             ++count;
-            M_snprintf(lbmpath, sizeof(lbmpath), "%s" DIR_SEPARATOR_S PACKAGE_NAME, folder);
-            M_MakeDirectory(lbmpath);
-            M_snprintf(lbmpath, sizeof(lbmpath), "%s" DIR_SEPARATOR_S "%s", lbmpath, lbmname);
-        } while (M_FileExists(lbmpath));
+            M_snprintf(lbmpath2, sizeof(lbmpath2), "%s"DIR_SEPARATOR_S"%s", screenshotfolder,
+                lbmname2);
+        } while (M_FileExists(lbmpath2));
 
-        result = V_SaveBMP(mapwindow, lbmpath);
+        V_SavePNG(mapwindow, lbmpath2);
     }
 
     return result;
-}
-
-void V_AverageColorInPatch(patch_t *patch, int *red, int *green, int *blue, int *total)
-{
-    int         col = 0;
-    int         w = SHORT(patch->width);
-    int         red1 = 0, blue1 = 0, green1 = 0;
-    byte        *playpal = W_CacheLumpName("PLAYPAL", PU_CACHE);
-
-    for (; col < w; col++)
-    {
-        column_t        *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
-        int             td;
-        int             topdelta = -1;
-        int             lastlength = 0;
-
-        // step through the posts in a column
-        while ((td = column->topdelta) != 0xFF)
-        {
-            byte        *source = (byte *)column + 3;
-            int         count;
-
-            topdelta = (td < topdelta + lastlength - 1 ? topdelta + td : td);
-            count = lastlength = column->length;
-
-            while (count--)
-            {
-                byte    color = *source++;
-                byte    r = playpal[color * 3];
-                byte    g = playpal[color * 3 + 1];
-                byte    b = playpal[color * 3 + 2];
-
-                if (!red1)
-                {
-                    red1 = r;
-                    blue1 = g;
-                    green1 = b;
-                    continue;
-                }
-                else if (r == red1 && g == green1 && b == blue1)
-                    continue;
-
-                *red += r;
-                *green += g;
-                *blue += b;
-                (*total)++;
-            }
-            column = (column_t *)((byte *)column + column->length + 4);
-        }
-    }
 }

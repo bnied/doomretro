@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -43,6 +43,7 @@
 #include "hu_stuff.h"
 #include "i_swap.h"
 #include "i_system.h"
+#include "m_argv.h"
 #include "m_bbox.h"
 #include "m_misc.h"
 #include "m_random.h"
@@ -93,6 +94,7 @@ typedef struct
 int             stat_secretsrevealed = 0;
 
 dboolean        r_liquid_bob = r_liquid_bob_default;
+int             timelimit = timelimit_default;
 
 fixed_t         animatedliquiddiff;
 fixed_t         animatedliquidxdir;
@@ -283,7 +285,7 @@ sector_t *getSector(int currentSector, int line, int side)
 // Given the sector number and the line number,
 //  it will tell you whether the line is two-sided or not.
 //
-int twoSided(int sector, int line)
+dboolean twoSided(int sector, int line)
 {
     // jff 1/26/98 return what is actually needed, whether the line
     // has two sidedefs, rather than whether the 2S flag is set
@@ -561,9 +563,8 @@ sector_t *P_FindModelFloorSector(fixed_t floordestheight, int secnum)
     int         i, linecount = sec->linecount;
 
     for (i = 0; i < linecount; i++)
-        if (twoSided(secnum, i)
-            && (sec = getSector(secnum, i,
-            getSide(secnum, i, 0)->sector - sectors == secnum))->floorheight == floordestheight)
+        if (twoSided(secnum, i) && (sec = getSector(secnum, i, getSide(secnum, i, 0)->sector
+            - sectors == secnum))->floorheight == floordestheight)
             return sec;
 
     return NULL;
@@ -591,9 +592,8 @@ sector_t *P_FindModelCeilingSector(fixed_t ceildestheight, int secnum)
     int         i, linecount = sec->linecount;
 
     for (i = 0; i < linecount; i++)
-        if (twoSided(secnum, i)
-            && (sec = getSector(secnum, i,
-            getSide(secnum, i, 0)->sector - sectors == secnum))->ceilingheight == ceildestheight)
+        if (twoSided(secnum, i) && (sec = getSector(secnum, i, getSide(secnum, i, 0)->sector
+            - sectors == secnum))->ceilingheight == ceildestheight)
             return sec;
 
     return NULL;
@@ -695,7 +695,7 @@ dboolean P_CanUnlockGenDoor(line_t *line, player_t *player)
             {
                 M_snprintf(buffer, sizeof(buffer), s_PD_ANY, playername,
                     (M_StringCompare(playername, playername_default) ? "" : "s"));
-                HU_PlayerMessage(buffer, true);
+                HU_PlayerMessage(buffer, true, false);
                 S_StartSound(player->mo, sfx_noway);
                 return false;
             }
@@ -712,7 +712,7 @@ dboolean P_CanUnlockGenDoor(line_t *line, player_t *player)
                 }
                 M_snprintf(buffer, sizeof(buffer), (skulliscard ? s_PD_REDK : s_PD_REDC),
                     playername, (M_StringCompare(playername, playername_default) ? "" : "s"));
-                HU_PlayerMessage(buffer, true);
+                HU_PlayerMessage(buffer, true, false);
                 S_StartSound(player->mo, sfx_noway);
                 return false;
             }
@@ -729,7 +729,7 @@ dboolean P_CanUnlockGenDoor(line_t *line, player_t *player)
                 }
                 M_snprintf(buffer, sizeof(buffer), (skulliscard ? s_PD_BLUEK : s_PD_BLUEC),
                     playername,  (M_StringCompare(playername, playername_default) ? "" : "s"));
-                HU_PlayerMessage(buffer, true);
+                HU_PlayerMessage(buffer, true, false);
                 S_StartSound(player->mo, sfx_noway);
                 return false;
             }
@@ -746,7 +746,7 @@ dboolean P_CanUnlockGenDoor(line_t *line, player_t *player)
                 }
                 M_snprintf(buffer, sizeof(buffer), (skulliscard ? s_PD_YELLOWK : s_PD_YELLOWC),
                     playername, (M_StringCompare(playername, playername_default) ? "" : "s"));
-                HU_PlayerMessage(buffer, true);
+                HU_PlayerMessage(buffer, true, false);
                 S_StartSound(player->mo, sfx_noway);
                 return false;
             }
@@ -763,7 +763,7 @@ dboolean P_CanUnlockGenDoor(line_t *line, player_t *player)
                 }
                 M_snprintf(buffer, sizeof(buffer), (skulliscard ? s_PD_REDK : s_PD_REDS),
                     playername, (M_StringCompare(playername, playername_default) ? "" : "s"));
-                HU_PlayerMessage(buffer, true);
+                HU_PlayerMessage(buffer, true, false);
                 S_StartSound(player->mo, sfx_noway);
                 return false;
             }
@@ -780,7 +780,7 @@ dboolean P_CanUnlockGenDoor(line_t *line, player_t *player)
                 }
                 M_snprintf(buffer, sizeof(buffer), (skulliscard ? s_PD_BLUEK : s_PD_BLUES),
                     playername, (M_StringCompare(playername, playername_default) ? "" : "s"));
-                HU_PlayerMessage(buffer, true);
+                HU_PlayerMessage(buffer, true, false);
                 S_StartSound(player->mo, sfx_noway);
                 return false;
             }
@@ -797,7 +797,7 @@ dboolean P_CanUnlockGenDoor(line_t *line, player_t *player)
                 }
                 M_snprintf(buffer, sizeof(buffer), (skulliscard ? s_PD_YELLOWK : s_PD_YELLOWS),
                     playername, (M_StringCompare(playername, playername_default) ? "" : "s"));
-                HU_PlayerMessage(buffer, true);
+                HU_PlayerMessage(buffer, true, false);
                 S_StartSound(player->mo, sfx_noway);
                 return false;
             }
@@ -808,9 +808,9 @@ dboolean P_CanUnlockGenDoor(line_t *line, player_t *player)
                 || player->cards[it_bluecard] <= 0 || player->cards[it_blueskull] <= 0
                 || player->cards[it_yellowcard] <= 0 || player->cards[it_yellowskull] <= 0))
             {
-                M_snprintf(buffer, sizeof(buffer), s_PD_ALL3, playername,
+                M_snprintf(buffer, sizeof(buffer), s_PD_ALL6, playername,
                     (M_StringCompare(playername, playername_default) ? "" : "s"));
-                HU_PlayerMessage(buffer, true);
+                HU_PlayerMessage(buffer, true, false);
                 S_StartSound(player->mo, sfx_noway);
                 return false;
             }
@@ -820,7 +820,7 @@ dboolean P_CanUnlockGenDoor(line_t *line, player_t *player)
             {
                 M_snprintf(buffer, sizeof(buffer), s_PD_ALL3, playername,
                     (M_StringCompare(playername, playername_default) ? "" : "s"));
-                HU_PlayerMessage(buffer, true);
+                HU_PlayerMessage(buffer, true, false);
                 S_StartSound(player->mo, sfx_noway);
                 return false;
             }
@@ -855,7 +855,7 @@ dboolean P_SectorActive(special_e t, sector_t *sec)
 // [BH] Returns true if sector has a light special
 dboolean P_SectorHasLightSpecial(sector_t *sec)
 {
-    short special = sec->special;
+    short       special = sec->special;
 
     return (special && special != Secret && special != Door_CloseStay_After30sec
         && special != Door_OpenClose_OpensAfter5Min);
@@ -977,7 +977,7 @@ void P_CrossSpecialLine(line_t *line, int side, mobj_t *thing)
     {
         // pointer to line function is NULL by default, set non-null if
         // line special is walkover generalized linedef type
-        dboolean (*linefunc)(line_t *) = NULL;
+        dboolean(*linefunc)(line_t *) = NULL;
 
         // check each range of generalized linedefs
         if ((unsigned int)line->special >= GenFloorBase)
@@ -1062,7 +1062,7 @@ void P_CrossSpecialLine(line_t *line, int side, mobj_t *thing)
 
     if (!thing->player)
     {
-        dboolean okay = false;
+        dboolean        okay = false;
 
         switch (line->special)
         {
@@ -1668,7 +1668,7 @@ void P_ShootSpecialLine(mobj_t *thing, line_t *line)
     // jff 02/04/98 add check here for generalized linedef
     // pointer to line function is NULL by default, set non-null if
     // line special is gun triggered generalized linedef type
-    dboolean (*linefunc)(line_t *line) = NULL;
+    dboolean    (*linefunc)(line_t *line) = NULL;
 
     // check each range of generalized linedefs
     if ((unsigned int)line->special >= GenFloorBase)
@@ -1810,21 +1810,21 @@ void P_PlayerInSpecialSector(player_t *player)
         {
             case DamageNegative5Or10PercentHealth:
                 if (!player->powers[pw_ironfeet])
-                    if (!(leveltime & 0x1f))
-                        P_DamageMobj(player->mo, NULL, NULL, 10);
+                    if (!(leveltime & 0x1F))
+                        P_DamageMobj(player->mo, NULL, NULL, 10, true);
                 break;
 
             case DamageNegative2Or5PercentHealth:
                 if (!player->powers[pw_ironfeet])
-                    if (!(leveltime & 0x1f))
-                        P_DamageMobj(player->mo, NULL, NULL, 5);
+                    if (!(leveltime & 0x1F))
+                        P_DamageMobj(player->mo, NULL, NULL, 5, true);
                 break;
 
             case DamageNegative10Or20PercentHealth:
             case DamageNegative10Or20PercentHealthAndLightBlinks_2Hz:
                 if (!player->powers[pw_ironfeet] || M_Random() < 5)
-                    if (!(leveltime & 0x1f))
-                        P_DamageMobj(player->mo, NULL, NULL, 20);
+                    if (!(leveltime & 0x1F))
+                        P_DamageMobj(player->mo, NULL, NULL, 20, true);
                 break;
 
             case Secret:
@@ -1841,8 +1841,8 @@ void P_PlayerInSpecialSector(player_t *player)
                 player->cheats &= ~CF_GODMODE;
                 player->powers[pw_invulnerability] = 0;
 
-                if (!(leveltime & 0x1f))
-                    P_DamageMobj(player->mo, NULL, NULL, 20);
+                if (!(leveltime & 0x1F))
+                    P_DamageMobj(player->mo, NULL, NULL, 20, true);
 
                 if (player->health <= 10)
                     G_ExitLevel();
@@ -1861,21 +1861,21 @@ void P_PlayerInSpecialSector(player_t *player)
 
             case 1:     // 2/5 damage per 31 ticks
                 if (!player->powers[pw_ironfeet])
-                    if (!(leveltime & 0x1f))
-                        P_DamageMobj(player->mo, NULL, NULL, 5);
+                    if (!(leveltime & 0x1F))
+                        P_DamageMobj(player->mo, NULL, NULL, 5, true);
                 break;
 
             case 2:     // 5/10 damage per 31 ticks
                 if (!player->powers[pw_ironfeet])
-                    if (!(leveltime & 0x1f))
-                        P_DamageMobj(player->mo, NULL, NULL, 10);
+                    if (!(leveltime & 0x1F))
+                        P_DamageMobj(player->mo, NULL, NULL, 10, true);
                 break;
 
             case 3:     // 10/20 damage per 31 ticks
                 if (!player->powers[pw_ironfeet] || M_Random() < 5)  // take damage even with suit
                 {
-                    if (!(leveltime & 0x1f))
-                        P_DamageMobj(player->mo, NULL, NULL, 20);
+                    if (!(leveltime & 0x1F))
+                        P_DamageMobj(player->mo, NULL, NULL, 20, true);
                 }
                 break;
         }
@@ -1899,11 +1899,20 @@ void P_PlayerInSpecialSector(player_t *player)
 
 line_t  *linespeciallist[MAXLINEANIMS];
 
+int     timer;
+int     countdown;
+
 void P_UpdateSpecials(void)
 {
     anim_t      *anim;
     int         pic;
     int         i;
+
+    if (timelimit || timer)
+    {
+        if (!--countdown)
+            G_ExitLevel();
+    }
 
     // ANIMATE FLATS AND TEXTURES GLOBALLY
     for (anim = anims; anim < lastanim; anim++)
@@ -2040,6 +2049,22 @@ void P_SpawnSpecials(void)
     sector_t    *sector;
     int         i;
 
+    if ((i = M_CheckParmWithArgs("-timer", 1, 1)))
+    {
+        timer = atoi(myargv[i + 1]);
+        M_SaveCVARs();
+        C_Output("A <b>-timer</b> parameter was found on the command-line. "
+            "The time limit for each map is %i minutes.", timer);
+    }
+
+    if (M_CheckParm("-avg"))
+    {
+        timer = 20;
+        M_SaveCVARs();
+        C_Output("An <b>-avg</b> parameter was found on the command-line. "
+            "The time limit for each map is %i minutes.", timer);
+    }
+
     // Init special SECTORs.
     sector = sectors;
     for (i = 0; i < numsectors; i++, sector++)
@@ -2054,15 +2079,15 @@ void P_SpawnSpecials(void)
                 break;
 
             case LightBlinks_2Hz:
-                P_SpawnStrobeFlash(sector, FASTDARK, 0);
+                P_SpawnStrobeFlash(sector, FASTDARK, false);
                 break;
 
             case LightBlinks_1Hz:
-                P_SpawnStrobeFlash(sector, SLOWDARK, 0);
+                P_SpawnStrobeFlash(sector, SLOWDARK, false);
                 break;
 
             case DamageNegative10Or20PercentHealthAndLightBlinks_2Hz:
-                P_SpawnStrobeFlash(sector, FASTDARK, 0);
+                P_SpawnStrobeFlash(sector, FASTDARK, false);
                 sector->special = DamageNegative10Or20PercentHealthAndLightBlinks_2Hz;
                 break;
 
@@ -2079,11 +2104,11 @@ void P_SpawnSpecials(void)
                 break;
 
             case LightBlinks_1HzSynchronized:
-                P_SpawnStrobeFlash(sector, SLOWDARK, 1);
+                P_SpawnStrobeFlash(sector, SLOWDARK, true);
                 break;
 
             case LightBlinks_2HzSynchronized:
-                P_SpawnStrobeFlash(sector, FASTDARK, 1);
+                P_SpawnStrobeFlash(sector, FASTDARK, true);
                 break;
 
             case Door_OpenClose_OpensAfter5Min:
@@ -2602,6 +2627,7 @@ dboolean PIT_PushThing(mobj_t* thing)
         {
             int x = (thing->x - sx) >> FRACBITS;
             int y = (thing->y - sy) >> FRACBITS;
+
             speed = (fixed_t)(((int64_t)tmpusher->magnitude << 23) / (x * x + y * y + 1));
         }
 

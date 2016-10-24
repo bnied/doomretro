@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -55,43 +55,43 @@
 typedef struct
 {
     // left-justified position of scrolling text window
-    int         x;
-    int         y;
+    int                 x;
+    int                 y;
 
-    patch_t     **f;                            // font
-    int         sc;                             // start character
-    char        l[HU_MAXLINELENGTH + 1];        // line of text
-    int         len;                            // current line length
+    patch_t             **f;                            // font
+    int                 sc;                             // start character
+    char                l[HU_MAXLINELENGTH + 1];        // line of text
+    int                 len;                            // current line length
 
     // whether this line needs to be updated
-    int         needsupdate;
+    int                 needsupdate;
 } hu_textline_t;
 
 // Scrolling Text window widget
 //  (child of Text Line widget)
 typedef struct
 {
-    hu_textline_t       l[HU_MAXLINES];         // text lines to draw
-    int                 h;                      // height in lines
-    int                 cl;                     // current line number
+    hu_textline_t       l[HU_MAXLINES];                 // text lines to draw
+    int                 h;                              // height in lines
+    int                 cl;                             // current line number
 
     // pointer to dboolean stating whether to update window
     dboolean            *on;
-    dboolean            laston;                 // last value of *->on.
+    dboolean            laston;                         // last value of *->on.
 } hu_stext_t;
 
 // Input Text Line widget
 //  (child of Text Line widget)
 typedef struct
 {
-    hu_textline_t       l;                      // text line to input on
+    hu_textline_t       l;                              // text line to input on
 
     // left margin past which I am not to delete characters
     int                 lm;
 
     // pointer to dboolean stating whether to update window
     dboolean            *on;
-    dboolean            laston;                 // last value of *->on;
+    dboolean            laston;                         // last value of *->on;
 } hu_itext_t;
 
 //
@@ -118,13 +118,14 @@ void HUlib_eraseTextLine(hu_textline_t *l);
 //
 
 // ?
-void HUlib_initSText(hu_stext_t *s, int x, int y, int h, patch_t **font, int startchar, dboolean *on);
+void HUlib_initSText(hu_stext_t *s, int x, int y, int h, patch_t **font, int startchar,
+    dboolean *on);
 
 // ?
 void HUlib_addMessageToSText(hu_stext_t *s, char *prefix, char *msg);
 
 // draws stext
-void HUlib_drawSText(hu_stext_t *s);
+void HUlib_drawSText(hu_stext_t *s, dboolean external);
 
 // erases all stext lines
 void HUlib_eraseSText(hu_stext_t *s);
@@ -133,7 +134,6 @@ extern dboolean STCFN034;
 extern dboolean idbehold;
 extern dboolean s_STSTR_BEHOLD2;
 extern byte     *tempscreen;
-extern byte     *tinttab33;
 extern byte     *tinttab50;
 extern int      r_screensize;
 

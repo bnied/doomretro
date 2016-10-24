@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -37,14 +37,11 @@
 */
 
 #include "d_main.h"
-#include "m_argv.h"
+#include "doomstat.h"
+#include "g_game.h"
 #include "m_menu.h"
 #include "i_system.h"
 #include "i_timer.h"
-#include "i_video.h"
-#include "g_game.h"
-#include "doomdef.h"
-#include "doomstat.h"
 
 // Maximum time that we wait in TryRunTics() for netgame data to be
 // received before we bail out and render a frame anyway.
@@ -140,7 +137,7 @@ extern dboolean advancetitle;
 void TryRunTics(void)
 {
     // get real tics
-    int entertic = I_GetTime();
+    int entertic;
     int counts;
 
     // get available tics
@@ -150,6 +147,8 @@ void TryRunTics(void)
 
     if (!counts && !vid_capfps)
         return;
+
+    entertic = I_GetTime();
 
     if (counts < 1)
         counts = 1;

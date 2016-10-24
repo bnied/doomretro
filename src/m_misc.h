@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -42,10 +42,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#if defined(__OpenBSD__)
+#include <stdarg.h>
+#endif
+
 #include "doomtype.h"
 
 dboolean M_WriteFile(char *name, void *source, int length);
-int M_ReadFile(char *name, byte **buffer);
 void M_MakeDirectory(const char *dir);
 char *M_TempFile(char *s);
 dboolean M_FileExists(const char *file);
@@ -64,7 +67,7 @@ char *M_GetResourceFolder(void);
 char *M_GetAppDataFolder(void);
 
 char *M_GetExecutableFolder(void);
-dboolean M_StrToInt(const char *str, int *result);
+dboolean M_StrToInt(const char *str, unsigned int *result);
 char *M_StrCaseStr(char *haystack, char *needle);
 dboolean M_StringCopy(char *dest, char *src, size_t dest_size);
 char *M_StringReplace(char *haystack, char *needle, char *replacement);
@@ -79,15 +82,19 @@ char *uppercase(const char *str);
 char *lowercase(const char *str);
 char *titlecase(const char *str);
 char *formatsize(const char *str);
-char *commify(int value);
+char *commify(int64_t value);
+char *uncommify(const char *input);
 dboolean wildcard(char *input, char *pattern);
 int gcd(int a, int b);
 char *removespaces(const char *input);
+char *trimwhitespace(char *input);
+char *removenewlines(const char *str);
 char *makevalidfilename(const char *input);
 const char *leafname(const char *path);
 char *removeext(const char *file);
 dboolean isvowel(const char ch);
 char *convertsize(const int size);
 char *striptrailingzero(float value, int precision);
+void strreplace(char *target, const char *needle, const char *replacement);
 
 #endif

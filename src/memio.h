@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -39,7 +39,6 @@
 #if !defined(__MEMIO_H__)
 #define __MEMIO_H__
 
-#include <stdio.h>
 #include <stdlib.h>
 
 typedef struct _MEMFILE MEMFILE;
@@ -57,7 +56,6 @@ MEMFILE *mem_fopen_write(void);
 size_t mem_fwrite(const void *ptr, size_t size, size_t nmemb, MEMFILE *stream);
 void mem_get_buf(MEMFILE *stream, void **buf, size_t *buflen);
 void mem_fclose(MEMFILE *stream);
-long mem_ftell(MEMFILE *stream);
 int mem_fseek(MEMFILE *stream, signed long offset, mem_rel_t whence);
 
 #endif

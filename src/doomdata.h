@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -38,9 +38,6 @@
 
 #if !defined(__DOOMDATA_H__)
 #define __DOOMDATA_H__
-
-// The most basic types we use, portability.
-#include "doomtype.h"
 
 // Some global defines, that configure the game.
 #include "doomdef.h"
@@ -89,6 +86,7 @@ typedef struct
     char        toptexture[8];
     char        bottomtexture[8];
     char        midtexture[8];
+
     // Front sector, towards viewer.
     short       sector;
 } PACKEDATTR mapsidedef_t;
@@ -102,6 +100,7 @@ typedef struct
     unsigned short      flags;
     short               special;
     short               tag;
+
     // proff 07/23/2006 - support more than 32768 sidedefs
     // use the unsigned value and special case the -1
     // sidenum[1] will be -1 (NO_INDEX) if one sided
@@ -139,7 +138,7 @@ typedef struct
 // lower texture unpegged
 #define ML_DONTPEGBOTTOM        16
 
-// In AutoMap: don't map as two sided: IT'S A SECRET!
+// In automap: don't map as two sided: IT'S A SECRET!
 #define ML_SECRET               32
 
 // Sound rendering: don't let sound cross two of these.

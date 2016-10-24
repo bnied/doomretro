@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -93,7 +93,9 @@ typedef enum
 
     CF_ALLMAP_THINGS    = 32,
 
-    CF_CHOPPERS         = 64
+    CF_CHOPPERS         = 64,
+
+    CF_BUDDHA           = 128
 } cheat_t;
 
 //
@@ -208,6 +210,13 @@ typedef struct player_s
     int                 shotsfired;
     int                 deaths;
     int                 mobjcount[NUMMOBJTYPES];
+    int                 distancetraveled;
+    int                 itemspickedup_ammo_bullets;
+    int                 itemspickedup_ammo_cells;
+    int                 itemspickedup_ammo_rockets;
+    int                 itemspickedup_ammo_shells;
+    int                 itemspickedup_armor;
+    int                 itemspickedup_health;
 } player_t;
 
 //

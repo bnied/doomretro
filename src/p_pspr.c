@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -37,13 +37,13 @@
 */
 
 #include "d_event.h"
+#include "doomstat.h"
 #include "i_gamepad.h"
-#include "m_random.h"
 #include "m_menu.h"
+#include "m_random.h"
 #include "p_local.h"
 #include "p_tick.h"
 #include "s_sound.h"
-#include "doomstat.h"
 
 #define LOWERSPEED              6 * FRACUNIT
 #define RAISESPEED              6 * FRACUNIT
@@ -52,12 +52,16 @@
 #define MAXMOTORSPEED           65535
 
 dboolean        centerweapon = centerweapon_default;
+int             weaponbob = weaponbob_default;
 
 unsigned int    stat_shotsfired = 0;
 unsigned int    stat_shotshit = 0;
 
 dboolean        successfulshot;
 dboolean        skippsprinterp = false;
+
+extern dboolean hitwall;
+extern int      stillbob;
 
 void P_CheckMissileSpawn(mobj_t *th);
 
@@ -178,15 +182,19 @@ dboolean P_CheckAmmo(player_t *player)
     return false;
 }
 
-void P_SubtractAmmo(player_t *player, int amount)
+//
+// P_SubtractAmmo
+//
+static void P_SubtractAmmo(player_t *player, int amount)
 {
     ammotype_t  ammotype = weaponinfo[player->readyweapon].ammo;
 
-    player->ammo[ammotype] = MAX(0, player->ammo[ammotype] - amount);
+    if (ammotype < NUMAMMO)
+        player->ammo[ammotype] = MAX(0, player->ammo[ammotype] - amount);
 }
 
 //
-// P_FireWeapon.
+// P_FireWeapon
 //
 void P_FireWeapon(player_t *player)
 {
@@ -200,18 +208,15 @@ void P_FireWeapon(player_t *player)
     P_SetMobjState(player->mo, S_PLAY_ATK1);
     P_SetPsprite(player, ps_weapon, weaponinfo[readyweapon].atkstate);
 
-    // [BH] no noise alert if not punching a monster
-    if (readyweapon == wp_fist && !linetarget)
-        return;
-
-    player->shotsfired++;
-    stat_shotsfired = SafeAdd(stat_shotsfired, 1);
-
-    P_NoiseAlert(player->mo, player->mo);
-
-    if (gp_vibrate && vibrate)
+    if (weaponinfo[readyweapon].ammo != am_noammo)
     {
-        int     motorspeed = weaponinfo[readyweapon].motorspeed;
+        player->shotsfired++;
+        stat_shotsfired = SafeAdd(stat_shotsfired, 1);
+    }
+
+    if (gp_vibrate_weapons && vibrate)
+    {
+        int     motorspeed = weaponinfo[readyweapon].motorspeed * gp_vibrate_weapons / 100;
 
         if ((readyweapon == wp_fist && player->powers[pw_strength])
             || (readyweapon == wp_chainsaw && linetarget))
@@ -270,10 +275,11 @@ void A_WeaponReady(mobj_t *actor, player_t *player, pspdef_t *psp)
     //  if player is dead, put the weapon away
     if (pendingweapon != wp_nochange || !player->health)
     {
-        if (gp_vibrate && vibrate)
+        if (gp_vibrate_weapons && vibrate)
+        {
             if (pendingweapon == wp_chainsaw)
             {
-                idlemotorspeed = CHAINSAWIDLEMOTORSPEED;
+                idlemotorspeed = CHAINSAWIDLEMOTORSPEED * gp_vibrate_weapons / 100;
                 XInputVibration(idlemotorspeed);
             }
             else if (idlemotorspeed)
@@ -281,6 +287,7 @@ void A_WeaponReady(mobj_t *actor, player_t *player, pspdef_t *psp)
                 idlemotorspeed = 0;
                 XInputVibration(idlemotorspeed);
             }
+        }
 
         // change weapon (pending weapon should already be validated)
         P_SetPsprite(player, ps_weapon, weaponinfo[readyweapon].downstate);
@@ -305,7 +312,12 @@ void A_WeaponReady(mobj_t *actor, player_t *player, pspdef_t *psp)
     {
         // bob the weapon based on movement speed
         int     angle = (128 * leveltime) & FINEMASK;
-        int     bob = player->bob;
+        fixed_t momx = player->momx;
+        fixed_t momy = player->momy;
+        fixed_t bob = (FixedMul(momx, momx) + FixedMul(momy, momy)) >> 2;
+
+        bob = (bob ? MAX(MIN(bob, MAXBOB) * weaponbob / 100, MAXBOB * stillbob / 400) :
+            MAXBOB * stillbob / 400);
 
         // [BH] smooth out weapon bob by zeroing out really small bobs
         if (bob < FRACUNIT / 2)
@@ -329,7 +341,7 @@ void A_ReFire(mobj_t *actor, player_t *player, pspdef_t *psp)
     // check for fire
     //  (if a weaponchange is pending, let it go through instead)
     if ((player->cmd.buttons & BT_ATTACK) && player->pendingweapon == wp_nochange
-        && player->health)
+        && player->health > 0)
     {
         player->refire++;
         P_FireWeapon(player);
@@ -442,15 +454,18 @@ void A_Punch(mobj_t *actor, player_t *player, pspdef_t *psp)
     if (player->powers[pw_strength])
         damage *= 10;
 
+    hitwall = false;
     P_LineAttack(actor, angle, MELEERANGE, slope, damage);
 
-    if (!linetarget)
-        return;
+    if (linetarget || hitwall)
+    {
+        P_NoiseAlert(player->mo, player->mo);
+        S_StartSound(actor, sfx_punch);
 
-    S_StartSound(actor, sfx_punch);
-
-    // turn to face target
-    actor->angle = R_PointToAngle2(actor->x, actor->y, linetarget->x, linetarget->y);
+        // turn to face target
+        if (linetarget)
+            actor->angle = R_PointToAngle2(actor->x, actor->y, linetarget->x, linetarget->y);
+    }
 }
 
 //
@@ -465,12 +480,14 @@ void A_Saw(mobj_t *actor, player_t *player, pspdef_t *psp)
     // use meleerange + 1 so the puff doesn't skip the flash
     P_LineAttack(actor, angle, MELEERANGE + 1, slope, damage);
 
+    P_NoiseAlert(player->mo, player->mo);
+
     if (!linetarget)
     {
         S_StartSound(actor, sfx_sawful);
         return;
     }
-    S_StartSound (actor, sfx_sawhit);
+    S_StartSound(actor, sfx_sawhit);
 
     // turn to face target
     angle = R_PointToAngle2(actor->x, actor->y, linetarget->x, linetarget->y);
@@ -524,7 +541,7 @@ void A_FireBFG(mobj_t *actor, player_t *player, pspdef_t *psp)
 
 void A_FireOldBFG(mobj_t *actor, player_t *player, pspdef_t *psp)
 {
-    int         type = MT_PLASMA1;
+    mobjtype_t  type = MT_PLASMA1;
 
     if (!player)
         return;
@@ -554,8 +571,8 @@ void A_FireOldBFG(mobj_t *actor, player_t *player, pspdef_t *psp)
         an1 += an - mo->angle;
         an2 += tantoangle[slope >> DBITS];
 
-        th = P_SpawnMobj(mo->x, mo->y, mo->z + 62 * FRACUNIT
-            - player->psprites[ps_weapon].sy, type);
+        th = P_SpawnMobj(mo->x, mo->y, mo->z + 62 * FRACUNIT - player->psprites[ps_weapon].sy,
+            type);
         P_SetTarget(&th->target, mo);
         th->angle = an1;
         th->momx = finecosine[an1 >> ANGLETOFINESHIFT] * 25;
@@ -628,6 +645,8 @@ void A_FirePistol(mobj_t *actor, player_t *player, pspdef_t *psp)
     if (!player)
         return;
 
+    P_NoiseAlert(player->mo, player->mo);
+
     S_StartSound(actor, sfx_pistol);
 
     P_SetMobjState(actor, S_PLAY_ATK2);
@@ -659,6 +678,8 @@ void A_FireShotgun(mobj_t *actor, player_t *player, pspdef_t *psp)
 
     if (!player)
         return;
+
+    P_NoiseAlert(player->mo, player->mo);
 
     S_StartSound(actor, sfx_shotgn);
     P_SetMobjState(actor, S_PLAY_ATK2);
@@ -693,6 +714,8 @@ void A_FireShotgun2(mobj_t *actor, player_t *player, pspdef_t *psp)
 
     if (!player)
         return;
+
+    P_NoiseAlert(player->mo, player->mo);
 
     S_StartSound(actor, sfx_dshtgn);
     P_SetMobjState(actor, S_PLAY_ATK2);
@@ -749,7 +772,10 @@ void A_FireCGun(mobj_t *actor, player_t *player, pspdef_t *psp)
         return;
 
     if (player->ammo[weaponinfo[player->readyweapon].ammo])
+    {
+        P_NoiseAlert(player->mo, player->mo);
         S_StartSound(actor, sfx_pistol);
+    }
     else
         return;
 
@@ -766,7 +792,7 @@ void A_FireCGun(mobj_t *actor, player_t *player, pspdef_t *psp)
 
     P_GunShot(actor, !player->refire);
 
-    if (successfulshot)
+    if (successfulshot && psp->state == &states[S_CHAIN1])
     {
         successfulshot = false;
         player->shotshit++;
@@ -801,6 +827,8 @@ void A_BFGSpray(mobj_t *actor, player_t *player, pspdef_t *psp)
     int         i;
     mobj_t      *mo = actor->target;
 
+    P_NoiseAlert(mo->player->mo, mo->player->mo);
+
     // offset angles from its attack angle
     for (i = 0; i < 40; i++)
     {
@@ -821,7 +849,7 @@ void A_BFGSpray(mobj_t *actor, player_t *player, pspdef_t *psp)
         for (j = 0; j < 15; j++)
             damage += (M_Random() & 7) + 1;
 
-        P_DamageMobj(linetarget, mo, mo, damage);
+        P_DamageMobj(linetarget, mo, mo, damage, true);
     }
 
     if (successfulshot)
@@ -846,11 +874,9 @@ void A_BFGsound(mobj_t *actor, player_t *player, pspdef_t *psp)
 //
 void P_SetupPsprites(player_t *player)
 {
-    int i;
-
     // remove all psprites
-    for (i = 0; i < NUMPSPRITES; i++)
-        player->psprites[i].state = NULL;
+    player->psprites[ps_weapon].state = NULL;
+    player->psprites[ps_flash].state = NULL;
 
     // spawn the gun
     player->pendingweapon = player->readyweapon;

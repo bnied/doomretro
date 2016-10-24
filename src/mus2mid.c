@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -35,8 +35,6 @@
 
 ========================================================================
 */
-
-#include <stdio.h>
 
 #include "doomdef.h"
 #include "i_swap.h"
@@ -50,24 +48,24 @@
 // MUS event codes
 typedef enum
 {
-    mus_releasekey = 0x00,
-    mus_presskey = 0x10,
-    mus_pitchwheel = 0x20,
-    mus_systemevent = 0x30,
-    mus_changecontroller = 0x40,
-    mus_scoreend = 0x60
+    mus_releasekey         = 0x00,
+    mus_presskey           = 0x10,
+    mus_pitchwheel         = 0x20,
+    mus_systemevent        = 0x30,
+    mus_changecontroller   = 0x40,
+    mus_scoreend           = 0x60
 } musevent;
 
 // MIDI event codes
 typedef enum
 {
-    midi_releasekey = 0x80,
-    midi_presskey = 0x90,
-    midi_aftertouchkey = 0xa0,
-    midi_changecontroller = 0xb0,
-    midi_changepatch = 0xc0,
-    midi_aftertouchchannel = 0xd0,
-    midi_pitchwheel = 0xe0
+    midi_releasekey        = 0x80,
+    midi_presskey          = 0x90,
+    midi_aftertouchkey     = 0xA0,
+    midi_changecontroller  = 0xB0,
+    midi_changepatch       = 0xC0,
+    midi_aftertouchchannel = 0xD0,
+    midi_pitchwheel        = 0xE0
 } midievent;
 
 #if defined(_MSC_VER)
@@ -265,7 +263,8 @@ static dboolean WriteChangePatch(byte channel, byte patch, MEMFILE *midioutput)
 }
 
 // Write a valued controller change event
-static dboolean WriteChangeController_Valued(byte channel, byte control, byte value, MEMFILE *midioutput)
+static dboolean WriteChangeController_Valued(byte channel, byte control, byte value,
+    MEMFILE *midioutput)
 {
     byte        working = midi_changecontroller | channel;
 
@@ -351,9 +350,7 @@ static int GetMIDIChannel(int mus_channel, MEMFILE *midioutput)
 
 static dboolean ReadMusHeader(MEMFILE *file, musheader *header)
 {
-    dboolean    result;
-
-    result = (mem_fread(&header->id, sizeof(byte), 4, file) == 4
+    dboolean    result = (mem_fread(&header->id, sizeof(byte), 4, file) == 4
         && mem_fread(&header->scorelength, sizeof(short), 1, file) == 1
         && mem_fread(&header->scorestart, sizeof(short), 1, file) == 1
         && mem_fread(&header->primarychannels, sizeof(short), 1, file) == 1
@@ -375,7 +372,7 @@ static dboolean ReadMusHeader(MEMFILE *file, musheader *header)
 // Read a MUS file from a stream (musinput) and output a MIDI file to
 // a stream (midioutput).
 //
-// Returns 0 on success or 1 on failure.
+// Returns false on success or true on failure.
 dboolean mus2mid(MEMFILE *musinput, MEMFILE *midioutput)
 {
     // Header for the MUS file

@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -41,7 +41,6 @@
 
 // Include system definitions so that prototypes become
 // active before macro replacements below are in effect.
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -71,6 +70,5 @@ void *Z_Realloc(void *ptr, size_t size);
 void Z_Free(void *ptr);
 void Z_FreeTags(int32_t lowtag, int32_t hightag);
 void Z_ChangeTag(void *ptr, int32_t tag);
-void Z_ChangeUser(void *ptr, void **user);
 
 #endif

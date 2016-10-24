@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -38,9 +38,7 @@
 
 #include <ctype.h>
 
-#include "doomdef.h"
 #include "doomstat.h"
-#include "info.h"
 #include "i_system.h"
 #include "m_misc.h"
 #include "version.h"
@@ -95,8 +93,8 @@ static int FindInList(searchlist_t *list, char *name)
     return -1;
 }
 
-static dboolean SetupList(searchlist_t *list, searchlist_t *src_list,
-    char *startname, char *endname, char *startname2, char *endname2)
+static dboolean SetupList(searchlist_t *list, searchlist_t *src_list, char *startname, char *endname,
+    char *startname2, char *endname2)
 {
     int startlump;
 
@@ -282,7 +280,7 @@ static void AddSpriteLump(lumpinfo_t *lump)
 
     if (M_StringCompare(leafname(lump->wad_file->path), PACKAGE_WAD)
         && (M_StringCompare(lump->name, "MISFA0") || M_StringCompare(lump->name, "MISFB0"))
-        && (MISFA0 > 2 || MISFB0 > 2))
+        && ((MISFA0 > 2 || MISFB0 > 2) || hacx))
         return;
 
     // first angle
@@ -378,7 +376,6 @@ static void DoMerge(void)
                     current_section = SECTION_SPRITES;
 
                 newlumps[num_newlumps++] = lump;
-
                 break;
 
             case SECTION_FLATS:
@@ -406,7 +403,6 @@ static void DoMerge(void)
                     if (lumpindex < 0)
                         newlumps[num_newlumps++] = lump;
                 }
-
                 break;
 
             case SECTION_SPRITES:
@@ -433,7 +429,6 @@ static void DoMerge(void)
                     if (SpriteLumpNeeded(lump))
                         newlumps[num_newlumps++] = lump;
                 }
-
                 break;
         }
     }

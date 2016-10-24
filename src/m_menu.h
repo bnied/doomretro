@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -38,8 +38,6 @@
 
 #if !defined(__M_MENU_H__)
 #define __M_MENU_H__
-
-#include "d_event.h"
 
 typedef struct
 {
@@ -60,7 +58,7 @@ typedef struct menu_s
     int                 lastOn;
 } menu_t;
 
-dboolean startingnewgame;
+dboolean        startingnewgame;
 
 //
 // MENUS
@@ -97,7 +95,10 @@ void M_DrawCenteredString(int y, char *str);
 void M_SetWindowCaption(void);
 
 void M_UpdateSaveGameName(int i);
-char *M_GetSaveGameName(int i);
+
+void M_StartMessage(char *string, void *routine, dboolean input);
+
+extern dboolean messageToPrint;
 
 extern int      r_screensize;
 extern int      gamepadmenu;

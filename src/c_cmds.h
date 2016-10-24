@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -40,6 +40,10 @@
 #define __C_CMDS_H__
 
 #include "doomtype.h"
+
+#define CMDLISTTITLE            "CCMD\tDESCRIPTION"
+#define CVARLISTTITLE           "CVAR\tDEFAULT\tDESCRIPTION"
+#define PLAYERSTATSTITLE        "STAT\tCURRENT MAP\tTOTAL"
 
 typedef enum
 {
@@ -59,9 +63,12 @@ typedef struct
 typedef struct
 {
     char                *action;
-    void                *keyboard;
-    void                *mouse;
-    void                *gamepad;
+    void                *keyboard1;
+    void                *keyboard2;
+    void                *mouse1;
+    void                *mouse2;
+    void                *gamepad1;
+    void                *gamepad2;
 } action_t;
 
 typedef enum
@@ -71,7 +78,7 @@ typedef enum
     CT_CHEAT = 3
 } cmdtype_t;
 
-typedef enum
+enum
 {
     CF_NONE            =   0,
     CF_BOOLEAN         =   1,
@@ -82,8 +89,8 @@ typedef enum
     CF_READONLY        =  32,
     CF_SIZE            =  64,
     CF_STRING          = 128,
-    CF_TIME            = 256,
-} cmdflags_t;
+    CF_TIME            = 256
+};
 
 typedef struct
 {
@@ -100,6 +107,8 @@ typedef struct
     int                 maximumvalue;
     char                *format;
     char                *description;
+    float               defaultnumber;
+    char                *defaultstring;
 } consolecmd_t;
 
 extern action_t         actions[];

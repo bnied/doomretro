@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -149,8 +149,8 @@ void STlib_initNum(st_number_t *n, int x, int y, patch_t **pl, int *num, dboolea
 void STlib_updateNum(st_number_t *n);
 
 // Percent widget routines
-void STlib_initPercent(st_percent_t *p, int x, int y, patch_t **pl,
-                       int *num, dboolean *on, patch_t *percent);
+void STlib_initPercent(st_percent_t *p, int x, int y, patch_t **pl, int *num, dboolean *on,
+    patch_t *percent);
 
 void STlib_updatePercent(st_percent_t *per, int refresh);
 

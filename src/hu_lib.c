@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -40,16 +40,13 @@
 #include <string.h>
 
 #include "am_map.h"
-#include "d_deh.h"
 #include "doomstat.h"
-#include "dstrings.h"
 #include "hu_lib.h"
 #include "i_swap.h"
 #include "r_local.h"
 #include "v_data.h"
 #include "v_video.h"
 
-extern dboolean automapactive;
 extern dboolean vid_widescreen;
 extern dboolean r_translucency;
 
@@ -82,11 +79,11 @@ dboolean HUlib_addCharToTextLine(hu_textline_t *t, char ch)
     }
 }
 
-static void HU_drawDot(int x, int y, char src)
+static void HU_drawDot(int x, int y, unsigned char src)
 {
     byte        *dest = &tempscreen[y * SCREENWIDTH + x];
 
-    if (src == '\xFB')
+    if (src == 251)
         *dest = 0;
     else if (src != ' ')
         *dest = src;
@@ -101,10 +98,10 @@ static void HU_drawChar(int x, int y, int ch)
     for (y1 = 0; y1 < 10; y1++)
         for (x1 = 0; x1 < w; x1++)
         {
-            char        src = smallcharset[ch][y1 * w + x1];
-            int         i = (x + x1) * SCREENSCALE;
-            int         j = (y + y1) * SCREENSCALE;
-            int         xx, yy;
+            unsigned char       src = smallcharset[ch][y1 * w + x1];
+            int                 i = (x + x1) * SCREENSCALE;
+            int                 j = (y + y1) * SCREENSCALE;
+            int                 xx, yy;
 
             for (yy = 0; yy < SCREENSCALE; ++yy)
                 for (xx = 0; xx < SCREENSCALE; ++xx)
@@ -151,7 +148,7 @@ void HUlib_drawTextLine(hu_textline_t *l, dboolean external)
     {
         unsigned char   c = toupper(l->l[i]);
 
-        if (c != '\n' && c != ' ' && ((c >= l->sc && c <= '_') || l->l[i] == '\xB0'))
+        if (c != '\n' && c != ' ' && ((c >= l->sc && c <= '_') || c == 176))
         {
             int j = c - '!';
 
@@ -163,16 +160,18 @@ void HUlib_drawTextLine(hu_textline_t *l, dboolean external)
                 else if (c == '\'')
                     j = 65;
 #if defined(WIN32)
-                else if (c == '\x92')
+                else if (c == 146)
                     j = 65;
 #endif
             }
 
-            if (l->l[i] == '\xB0')
+            if (c == 176)
+            {
                 if (STCFN034)
                     continue;
                 else
                     j = 66;
+            }
 
             if (STCFN034)
             {
@@ -221,7 +220,7 @@ void HUlib_drawTextLine(hu_textline_t *l, dboolean external)
         for (y1 = 0; y1 < 4; y1++)
             for (x1 = 0; x1 < ORIGINALWIDTH; x1++)
             {
-                char    src = (automapactive && !vid_widescreen ?
+                unsigned char   src = (automapactive && !vid_widescreen ?
                     underscores2[y1 * ORIGINALWIDTH + x1] : underscores1[y1 * ORIGINALWIDTH + x1]);
 
                 for (y2 = 0; y2 < SCREENSCALE; y2++)
@@ -230,7 +229,7 @@ void HUlib_drawTextLine(hu_textline_t *l, dboolean external)
                         byte    *dest = &tempscreen[((8 + y1) * SCREENSCALE + y2) * SCREENWIDTH +
                                                     x1 * SCREENSCALE + x2];
 
-                        if (src == '\xFB')
+                        if (src == 251)
                             *dest = 0;
                         else if (src != ' ')
                             *dest = src;
@@ -255,7 +254,7 @@ void HUlib_drawTextLine(hu_textline_t *l, dboolean external)
 
                 if (r_translucency && !hacx)
                 {
-                    color = tinttab33[(*dest2 << 8) + color];
+                    color = tinttab25[(*dest2 << 8) + color];
                     if (color >= 168 && color <= 175)
                         color -= 144;
                 }
@@ -329,7 +328,7 @@ void HUlib_addMessageToSText(hu_stext_t *s, char *prefix, char *msg)
         HUlib_addCharToTextLine(&s->l[s->cl], *(msg++));
 }
 
-void HUlib_drawSText(hu_stext_t *s)
+void HUlib_drawSText(hu_stext_t *s, dboolean external)
 {
     int i;
 
@@ -348,7 +347,7 @@ void HUlib_drawSText(hu_stext_t *s)
         l = &s->l[idx];
 
         // need a decision made here on whether to skip the draw
-        HUlib_drawTextLine(l, false); // no cursor, please
+        HUlib_drawTextLine(l, external); // no cursor, please
     }
 }
 

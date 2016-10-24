@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -43,7 +43,6 @@
 
 // Silhouette, needed for clipping Segs (mainly)
 // and sprites representing things.
-#define SIL_NONE        0
 #define SIL_BOTTOM      1
 #define SIL_TOP         2
 #define SIL_BOTH        3
@@ -232,8 +231,6 @@ typedef struct line_s
 
     // Animation related.
     unsigned short      flags;
-
-    dboolean            hidden;
 
     short               special;
     short               tag;
@@ -572,129 +569,130 @@ typedef enum
 
 typedef enum
 {
-    Player1Start                                       =    1,
-    Player2Start                                       =    2,
-    Player3Start                                       =    3,
-    Player4Start                                       =    4,
-    BlueKeycard                                        =    5,
-    YellowKeycard                                      =    6,
-    SpiderMastermind                                   =    7,
-    Backpack                                           =    8,
-    ShotgunGuy                                         =    9,
-    BloodyMess1                                        =   10,
-    PlayerDeathmatchStart                              =   11,
-    BloodyMess2                                        =   12,
-    RedKeycard                                         =   13,
-    TeleportDestination                                =   14,
-    DeadPlayer                                         =   15,
-    Cyberdemon                                         =   16,
-    CellPack                                           =   17,
-    DeadZombieman                                      =   18,
-    DeadShotgunGuy                                     =   19,
-    DeadImp                                            =   20,
-    DeadDemon                                          =   21,
-    DeadCacodemon                                      =   22,
-    DeadLostSoulInvisible                              =   23,
-    PoolOfBloodAndBones                                =   24,
-    ImpaledHuman                                       =   25,
-    TwitchingImpaledHuman                              =   26,
-    SkullOnAPole                                       =   27,
-    FiveSkullsShishKebab                               =   28,
-    PileOfSkullsAndCandles                             =   29,
-    TallGreenColumn                                    =   30,
-    ShortGreenColumn                                   =   31,
-    TallRedColumn                                      =   32,
-    ShortRedColumn                                     =   33,
-    Candlestick                                        =   34,
-    Candelabra                                         =   35,
-    ShortGreenColumnWithBeatingHeart                   =   36,
-    ShortRedColumnWithSkull                            =   37,
-    RedSkullKey                                        =   38,
-    YellowSkullKey                                     =   39,
-    BlueSkullKey                                       =   40,
-    EvilEye                                            =   41,
-    FloatingSkullRock                                  =   42,
-    TorchedTree                                        =   43,
-    TallBlueFirestick                                  =   44,
-    TallGreenFirestick                                 =   45,
-    TallRedFirestick                                   =   46,
-    Stalagmite                                         =   47,
-    TallTechnoPillar                                   =   48,
-    HangingVictimTwitchingBlocking                     =   49,
-    HangingVictimArmsOutBlocking                       =   50,
-    HangingVictimOneLeggedBlocking                     =   51,
-    HangingPairOfLegsBlocking                          =   52,
-    HangingLegBlocking                                 =   53,
-    LargeBrownTree                                     =   54,
-    ShortBlueFirestick                                 =   55,
-    ShortGreenFirestick                                =   56,
-    ShortRedFirestick                                  =   57,
-    Spectre                                            =   58,
-    HangingVictimArmsOut                               =   59,
-    HangingPairOfLegs                                  =   60,
-    HangingVictimOneLegged                             =   61,
-    HangingLeg                                         =   62,
-    HangingVictimTwitching                             =   63,
-    ArchVile                                           =   64,
-    HeavyWeaponDude                                    =   65,
-    Revenant                                           =   66,
-    Mancubus                                           =   67,
-    Arachnotron                                        =   68,
-    HellKnight                                         =   69,
-    BurningBarrel                                      =   70,
-    PainElemental                                      =   71,
-    CommanderKeen                                      =   72,
-    HangingVictimGutsRemoved                           =   73,
-    HangingVictimGutsAndBrainRemoved                   =   74,
-    HangingTorsoLookingDown                            =   75,
-    HangingTorsoOpenSkull                              =   76,
-    HangingTorsoLookingUp                              =   77,
-    HangingTorsoBrainRemoved                           =   78,
-    PoolOfBloodAndGuts                                 =   79,
-    PoolOfBlood                                        =   80,
-    PoolOfBrains                                       =   81,
-    SuperShotgun                                       =   82,
-    MegaSphere                                         =   83,
-    WolfensteinSS                                      =   84,
-    TallTechnoFloorLamp                                =   85,
-    ShortTechnoFloorLamp                               =   86,
-    MonstersTarget                                     =   87,
-    BossBrain                                          =   88,
-    MonstersSpawner                                    =   89,
-    Shotgun                                            = 2001,
-    Chaingun                                           = 2002,
-    RocketLauncher                                     = 2003,
-    PlasmaRifle                                        = 2004,
-    Chainsaw                                           = 2005,
-    BFG9000                                            = 2006,
-    Clip                                               = 2007,
-    ShotgunShells                                      = 2008,
-    Rocket                                             = 2010,
-    Stimpack                                           = 2011,
-    Medikit                                            = 2012,
-    SoulSphere                                         = 2013,
-    HealthBonus                                        = 2014,
-    ArmorBonus                                         = 2015,
-    GreenArmor                                         = 2018,
-    BlueArmor                                          = 2019,
-    Invulnerability                                    = 2022,
-    Berserk                                            = 2023,
-    PartialInvisibility                                = 2024,
-    RadiationShieldingSuit                             = 2025,
-    ComputerAreaMap                                    = 2026,
-    FloorLamp                                          = 2028,
-    Barrel                                             = 2035,
-    LightAmplificationVisor                            = 2045,
-    BoxOfRockets                                       = 2046,
-    Cell                                               = 2047,
-    BoxOfBullets                                       = 2048,
-    BoxOfShells                                        = 2049,
-    Imp                                                = 3001,
-    Demon                                              = 3002,
-    BaronOfHell                                        = 3003,
-    Zombieman                                          = 3004,
-    Cacodemon                                          = 3005,
-    LostSoul                                           = 3006
+    Player1Start                                       =     1,
+    Player2Start                                       =     2,
+    Player3Start                                       =     3,
+    Player4Start                                       =     4,
+    BlueKeycard                                        =     5,
+    YellowKeycard                                      =     6,
+    SpiderMastermind                                   =     7,
+    Backpack                                           =     8,
+    ShotgunGuy                                         =     9,
+    BloodyMess1                                        =    10,
+    PlayerDeathmatchStart                              =    11,
+    BloodyMess2                                        =    12,
+    RedKeycard                                         =    13,
+    TeleportDestination                                =    14,
+    DeadPlayer                                         =    15,
+    Cyberdemon                                         =    16,
+    CellPack                                           =    17,
+    DeadZombieman                                      =    18,
+    DeadShotgunGuy                                     =    19,
+    DeadImp                                            =    20,
+    DeadDemon                                          =    21,
+    DeadCacodemon                                      =    22,
+    DeadLostSoulInvisible                              =    23,
+    PoolOfBloodAndBones                                =    24,
+    ImpaledHuman                                       =    25,
+    TwitchingImpaledHuman                              =    26,
+    SkullOnAPole                                       =    27,
+    FiveSkullsShishKebab                               =    28,
+    PileOfSkullsAndCandles                             =    29,
+    TallGreenColumn                                    =    30,
+    ShortGreenColumn                                   =    31,
+    TallRedColumn                                      =    32,
+    ShortRedColumn                                     =    33,
+    Candlestick                                        =    34,
+    Candelabra                                         =    35,
+    ShortGreenColumnWithBeatingHeart                   =    36,
+    ShortRedColumnWithSkull                            =    37,
+    RedSkullKey                                        =    38,
+    YellowSkullKey                                     =    39,
+    BlueSkullKey                                       =    40,
+    EvilEye                                            =    41,
+    FloatingSkullRock                                  =    42,
+    TorchedTree                                        =    43,
+    TallBlueFirestick                                  =    44,
+    TallGreenFirestick                                 =    45,
+    TallRedFirestick                                   =    46,
+    Stalagmite                                         =    47,
+    TallTechnoPillar                                   =    48,
+    HangingVictimTwitchingBlocking                     =    49,
+    HangingVictimArmsOutBlocking                       =    50,
+    HangingVictimOneLeggedBlocking                     =    51,
+    HangingPairOfLegsBlocking                          =    52,
+    HangingLegBlocking                                 =    53,
+    LargeBrownTree                                     =    54,
+    ShortBlueFirestick                                 =    55,
+    ShortGreenFirestick                                =    56,
+    ShortRedFirestick                                  =    57,
+    Spectre                                            =    58,
+    HangingVictimArmsOut                               =    59,
+    HangingPairOfLegs                                  =    60,
+    HangingVictimOneLegged                             =    61,
+    HangingLeg                                         =    62,
+    HangingVictimTwitching                             =    63,
+    ArchVile                                           =    64,
+    HeavyWeaponDude                                    =    65,
+    Revenant                                           =    66,
+    Mancubus                                           =    67,
+    Arachnotron                                        =    68,
+    HellKnight                                         =    69,
+    BurningBarrel                                      =    70,
+    PainElemental                                      =    71,
+    CommanderKeen                                      =    72,
+    HangingVictimGutsRemoved                           =    73,
+    HangingVictimGutsAndBrainRemoved                   =    74,
+    HangingTorsoLookingDown                            =    75,
+    HangingTorsoOpenSkull                              =    76,
+    HangingTorsoLookingUp                              =    77,
+    HangingTorsoBrainRemoved                           =    78,
+    PoolOfBloodAndGuts                                 =    79,
+    PoolOfBlood                                        =    80,
+    PoolOfBrains                                       =    81,
+    SuperShotgun                                       =    82,
+    MegaSphere                                         =    83,
+    WolfensteinSS                                      =    84,
+    TallTechnoFloorLamp                                =    85,
+    ShortTechnoFloorLamp                               =    86,
+    MonstersTarget                                     =    87,
+    BossBrain                                          =    88,
+    MonstersSpawner                                    =    89,
+    Shotgun                                            =  2001,
+    Chaingun                                           =  2002,
+    RocketLauncher                                     =  2003,
+    PlasmaRifle                                        =  2004,
+    Chainsaw                                           =  2005,
+    BFG9000                                            =  2006,
+    Clip                                               =  2007,
+    ShotgunShells                                      =  2008,
+    Rocket                                             =  2010,
+    Stimpack                                           =  2011,
+    Medikit                                            =  2012,
+    SoulSphere                                         =  2013,
+    HealthBonus                                        =  2014,
+    ArmorBonus                                         =  2015,
+    GreenArmor                                         =  2018,
+    BlueArmor                                          =  2019,
+    Invulnerability                                    =  2022,
+    Berserk                                            =  2023,
+    PartialInvisibility                                =  2024,
+    RadiationShieldingSuit                             =  2025,
+    ComputerAreaMap                                    =  2026,
+    FloorLamp                                          =  2028,
+    Barrel                                             =  2035,
+    LightAmplificationVisor                            =  2045,
+    BoxOfRockets                                       =  2046,
+    Cell                                               =  2047,
+    BoxOfBullets                                       =  2048,
+    BoxOfShells                                        =  2049,
+    Imp                                                =  3001,
+    Demon                                              =  3002,
+    BaronOfHell                                        =  3003,
+    Zombieman                                          =  3004,
+    Cacodemon                                          =  3005,
+    LostSoul                                           =  3006,
+    MusicSource                                        = 14164
 } thingtype_t;
 
 //
@@ -810,7 +808,7 @@ typedef post_t column_t;
 // Could even use more than 32 levels.
 typedef byte lighttable_t;
 
-typedef struct drawseg_s
+typedef struct
 {
     seg_t               *curline;
     int                 x1;
@@ -863,7 +861,7 @@ typedef struct
 // A vissprite_t is a thing
 //  that will be drawn during a refresh.
 // I.e. a sprite object that is partly visible.
-typedef struct vissprite_s
+typedef struct
 {
     int                 x1;
     int                 x2;

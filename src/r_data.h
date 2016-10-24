@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -42,8 +42,6 @@
 #include "r_defs.h"
 #include "r_patch.h"
 #include "r_state.h"
-
-#define NO_TEXTURE      0
 
 #if defined(_MSC_VER)
 #pragma pack(push)
@@ -100,13 +98,11 @@ typedef struct
     int                 patch;
 } texpatch_t;
 
-// A maptexturedef_t describes a rectangular texture,
+// A texture_t describes a rectangular texture,
 //  which is composed of one or more mappatch_t structures
 //  that arrange graphic patches.
 
-typedef struct texture_s texture_t;
-
-struct texture_s
+typedef struct
 {
     // Keep name for switch changing, etc.
     char                name[8];
@@ -125,7 +121,7 @@ struct texture_s
     //  are drawn back to front into the cached texture.
     short               patchcount;
     texpatch_t          patches[1];
-};
+} texture_t;
 
 // Retrieve column data for span blitting.
 byte *R_GetTextureColumn(rpatch_t *texpatch, int col);

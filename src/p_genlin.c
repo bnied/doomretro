@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,13 +36,10 @@
 ========================================================================
 */
 
-#include "doomstat.h"
-#include "r_main.h"
-#include "p_spec.h"
-#include "p_tick.h"
 #include "m_random.h"
+#include "p_local.h"
+#include "p_tick.h"
 #include "s_sound.h"
-#include "sounds.h"
 #include "z_zone.h"
 
 //
@@ -58,9 +55,9 @@
 //
 dboolean EV_DoGenFloor(line_t *line)
 {
-    int         secnum;
-    dboolean    rtn;
-    dboolean    manual;
+    int         secnum = -1;
+    dboolean    rtn = false;
+    dboolean    manual = false;
     sector_t    *sec;
     floormove_t *floor;
     unsigned    value = (unsigned int)line->special - GenFloorBase;
@@ -74,11 +71,8 @@ dboolean EV_DoGenFloor(line_t *line)
     int         Sped = (value & FloorSpeed) >> FloorSpeedShift;
     int         Trig = (value & TriggerType) >> TriggerTypeShift;
 
-    rtn = false;
-
     // check if a manual trigger, if so do just the sector on the backside
-    manual = false;
-    if (Trig == PushOnce || Trig == PushMany)
+    if (Trig == PushOnce || Trig == PushMany || !line->tag)
     {
         if (!(sec = line->backsector))
             return rtn;
@@ -87,7 +81,6 @@ dboolean EV_DoGenFloor(line_t *line)
         goto manual_floor;
     }
 
-    secnum = -1;
     // if not manual do all sectors tagged the same as the line
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)
     {
@@ -266,7 +259,7 @@ manual_floor:
 //
 dboolean EV_DoGenCeiling(line_t *line)
 {
-    int                 secnum;
+    int                 secnum = -1;
     dboolean            rtn = false;
     dboolean            manual = false;
     fixed_t             targheight;
@@ -284,16 +277,14 @@ dboolean EV_DoGenCeiling(line_t *line)
     int                 Trig = (value & TriggerType) >> TriggerTypeShift;
 
     // check if a manual trigger, if so do just the sector on the backside
-    if (Trig == PushOnce || Trig == PushMany)
+    if (Trig == PushOnce || Trig == PushMany || !line->tag)
     {
-        if (!line || !(sec = line->backsector))
+        if (!(sec = line->backsector))
             return rtn;
         secnum = sec - sectors;
         manual = true;
         goto manual_ceiling;
     }
-
-    secnum = -1;
 
     // if not manual do all sectors tagged the same as the line
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)
@@ -475,11 +466,11 @@ manual_ceiling:
 dboolean EV_DoGenLift(line_t *line)
 {
     plat_t              *plat;
-    int                 secnum;
-    dboolean            rtn;
-    dboolean            manual;
+    int                 secnum = -1;
+    dboolean            rtn = false;
+    dboolean            manual = false;
     sector_t            *sec;
-    unsigned int        value = (unsigned)line->special - GenLiftBase;
+    unsigned int        value = (unsigned int)line->special - GenLiftBase;
 
     // parse the bit fields in the line's special type
     int                 Targ = (value & LiftTarget) >> LiftTargetShift;
@@ -487,16 +478,12 @@ dboolean EV_DoGenLift(line_t *line)
     int                 Sped = (value & LiftSpeed) >> LiftSpeedShift;
     int                 Trig = (value & TriggerType) >> TriggerTypeShift;
 
-    secnum = -1;
-    rtn = false;
-
     // Activate all <type> plats that are in_stasis
     if (Targ == LnF2HnF)
         P_ActivateInStasis(line->tag);
 
     // check if a manual trigger, if so do just the sector on the backside
-    manual = false;
-    if (Trig == PushOnce || Trig == PushMany)
+    if (Trig == PushOnce || Trig == PushMany || !line->tag)
     {
         if (!(sec = line->backsector))
             return rtn;
@@ -629,15 +616,15 @@ manual_lift:
 //
 dboolean EV_DoGenStairs(line_t *line)
 {
-    int                 secnum;
+    int                 secnum = -1;
     int                 osecnum;        // jff 3/4/98 preserve loop index
     int                 height;
     int                 i;
     int                 newsecnum;
     int                 texture;
     dboolean            okay;
-    dboolean            rtn;
-    dboolean            manual;
+    dboolean            rtn = false;
+    dboolean            manual = false;
 
     sector_t            *sec;
     sector_t            *tsec;
@@ -656,11 +643,8 @@ dboolean EV_DoGenStairs(line_t *line)
     int                 Sped = (value & StairSpeed) >> StairSpeedShift;
     int                 Trig = (value & TriggerType) >> TriggerTypeShift;
 
-    rtn = false;
-
     // check if a manual trigger, if so do just the sector on the backside
-    manual = false;
-    if (Trig == PushOnce || Trig == PushMany)
+    if (Trig == PushOnce || Trig == PushMany || !line->tag)
     {
         if (!(sec = line->backsector))
             return rtn;
@@ -668,8 +652,6 @@ dboolean EV_DoGenStairs(line_t *line)
         manual = true;
         goto manual_stair;
     }
-
-    secnum = -1;
 
     // if not manual do all sectors tagged the same as the line
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)
@@ -830,9 +812,9 @@ manual_stair:
 //
 dboolean EV_DoGenCrusher(line_t *line)
 {
-    int                 secnum;
+    int                 secnum = -1;
     dboolean            rtn;
-    dboolean            manual;
+    dboolean            manual = false;
     sector_t            *sec;
     ceiling_t           *ceiling;
     unsigned int        value = (unsigned int)line->special - GenCrusherBase;
@@ -847,8 +829,7 @@ dboolean EV_DoGenCrusher(line_t *line)
     rtn = P_ActivateInStasisCeiling(line);
 
     // check if a manual trigger, if so do just the sector on the backside
-    manual = false;
-    if (Trig == PushOnce || Trig == PushMany)
+    if (Trig == PushOnce || Trig == PushMany || !line->tag)
     {
         if (!(sec = line->backsector))
             return rtn;
@@ -857,7 +838,6 @@ dboolean EV_DoGenCrusher(line_t *line)
         goto manual_crusher;
     }
 
-    secnum = -1;
     // if not manual do all sectors tagged the same as the line
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)
     {
@@ -930,11 +910,11 @@ manual_crusher:
 //
 dboolean EV_DoGenLockedDoor(line_t *line)
 {
-    int                 secnum;
-    dboolean            rtn;
+    int                 secnum = -1;
+    dboolean            rtn = false;
     sector_t            *sec;
     vldoor_t            *door;
-    dboolean            manual;
+    dboolean            manual = false;
     unsigned int        value = (unsigned int)line->special - GenLockedBase;
 
     // parse the bit fields in the line's special type
@@ -942,11 +922,8 @@ dboolean EV_DoGenLockedDoor(line_t *line)
     int                 Sped = (value & LockedSpeed) >> LockedSpeedShift;
     int                 Trig = (value & TriggerType) >> TriggerTypeShift;
 
-    rtn = false;
-
     // check if a manual trigger, if so do just the sector on the backside
-    manual = false;
-    if (Trig == PushOnce || Trig == PushMany)
+    if (Trig == PushOnce || Trig == PushMany || !line->tag)
     {
         if (!(sec = line->backsector))
             return rtn;
@@ -955,13 +932,11 @@ dboolean EV_DoGenLockedDoor(line_t *line)
         goto manual_locked;
     }
 
-    secnum = -1;
-    rtn = false;
-
     // if not manual do all sectors tagged the same as the line
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)
     {
         sec = &sectors[secnum];
+
 manual_locked:
         // Do not start another function if ceiling already moving
         if (P_SectorActive(ceiling_special, sec))   // jff 2/22/98
@@ -1036,10 +1011,10 @@ manual_locked:
 //
 dboolean EV_DoGenDoor(line_t *line)
 {
-    int                 secnum;
-    dboolean            rtn;
+    int                 secnum = -1;
+    dboolean            rtn = false;
     sector_t            *sec;
-    dboolean            manual;
+    dboolean            manual = false;
     vldoor_t            *door;
     unsigned int        value = (unsigned int)line->special - GenDoorBase;
 
@@ -1049,11 +1024,8 @@ dboolean EV_DoGenDoor(line_t *line)
     int                 Sped = (value & DoorSpeed) >> DoorSpeedShift;
     int                 Trig = (value & TriggerType) >> TriggerTypeShift;
 
-    rtn = false;
-
     // check if a manual trigger, if so do just the sector on the backside
-    manual = false;
-    if (Trig == PushOnce || Trig == PushMany)
+    if (Trig == PushOnce || Trig == PushMany || !line->tag)
     {
         if (!(sec = line->backsector))
             return rtn;
@@ -1062,13 +1034,11 @@ dboolean EV_DoGenDoor(line_t *line)
         goto manual_door;
     }
 
-    secnum = -1;
-    rtn = 0;
-
     // if not manual do all sectors tagged the same as the line
     while ((secnum = P_FindSectorFromLineTag(line, secnum)) >= 0)
     {
         sec = &sectors[secnum];
+
 manual_door:
         // Do not start another function if ceiling already moving
         if (P_SectorActive(ceiling_special, sec))

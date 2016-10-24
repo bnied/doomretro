@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,23 +36,14 @@
 ========================================================================
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
-
 #include "c_console.h"
 #include "d_deh.h"
-#include "d_iwad.h"
-#include "doomdef.h"
 #include "doomstat.h"
 #include "i_system.h"
 #include "m_argv.h"
-#include "m_config.h"
 #include "m_misc.h"
 #include "version.h"
 #include "w_wad.h"
-#include "z_zone.h"
 
 // Array of locations to search for IWAD files
 //
@@ -86,7 +77,7 @@ typedef struct
     char        *value;
 } registry_value_t;
 
-#define UNINSTALLER_STRING "\\uninstl.exe /S "
+#define UNINSTALLER_STRING      "\\uninstl.exe /S "
 
 // Keys installed by the various CD editions. These are actually the
 // commands to invoke the uninstaller and look like this:
@@ -98,9 +89,9 @@ typedef struct
 // [AlexMax] From the perspective of a 64-bit executable, 32-bit registry
 // keys are located in a different spot.
 #if _WIN64
-#define SOFTWARE_KEY "Software\\Wow6432Node"
+#define SOFTWARE_KEY            "Software\\Wow6432Node"
 #else
-#define SOFTWARE_KEY "Software"
+#define SOFTWARE_KEY            "Software"
 #endif
 
 static registry_value_t uninstall_values[] =
@@ -150,7 +141,6 @@ static registry_value_t root_path_keys[] =
     },
 
     // Ultimate Doom
-
     {
         HKEY_LOCAL_MACHINE,
         SOFTWARE_KEY "\\GOG.com\\Games\\1435827232",
@@ -158,7 +148,6 @@ static registry_value_t root_path_keys[] =
     },
 
     // Doom II
-
     {
         HKEY_LOCAL_MACHINE,
         SOFTWARE_KEY "\\GOG.com\\Games\\1435848814",
@@ -166,7 +155,6 @@ static registry_value_t root_path_keys[] =
     },
 
     // Final Doom
-
     {
         HKEY_LOCAL_MACHINE,
         SOFTWARE_KEY "\\GOG.com\\Games\\1435848742",
@@ -261,7 +249,6 @@ static void CheckUninstallStrings(void)
 }
 
 // Check for GOG.com and Doom: Collector's Edition
-
 static void CheckInstallRootPaths(void)
 {
     size_t      i;
@@ -317,13 +304,13 @@ static struct
     char                *name;
     GameMission_t       mission;
 } iwads[] = {
-    { "doom2.wad",    doom2      },
-    { "doom2.wad",    pack_nerve },
-    { "plutonia.wad", pack_plut  },
-    { "tnt.wad",      pack_tnt   },
-    { "doom.wad",     doom       },
-    { "doom1.wad",    doom       },
-    { "hacx.wad",     doom2      }
+    { "doom2",    doom2      },
+    { "doom2",    pack_nerve },
+    { "plutonia", pack_plut  },
+    { "tnt",      pack_tnt   },
+    { "doom",     doom       },
+    { "doom1",    doom       },
+    { "hacx",     doom2      }
 };
 
 // When given an IWAD with the '-iwad' parameter,
@@ -343,8 +330,10 @@ void IdentifyIWADByName(char *name)
 
     for (i = 0; i < arrlen(iwads); ++i)
     {
+        char    *iwad = M_StringJoin(iwads[i].name, ".wad", NULL);
+
         // Check if the filename is this IWAD name.
-        if (M_StringCompare(name, iwads[i].name))
+        if (M_StringCompare(name, iwad))
         {
             gamemission = iwads[i].mission;
             break;
@@ -426,7 +415,7 @@ static void BuildIWADDirList(void)
 //
 char *D_FindWADByName(char *name)
 {
-    int         i;
+    int i;
 
     // Absolute path?
     if (M_FileExists(name))
@@ -533,21 +522,28 @@ void D_SetSaveGameFolder(void)
 {
     char        *iwad_name = SaveGameIWADName();
     char        *appdatafolder = M_GetAppDataFolder();
+    int         p = M_CheckParmWithArgs("-savedir", 1, 1);
 
     if (!iwad_name)
-        iwad_name = "unknown.wad";
+        iwad_name = "unknown";
 
-    M_MakeDirectory(appdatafolder);
-    
-    savegamefolder = M_StringJoin(appdatafolder, DIR_SEPARATOR_S, "savegames",
-        DIR_SEPARATOR_S, NULL);
+    if (p)
+        savegamefolder = M_StringJoin(myargv[p + 1], DIR_SEPARATOR_S, NULL);
+    else
+    {
+        M_MakeDirectory(appdatafolder);
+
+        savegamefolder = M_StringJoin(appdatafolder, DIR_SEPARATOR_S, "savegames",
+            DIR_SEPARATOR_S, NULL);
+    }
+
     M_MakeDirectory(savegamefolder);
 
     savegamefolder = M_StringJoin(savegamefolder, (pwadfile[0] ? pwadfile : iwad_name),
         DIR_SEPARATOR_S, NULL);
     M_MakeDirectory(savegamefolder);
 
-    C_Output("Savegames will be saved and loaded in %s.", uppercase(savegamefolder));
+    C_Output("Savegames will be saved and loaded in <b>%s</b>.", savegamefolder);
 }
 
 //
@@ -606,8 +602,10 @@ void D_SetGameDescription(void)
     gamedescription = (char *)malloc(64);
     gamedescription = PACKAGE_NAME;
 
-    if (chex)
+    if (chex1)
         gamedescription = s_CAPTION_CHEX;
+    else if (chex2)
+        gamedescription = s_CAPTION_CHEX2;
     else if (hacx)
         gamedescription = s_CAPTION_HACX;
     else if (BTSXE1)
@@ -672,7 +670,7 @@ void D_SetGameDescription(void)
     }
     else
     {
-        if (bfgedition)
+        if (bfgedition && !modifiedgame)
             C_Output("Playing \"%s (%s)\".", gamedescription, s_CAPTION_BFGEDITION);
         else
             C_Output("Playing \"%s\".", gamedescription);

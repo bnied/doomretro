@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -37,18 +37,15 @@
 */
 
 #include "c_console.h"
-#include "d_deh.h"
-#include "d_main.h"
 #include "doomstat.h"
 #include "hu_stuff.h"
 #include "i_gamepad.h"
-#include "m_config.h"
+#include "i_system.h"
 #include "m_random.h"
 #include "p_local.h"
 #include "p_tick.h"
 #include "s_sound.h"
 #include "st_stuff.h"
-#include "w_wad.h"
 #include "z_zone.h"
 
 void G_PlayerReborn(void);
@@ -57,9 +54,7 @@ void P_SpawnShadow(mobj_t *actor);
 
 int                     r_blood = r_blood_default;
 int                     r_bloodsplats_max = r_bloodsplats_max_default;
-mobj_t                  *bloodsplats[r_bloodsplats_max_max];
 int                     r_bloodsplats_total;
-void                    (*P_BloodSplatSpawner)(fixed_t, fixed_t, int, int, mobj_t *);
 
 dboolean                r_corpses_color = r_corpses_color_default;
 dboolean                r_corpses_mirrored = r_corpses_mirrored_default;
@@ -99,21 +94,17 @@ dboolean P_IsVoodooDoll(mobj_t *mobj)
 // P_SetMobjState
 // Returns true if the mobj is still present.
 //
+// [crispy] Use a heuristic approach to detect infinite state cycles: Count the number
+// of times the loop in P_SetMobjState() executes and exit with an error once
+// an arbitrary very large limit is reached.
+
+#define MOBJ_CYCLE_LIMIT        1000000
+
 dboolean P_SetMobjState(mobj_t *mobj, statenum_t state)
 {
-    state_t             *st;
-
-    // killough 4/9/98: remember states seen, to detect cycles:
-    static statenum_t   seenstate_tab[NUMSTATES];               // fast transition table
-    statenum_t          *seenstate = seenstate_tab;             // pointer to table
-    static int          recursion;                              // detects recursion
-    statenum_t          i = state;                              // initial state
-    dboolean            ret = true;                             // return value
-    statenum_t          tempstate[NUMSTATES];                   // for use with recursion
-    mobj_t              *shadow = mobj->shadow;
-
-    if (recursion++)                                            // if recursion detected,
-        memset((seenstate = tempstate), 0, sizeof(tempstate));  // clear state table
+    state_t     *st;
+    int         cycle_counter = 0;
+    mobj_t      *shadow = mobj->shadow;
 
     do
     {
@@ -121,8 +112,7 @@ dboolean P_SetMobjState(mobj_t *mobj, statenum_t state)
         {
             mobj->state = (state_t *)S_NULL;
             P_RemoveMobj(mobj);
-            ret = false;
-            break;                                              // killough 4/9/98
+            return false;
         }
 
         st = &states[state];
@@ -137,24 +127,21 @@ dboolean P_SetMobjState(mobj_t *mobj, statenum_t state)
         if (st->action)
             st->action(mobj, NULL, NULL);
 
-        seenstate[state] = 1 + st->nextstate;                   // killough 4/9/98
-
         state = st->nextstate;
-    } while (!mobj->tics && !seenstate[state]);                 // killough 4/9/98
 
-    if (!--recursion)
-        for (; (state = seenstate[i]); i = state - 1)
-            seenstate[i] = 0;                           // killough 4/9/98: erase memory of states
+        if (cycle_counter++ > MOBJ_CYCLE_LIMIT)
+            I_Error("P_SetMobjState: Infinite state cycle detected!");
+    } while (!mobj->tics);
 
     // [BH] Use same sprite frame for shadow as mobj
-    if (ret && shadow)
+    if (shadow)
     {
         shadow->sprite = mobj->sprite;
         shadow->frame = mobj->frame;
         shadow->angle = mobj->angle;
     }
 
-    return ret;
+    return true;
 }
 
 //
@@ -162,7 +149,9 @@ dboolean P_SetMobjState(mobj_t *mobj, statenum_t state)
 //
 void P_ExplodeMissile(mobj_t *mo)
 {
-    mo->momx = mo->momy = mo->momz = 0;
+    mo->momx = 0;
+    mo->momy = 0;
+    mo->momz = 0;
 
     P_SetMobjState(mo, mo->info->deathstate);
 
@@ -174,19 +163,19 @@ void P_ExplodeMissile(mobj_t *mo)
     if (mo->type == MT_ROCKET)
     {
         mo->colfunc = tlcolfunc;
-        if (mo->shadow)
-            P_RemoveMobjShadow(mo);
+        P_RemoveMobjShadow(mo);
     }
 
-    S_StartSound(mo, mo->info->deathsound);
+    if (mo->info->deathsound)
+        S_StartSound(mo, mo->info->deathsound);
 }
 
 //
 // P_XYMovement
 //
 #define STOPSPEED       0x1000
-#define FRICTION        0xe800
-#define WATERFRICTION   0xfb00
+#define FRICTION        0xE800
+#define WATERFRICTION   0xFB00
 
 int     puffcount = 0;
 
@@ -260,9 +249,9 @@ void P_XYMovement(mobj_t *mo)
                 if (blockline)
                 {
                     fixed_t     r = ((blockline->dx >> FRACBITS) * mo->momx
-                        + (blockline->dy >> FRACBITS) * mo->momy)
-                        / ((blockline->dx >> FRACBITS) * (blockline->dx >> FRACBITS)
-                        + (blockline->dy >> FRACBITS) * (blockline->dy >> FRACBITS));
+                                    + (blockline->dy >> FRACBITS) * mo->momy)
+                                    / ((blockline->dx >> FRACBITS) * (blockline->dx >> FRACBITS)
+                                    + (blockline->dy >> FRACBITS) * (blockline->dy >> FRACBITS));
                     fixed_t     x = FixedMul(r, blockline->dx);
                     fixed_t     y = FixedMul(r, blockline->dy);
 
@@ -287,8 +276,7 @@ void P_XYMovement(mobj_t *mo)
             else if (flags & MF_MISSILE)
             {
                 // explode a missile
-                if (ceilingline
-                    && ceilingline->backsector
+                if (ceilingline && ceilingline->backsector
                     && ceilingline->backsector->ceilingpic == skyflatnum
                     && mo->z > ceilingline->backsector->ceilingheight)
                 {
@@ -315,11 +303,10 @@ void P_XYMovement(mobj_t *mo)
         return;         // no friction when airborne
 
     // [BH] spawn random blood splats on floor as corpses slide
-    if (corpse && !(flags & MF_NOBLOOD) && r_corpses_slide && r_corpses_smearblood
+    if (corpse && !(flags & MF_NOBLOOD) && mo->blood && r_corpses_slide && r_corpses_smearblood
         && (mo->momx || mo->momy) && mo->bloodsplats && r_bloodsplats_max && !mo->nudge)
     {
-        int     radius = (spritewidth[sprites[mo->sprite].spriteframes[0].lump[0]] >> FRACBITS)
-                    >> 1;
+        int     radius = spritewidth[sprites[mo->sprite].spriteframes[0].lump[0]] >> FRACBITS >> 1;
         int     i;
         int     max = MIN((ABS(mo->momx) + ABS(mo->momy)) >> (FRACBITS - 2), 8);
         int     x = mo->x;
@@ -571,6 +558,12 @@ void P_MobjThinker(mobj_t *mobj)
     player_t    *player = mobj->player;
     sector_t    *sector = mobj->subsector->sector;
 
+    if (mobj->type == MT_MUSICSOURCE)
+    {
+        MusInfoThinker(mobj);
+        return;
+    }
+
     // [AM] Handle interpolation unless we're an active player.
     if (!(player && mobj == player->mo))
     {
@@ -670,12 +663,17 @@ void P_MobjThinker(mobj_t *mobj)
     {
         // you can cycle through multiple states in a tic
         if (!--mobj->tics)
+        {
+            // [WDJ] This would segfault if mobj had been removed.
+            if (mobj->state == &states[S_NULL])
+                return;
             P_SetMobjState(mobj, mobj->state->nextstate);
+        }
     }
     else
     {
         // check for nightmare respawn
-        if ((flags & MF_COUNTKILL) && (gameskill == sk_nightmare || respawnparm))
+        if ((flags & MF_COUNTKILL) && (gameskill == sk_nightmare || respawnmonsters))
         {
             mobj->movecount++;
 
@@ -745,18 +743,14 @@ mobj_t *P_SpawnMobj(fixed_t x, fixed_t y, fixed_t z, mobjtype_t type)
 
     sector = mobj->subsector->sector;
     mobj->dropoffz =           // killough 11/98: for tracking dropoffs
-    mobj->floorz = sector->floorheight;
-    mobj->ceilingz = sector->ceilingheight;
+    mobj->floorz = sector->interpfloorheight;
+    mobj->ceilingz = sector->interpceilingheight;
 
     // [BH] initialize bobbing things
-    if (r_floatbob)
-        mobj->floatbob = prevbob = (x == prevx && y == prevy && z == prevz ? prevbob : M_Random());
+    mobj->floatbob = prevbob = (x == prevx && y == prevy && z == prevz ? prevbob : M_Random());
 
     mobj->z = (z == ONFLOORZ ? mobj->floorz : (z == ONCEILINGZ ? mobj->ceilingz - mobj->height :
         z));
-
-    // [AM] Do not interpolate on spawn.
-    mobj->interp = false;
 
     // [AM] Just in case interpolation is attempted...
     mobj->oldx = mobj->x;
@@ -781,15 +775,37 @@ mobj_t *P_SpawnMobj(fixed_t x, fixed_t y, fixed_t z, mobjtype_t type)
     return mobj;
 }
 
+mapthing_t      itemrespawnque[ITEMQUEUESIZE];
+int             itemrespawntime[ITEMQUEUESIZE];
+int             iquehead;
+int             iquetail;
+
 //
 // P_RemoveMobj
 //
 void P_RemoveMobj(mobj_t *mobj)
 {
+    int         flags = mobj->flags;
+    mobjtype_t  type = mobj->type;
+
+    if ((flags & MF_SPECIAL) && !(flags & MF_DROPPED) && type != MT_INV && type != MT_INS)
+    {
+        itemrespawnque[iquehead] = mobj->spawnpoint;
+        itemrespawntime[iquehead] = leveltime;
+        iquehead = (iquehead + 1) & (ITEMQUEUESIZE - 1);
+
+        // lose one off the end?
+        if (iquehead == iquetail)
+            iquetail = (iquetail + 1) & (ITEMQUEUESIZE - 1);
+    }
+
     P_RemoveMobjShadow(mobj);
 
     // unlink from sector and block lists
     P_UnsetThingPosition(mobj);
+
+    // [crispy] removed map objects may finish their sounds
+    S_UnlinkSound(mobj);
 
     // Delete all nodes on the current sector_list
     if (sector_list)
@@ -867,6 +883,53 @@ mobjtype_t P_FindDoomedNum(unsigned int type)
 }
 
 //
+// P_RespawnSpecials
+//
+void P_RespawnSpecials(void)
+{
+    fixed_t     x, y, z;
+    subsector_t *ss;
+    mobj_t      *mo;
+    mapthing_t  *mthing;
+    int         i;
+
+    if (!respawnitems)
+        return;
+
+    // nothing left to respawn?
+    if (iquehead == iquetail)
+        return;
+
+    // wait at least 30 seconds
+    if (leveltime - itemrespawntime[iquetail] < 30 * TICRATE)
+        return;
+
+    mthing = &itemrespawnque[iquetail];
+
+    x = mthing->x << FRACBITS;
+    y = mthing->y << FRACBITS;
+
+    // spawn a teleport fog at the new spot
+    ss = R_PointInSubsector(x, y);
+    mo = P_SpawnMobj(x, y, ss->sector->floorheight, MT_IFOG);
+    S_StartSound(mo, sfx_itmbk);
+
+    // find which type to spawn
+    // killough 8/23/98: use table for faster lookup
+    i = P_FindDoomedNum(mthing->type);
+
+    // spawn it
+    z = ((mobjinfo[i].flags & MF_SPAWNCEILING) ? ONCEILINGZ : ONFLOORZ);
+
+    mo = P_SpawnMobj(x, y, z, i);
+    mo->spawnpoint = *mthing;
+    mo->angle = ANG45 * (mthing->angle / 45);
+
+    // pull it from the queue
+    iquetail = (iquetail + 1) & (ITEMQUEUESIZE - 1);
+}
+
+//
 // P_SpawnPlayer
 // Called when a player is spawned on the level.
 // Most of the player structure stays unchanged
@@ -877,19 +940,13 @@ extern int lastepisode;
 
 void P_SpawnPlayer(const mapthing_t *mthing)
 {
-    player_t    *p;
-    fixed_t     x, y, z;
+    player_t    *p = &players[0];
     mobj_t      *mobj;
-
-    p = &players[0];
 
     if (p->playerstate == PST_REBORN)
         G_PlayerReborn();
 
-    x = mthing->x << FRACBITS;
-    y = mthing->y << FRACBITS;
-    z = ONFLOORZ;
-    mobj = P_SpawnMobj(x, y, z, MT_PLAYER);
+    mobj = P_SpawnMobj(mthing->x << FRACBITS, mthing->y << FRACBITS, ONFLOORZ, MT_PLAYER);
 
     mobj->angle = ((mthing->angle % 45) ? mthing->angle * (ANG45 / 45) :
         ANG45 * (mthing->angle / 45));
@@ -908,8 +965,10 @@ void P_SpawnPlayer(const mapthing_t *mthing)
 
     p->viewz = p->mo->z + p->viewheight;
     p->psprites[ps_weapon].sx = 0;
-    p->mo->momx = p->mo->momy = 0;
-    p->momx = p->momy = 0;
+    p->mo->momx = 0;
+    p->mo->momy = 0;
+    p->momx = 0;
+    p->momy = 0;
 
     // setup gun psprite
     P_SetupPsprites(p);
@@ -971,6 +1030,7 @@ void P_SpawnMapThing(mapthing_t *mthing, int index)
     fixed_t     x, y, z;
     short       type = mthing->type;
     int         flags;
+    int         id = 0;
 
     // check for players specially
     if (type == Player1Start)
@@ -995,6 +1055,13 @@ void P_SpawnMapThing(mapthing_t *mthing, int index)
     if (!(mthing->options & bit))
         return;
 
+    if (type >= 14101 && type <= 14164)
+    {
+        // Use the ambient number
+        id = type - 14100;              // Mus change
+        type = MusicSource;             // MT_MUSICSOURCE
+    }
+
     // find which type to spawn
 
     // killough 8/23/98: use table for faster lookup
@@ -1010,13 +1077,17 @@ void P_SpawnMapThing(mapthing_t *mthing, int index)
 
     if (mobjinfo[i].flags & MF_COUNTKILL)
     {
-        totalkills++;
-        monstercount[i]++;
-
         // don't spawn any monsters if -nomonsters
         if (nomonsters && i != MT_KEEN)
             return;
+
+        totalkills++;
+        monstercount[i]++;
     }
+
+    // [BH] don't spawn any monster corpses if -nomonsters
+    if ((mobjinfo[i].flags & MF_CORPSE) && nomonsters && i != MT_MISC62)
+        return;
 
     // spawn it
     x = mthing->x << FRACBITS;
@@ -1025,6 +1096,7 @@ void P_SpawnMapThing(mapthing_t *mthing, int index)
 
     mobj = P_SpawnMobj(x, y, z, (mobjtype_t)i);
     mobj->spawnpoint = *mthing;
+    mobj->id = id;
 
     if (mthing->options & MTF_AMBUSH)
         mobj->flags |= MF_AMBUSH;
@@ -1068,7 +1140,7 @@ void P_SpawnMapThing(mapthing_t *mthing, int index)
     if (!(flags & (MF_SHOOTABLE | MF_NOBLOOD)) && mobj->blood && !chex && r_bloodsplats_max)
     {
         mobj->bloodsplats = CORPSEBLOODSPLATS;
-        if (r_corpses_moreblood)
+        if (r_corpses_moreblood && !isliquid[mobj->subsector->sector->floorpic])
             P_SpawnMoreBlood(mobj);
     }
 
@@ -1086,7 +1158,6 @@ void P_SpawnMapThing(mapthing_t *mthing, int index)
 // P_SpawnPuff
 //
 extern fixed_t  attackrange;
-extern angle_t  shootangle;
 
 void P_SpawnPuff(fixed_t x, fixed_t y, fixed_t z, angle_t angle)
 {
@@ -1104,13 +1175,10 @@ void P_SpawnPuff(fixed_t x, fixed_t y, fixed_t z, angle_t angle)
     {
         P_SetMobjState(th, S_PUFF3);
 
-        // [BH] but still make a sound
-        S_StartSound(th, sfx_punch);
-
         // [BH] vibrate XInput gamepads
-        if (gp_vibrate && vibrate)
+        if (gp_vibrate_damage && vibrate)
         {
-            int motorspeed = weaponinfo[wp_fist].motorspeed;
+            int motorspeed = weaponinfo[wp_fist].motorspeed * gp_vibrate_damage / 100;
 
             if (players[0].powers[pw_strength])
                 motorspeed *= 2;
@@ -1128,7 +1196,7 @@ void P_SpawnSmokeTrail(fixed_t x, fixed_t y, fixed_t z, angle_t angle)
     mobj_t      *th = P_SpawnMobj(x, y, z + ((M_Random() - M_Random()) << 10), MT_TRAIL);
 
     th->momz = FRACUNIT / 2;
-    th->tics -= (M_Random() & 3);
+    th->tics -= M_Random() & 3;
 
     th->angle = angle;
 
@@ -1187,7 +1255,7 @@ void P_SpawnBlood(fixed_t x, fixed_t y, fixed_t z, angle_t angle, int damage, mo
         th->momz = FRACUNIT * (2 + i / 6);
 
         th->angle = angle;
-        angle += ((M_Random() - M_Random()) * 0xb60b60);
+        angle += ((M_Random() - M_Random()) * 0xB60B60);
 
         if (damage <= 12 && th->state->nextstate)
             P_SetMobjState(th, th->state->nextstate);
@@ -1213,7 +1281,7 @@ void P_SpawnBloodSplat(fixed_t x, fixed_t y, int blood, int maxheight, mobj_t *t
         newsplat->sprite = SPR_BLD2;
         newsplat->frame = rand() & 7;
 
-        newsplat->flags2 = (MF2_DONOTMAP | (rand() & 1) * MF2_MIRRORED);
+        newsplat->flags2 = (MF2_DONOTMAP | ((rand() & 1) * MF2_MIRRORED));
         if (blood == FUZZYBLOOD)
         {
             newsplat->flags = MF_FUZZ;
@@ -1229,15 +1297,8 @@ void P_SpawnBloodSplat(fixed_t x, fixed_t y, int blood, int maxheight, mobj_t *t
         newsplat->subsector = subsec;
         P_SetBloodSplatPosition(newsplat);
 
-        if (r_bloodsplats_total > r_bloodsplats_max)
-        {
-            mobj_t      *oldsplat = bloodsplats[r_bloodsplats_total % r_bloodsplats_max];
-
-            if (oldsplat)
-                P_UnsetThingPosition(oldsplat);
-        }
-
-        bloodsplats[r_bloodsplats_total++ % r_bloodsplats_max] = newsplat;
+        if (++r_bloodsplats_total >= r_bloodsplats_max)
+            P_BloodSplatSpawner = P_NullBloodSplatSpawner;
 
         if (target)
             target->bloodsplats = MAX(0, target->bloodsplats - 1);
@@ -1263,7 +1324,7 @@ void P_SpawnShadow(mobj_t *actor)
 
     mobj->flags2 = MF2_DONOTMAP;
 
-    mobj->colfunc = (actor->type == MT_SHADOWS ? R_DrawSpectreShadowColumn :
+    mobj->colfunc = ((actor->flags & MF_FUZZ) ? R_DrawFuzzyShadowColumn :
         (r_translucency ? R_DrawShadowColumn : R_DrawSolidShadowColumn));
     mobj->projectfunc = R_ProjectShadow;
 
@@ -1374,6 +1435,8 @@ void P_SpawnPlayerMissile(mobj_t *source, mobjtype_t type)
 
     th = P_SpawnMobj(x, y, z, type);
 
+    P_NoiseAlert(source, source);
+
     if (th->info->seesound)
         S_StartSound(th, th->info->seesound);
 
@@ -1417,6 +1480,7 @@ void P_InitExtraMobjs(void)
         mobjinfo[i].deathsound = sfx_None;
         mobjinfo[i].speed = 0;
         mobjinfo[i].radius = 0;
+        mobjinfo[i].pickupradius = 0;
         mobjinfo[i].height = 0;
         mobjinfo[i].projectilepassheight = 0;
         mobjinfo[i].mass = 0;
@@ -1426,7 +1490,9 @@ void P_InitExtraMobjs(void)
         mobjinfo[i].flags2 = 0;
         mobjinfo[i].raisestate = S_NULL;
         mobjinfo[i].frames = 0;
+        mobjinfo[i].fullbright = false;
         mobjinfo[i].blood = 0;
+        mobjinfo[i].shadowoffset = 0;
         mobjinfo[i].name1[0] = '\0';
         mobjinfo[i].plural1[0] = '\0';
         mobjinfo[i].name2[0] = '\0';

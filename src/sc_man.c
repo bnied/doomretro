@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,9 +36,6 @@
 ========================================================================
 */
 
-#include <stdlib.h>
-
-#include "doomtype.h"
 #include "i_system.h"
 #include "m_misc.h"
 #include "sc_man.h"
@@ -46,7 +43,8 @@
 #include "z_zone.h"
 
 #define MAX_STRING_SIZE 256
-#define ASCII_COMMENT   ';'
+#define ASCII_COMMENT1  ';'
+#define ASCII_COMMENT2  '/'
 #define ASCII_QUOTE     '\"'
 
 static void CheckOpen(void);
@@ -133,7 +131,8 @@ dboolean SC_GetString(void)
             sc_End = true;
             return false;
         }
-        if (*ScriptPtr != ASCII_COMMENT)
+        if (*ScriptPtr != ASCII_COMMENT1 && *ScriptPtr != ASCII_COMMENT2
+            && *(ScriptPtr + 1) != ASCII_COMMENT2)
             foundToken = true;
         else
         {
@@ -160,7 +159,8 @@ dboolean SC_GetString(void)
         ScriptPtr++;
     }
     else
-        while (*ScriptPtr > 32 && *ScriptPtr != ASCII_COMMENT)
+        while (*ScriptPtr > 32 && *ScriptPtr != ASCII_COMMENT1 && *ScriptPtr != ASCII_COMMENT2
+            && *(ScriptPtr + 1) != ASCII_COMMENT2)
         {
             *text++ = *ScriptPtr++;
             if (ScriptPtr == ScriptEndPtr || text == &sc_String[MAX_STRING_SIZE - 1])
@@ -229,7 +229,7 @@ void SC_ScriptError(char *message)
 {
     if (!message)
         message = "Bad syntax.";
-    I_Error("Script error, \"%s\" line %d: %s", ScriptName, sc_Line, message);
+    I_Error("Script error, \"%s\" line %i: %s", ScriptName, sc_Line, message);
 }
 
 static void CheckOpen(void)

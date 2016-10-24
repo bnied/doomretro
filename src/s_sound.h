@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -39,11 +39,13 @@
 #if !defined(__S_SOUND_H__)
 #define __S_SOUND_H__
 
-#include "p_mobj.h"
 #include "r_defs.h"
 #include "sounds.h"
 
-extern int      snd_samplerate;
+// Sound sample rate to use for digital output (Hz)
+#define SAMPLERATE      44100
+#define NUM_CHANNELS    32
+
 extern dboolean s_randompitch;
 
 dboolean I_InitSound(void);
@@ -62,7 +64,7 @@ void I_PauseSong(void);
 void I_ResumeSong(void);
 void *I_RegisterSong(void *data, int len);
 void I_UnRegisterSong(void *handle);
-void I_PlaySong(void *handle, int looping);
+void I_PlaySong(void *handle, dboolean looping);
 void I_StopSong(void);
 dboolean I_MusicIsPlaying(void);
 
@@ -92,6 +94,8 @@ void S_StartSectorSound(degenmobj_t *degenmobj, int sfx_id);
 
 void S_StopSounds(void);
 
+void S_UnlinkSound(mobj_t *origin);
+
 // Start music using <music_id> from sounds.h
 void S_StartMusic(int music_id);
 
@@ -118,5 +122,23 @@ void I_InitTimidityConfig(void);
 void CheckTimidityConfig(void);
 
 dboolean I_AnySoundStillPlaying(void);
+
+#define MAX_MUS_ENTRIES 64
+
+typedef struct musinfo_s
+{
+    mobj_t      *mapthing;
+    mobj_t      *lastmapthing;
+    int         tics;
+    int         current_item;
+    int         items[MAX_MUS_ENTRIES];
+} musinfo_t;
+
+extern musinfo_t musinfo;
+
+void S_ChangeMusInfoMusic(int lumpnum, int looping);
+void S_ParseMusInfo(char *mapid);
+void MusInfoThinker(mobj_t *thing);
+void T_MAPMusic(void);
 
 #endif

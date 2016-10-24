@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -37,8 +37,6 @@
 */
 
 #include <ctype.h>
-#include <stdio.h>
-#include <time.h>
 
 #if defined(WIN32)
 #include <Windows.h>
@@ -46,7 +44,6 @@
 
 #include "c_console.h"
 #include "d_deh.h"
-#include "d_main.h"
 #include "doomstat.h"
 #include "dstrings.h"
 #include "g_game.h"
@@ -55,22 +52,18 @@
 #include "i_swap.h"
 #include "i_system.h"
 #include "i_timer.h"
-#include "i_video.h"
-#include "m_config.h"
 #include "m_menu.h"
 #include "m_misc.h"
 #include "m_random.h"
 #include "p_local.h"
 #include "p_saveg.h"
 #include "s_sound.h"
-#include "SDL.h"
 #include "v_data.h"
 #include "v_video.h"
 #include "version.h"
 #include "w_wad.h"
 #include "z_zone.h"
 
-#define SKULLXOFF       -32
 #define LINEHEIGHT      17
 #define OFFSET          (vid_widescreen ? 0 : 17)
 
@@ -212,15 +205,15 @@ void M_ClearMenus(void);
 // DOOM MENU
 //
 
-enum
+typedef enum
 {
-    new_game = 0,
+    new_game,
     options,
     load_game,
     save_game,
     quit_doom,
     main_end
-} main_e;
+} main_t;
 
 menuitem_t MainMenu[] =
 {
@@ -233,26 +226,26 @@ menuitem_t MainMenu[] =
 
 menu_t MainDef =
 {
-    main_end,           // # of menu items
+    5,                  // # of menu items
     NULL,               // previous menu
     MainMenu,           // menuitem_t ->
     M_DrawMainMenu,     // drawing routine ->
     98, 77,             // x, y
-    0                   // lastOn
+    new_game            // lastOn
 };
 
 //
 // EPISODE SELECT
 //
 
-enum
+typedef enum
 {
     ep1,
     ep2,
     ep3,
     ep4,
     ep_end
-} episodes_e;
+} episodes_t;
 
 menuitem_t EpisodeMenu[] =
 {
@@ -276,12 +269,12 @@ menu_t EpiDef =
 // EXPANSION SELECT
 //
 
-enum
+typedef enum
 {
     ex1,
     ex2,
     ex_end
-} expansions_e;
+} expansions_t;
 
 menuitem_t ExpansionMenu[] =
 {
@@ -303,7 +296,7 @@ menu_t ExpDef =
 // NEW GAME
 //
 
-enum
+typedef enum
 {
     killthings,
     toorough,
@@ -311,7 +304,7 @@ enum
     violence,
     nightmare,
     newg_end
-} newgame_e;
+} newgame_t;
 
 menuitem_t NewGameMenu[] =
 {
@@ -336,7 +329,7 @@ menu_t NewDef =
 // OPTIONS MENU
 //
 
-enum
+typedef enum
 {
     endgame,
     msgs,
@@ -347,7 +340,7 @@ enum
     option_empty2,
     soundvol,
     opt_end
-} options_e;
+} options_t;
 
 menuitem_t OptionsMenu[]=
 {
@@ -368,14 +361,14 @@ menu_t OptionsDef =
     OptionsMenu,
     M_DrawOptions,
     56, 33,
-    0
+    endgame
 };
 
-enum
+typedef enum
 {
     rdthsempty,
     read_end
-} read_e;
+} read_t;
 
 menuitem_t ReadMenu[] =
 {
@@ -389,21 +382,21 @@ menu_t ReadDef =
     ReadMenu,
     M_DrawReadThis,
     330, 175,
-    0
+    rdthsempty
 };
 
 //
 // SOUND VOLUME MENU
 //
 
-enum
+typedef enum
 {
     sfx_vol,
     sfx_empty1,
     music_vol,
     sfx_empty2,
     sound_end
-} sound_e;
+} sound_t;
 
 menuitem_t SoundMenu[] =
 {
@@ -420,14 +413,14 @@ menu_t SoundDef =
     SoundMenu,
     M_DrawSound,
     89, 64,
-    0
+    sfx_vol
 };
 
 //
 // LOAD GAME MENU
 //
 
-enum
+typedef enum
 {
     load1,
     load2,
@@ -436,7 +429,7 @@ enum
     load5,
     load6,
     load_end
-} load_e;
+} load_t;
 
 menuitem_t LoadGameMenu[] =
 {
@@ -455,7 +448,7 @@ menu_t LoadDef =
     LoadGameMenu,
     M_DrawLoad,
     67, 51,
-    0
+    load1
 };
 
 //
@@ -479,10 +472,10 @@ menu_t SaveDef =
     SaveGameMenu,
     M_DrawSave,
     67, 51,
-    0
+    load1
 };
 
-int height;
+static int height;
 
 static void DoBlurScreen(byte *tempscreen, byte *blurscreen, int x1, int y1, int x2, int y2, int i)
 {
@@ -520,28 +513,35 @@ static void BlurScreen(byte *screen, byte *tempscreen, byte *blurscreen)
 //
 void M_DarkBackground(void)
 {
-    int i;
-
     height = (SCREENHEIGHT - vid_widescreen * SBARHEIGHT) * SCREENWIDTH;
 
     if (!blurred)
     {
+        int i;
+
         BlurScreen(screens[0], tempscreen1, blurscreen1);
 
+        for (i = 0; i < height; ++i)
+            blurscreen1[i] = tinttab50[blurscreen1[i]];
+
         if (mapwindow)
+        {
             BlurScreen(mapscreen, tempscreen2, blurscreen2);
+
+            for (i = 0; i < (SCREENHEIGHT - SBARHEIGHT) * SCREENWIDTH; ++i)
+                blurscreen2[i] = tinttab50[blurscreen2[i]];
+        }
+
         blurred = true;
     }
 
-    for (i = 0; i < height; ++i)
-        screens[0][i] = tinttab50[blurscreen1[i]];
+    memcpy(screens[0], blurscreen1, height);
 
     if (mapwindow)
-        for (i = 0; i < height; ++i)
-            mapscreen[i] = tinttab50[blurscreen2[i]];
+        memcpy(mapscreen, blurscreen2, (SCREENHEIGHT - SBARHEIGHT) * SCREENWIDTH);
 
-    if (r_detail == r_detail_low)
-        V_LowGraphicDetail(height);
+    if (r_detail == r_detail_low && viewactive)
+        V_LowGraphicDetail();
 }
 
 static byte blues[] =
@@ -640,7 +640,7 @@ static struct
     { 'p', 'a', -2 }, { 't', 'o', -1 }, { 'v', 'e', -1 }, { 'y', ',', -3 },
     { 'y', '.', -2 }, { 'y', 'o', -1 }, { 't', 'a', -1 }, { 'l', 'o', -1 },
     { ' ', 'V', -2 }, { ' ', 'y', -2 }, { ' ', 't', -1 }, { 'l', ' ', -1 },
-    { 't', ' ', -1 }, {  0,   0,   0 }
+    { 'L', 'S', -1 }, { 't', ' ', -1 }, {  0,   0,   0 }
 };
 
 static struct
@@ -719,8 +719,9 @@ int M_BigStringWidth(char *str)
     int         i;
     int         w = 0;
     static char prev;
+    size_t      len = strlen(str);
 
-    for (i = 0; (unsigned int)i < strlen(str); ++i)
+    for (i = 0; (unsigned int)i < len; ++i)
     {
         int     j = chartoi[(int)str[i]];
         int     k = 0;
@@ -818,8 +819,7 @@ void M_ReadSaveStrings(void)
 
         M_StringCopy(name, P_SaveGameFile(i), sizeof(name));
 
-        handle = fopen(name, "rb");
-        if (!handle)
+        if (!(handle = fopen(name, "rb")))
         {
             M_StringCopy(&savegamestrings[i][0], s_EMPTYSTRING, SAVESTRINGSIZE);
             LoadGameMenu[i].status = 0;
@@ -846,12 +846,10 @@ static byte saveg_read8(FILE *file)
 //
 dboolean M_CheckSaveGame(int choice)
 {
-    FILE        *handle;
+    FILE        *handle = fopen(P_SaveGameFile(itemOn), "rb");
     int         ep;
     int         mission;
     int         i;
-
-    handle = fopen(P_SaveGameFile(itemOn), "rb");
 
     if (!handle)
         return true;
@@ -871,7 +869,8 @@ dboolean M_CheckSaveGame(int choice)
             return true;
         if (gamemission == pack_nerve)
         {
-            ExpDef.lastOn = expansion = ex1;
+            ExpDef.lastOn = ex1;
+            expansion = ex1;
             gamemission = doom2;
             return true;
         }
@@ -884,7 +883,8 @@ dboolean M_CheckSaveGame(int choice)
             return true;
         if (gamemission == doom2 && nerve)
         {
-            ExpDef.lastOn = expansion = ex2;
+            ExpDef.lastOn = ex2;
+            expansion = ex2;
             gamemission = pack_nerve;
             return true;
         }
@@ -990,8 +990,7 @@ void M_LoadSelect(int choice)
     else
     {
         menuactive = false;
-        consoleheight = 1;
-        consoledirection = 1;
+        C_ShowConsole();
         C_Warning("This savegame requires a different WAD.");
     }
 }
@@ -1051,8 +1050,8 @@ void M_DrawSave(void)
             for (j = 0; (unsigned int)j < strlen(savegamestrings[i]) - saveCharIndex; ++j)
                 right[j] = savegamestrings[i][j + saveCharIndex];
             right[j] = 0;
-            M_WriteText(LoadDef.x - 2 + M_StringWidth(left) + (STCFN121 ? pipechar->width : 3),
-                y - !M_LSCNTR, right, false);
+            M_WriteText(LoadDef.x - 2 + M_StringWidth(left) + (STCFN121 ? SHORT(pipechar->width) :
+                3), y - !M_LSCNTR, right, false);
         }
         else
             M_WriteText(LoadDef.x - 2 + (M_StringCompare(savegamestrings[i], s_EMPTYSTRING)
@@ -1223,6 +1222,9 @@ void M_UpdateSaveGameName(int i)
                             break;
                         }
                     break;
+
+                default:
+                    break;
             }
         }
     }
@@ -1241,11 +1243,6 @@ void M_UpdateSaveGameName(int i)
             --len;
         }
     }
-}
-
-char *M_GetSaveGameName(int i)
-{
-    return savegamestrings[i];
 }
 
 void M_SaveSelect(int choice)
@@ -1345,8 +1342,12 @@ void M_DrawReadThis(void)
             else
                 lumpname = (gamemode == commercial ? "HELP" : "HELP2");
             break;
+
         case exe_final:
             lumpname = "HELP";
+            break;
+
+        default:
             break;
     }
     if (W_CheckNumForName(lumpname) >= 0)
@@ -1410,6 +1411,7 @@ void M_SfxVol(int choice)
                     M_SaveCVARs();
                 }
                 break;
+
             case 1:
                 if (sfxVolume < 15)
                 {
@@ -1440,6 +1442,7 @@ void M_MusicVol(int choice)
                     M_SaveCVARs();
                 }
                 break;
+
             case 1:
                 if (musicVolume < 15)
                 {
@@ -1559,7 +1562,8 @@ void M_SetWindowCaption(void)
             (expansion == ex1 ? s_CAPTION_HELLONEARTH : s_CAPTION_NERVE));
         else
             M_StringCopy(caption, gamedescription, sizeof(caption));
-        if (bfgedition)
+
+        if (bfgedition && !modifiedgame)
             M_snprintf(caption, sizeof(caption), "%s (%s)", caption, s_CAPTION_BFGEDITION);
     }
 
@@ -1717,7 +1721,7 @@ void M_ChangeMessages(int choice)
     if (menuactive)
         message_dontpause = true;
     C_StrCVAROutput(stringize(messages), (messages ? "on" : "off"));
-    HU_PlayerMessage((messages ? s_MSGON : s_MSGOFF), false);
+    HU_PlayerMessage((messages ? s_MSGON : s_MSGOFF), false, false);
     message_dontfuckwithme = true;
     M_SaveCVARs();
 }
@@ -1762,6 +1766,7 @@ void M_EndGameResponse(int key)
     S_StartSound(NULL, sfx_swtchx);
     I_WaitVBL(2 * TICRATE);
     MainDef.lastOn = 0;
+    st_palette = 0;
     M_EndingGame();
 }
 
@@ -1782,11 +1787,6 @@ void M_EndGame(int choice)
 //
 // M_ReadThis
 //
-void M_ReadThis(int choice)
-{
-    M_FinishReadThis(0);
-}
-
 void M_FinishReadThis(int choice)
 {
     M_SetupNextMenu(&MainDef);
@@ -1955,7 +1955,7 @@ void M_ChangeDetail(int choice)
     C_StrCVAROutput(stringize(r_detail), (r_detail == r_detail_low ? "low" : "high"));
     if (!menuactive)
     {
-        HU_PlayerMessage((r_detail == r_detail_low ? s_DETAILLO : s_DETAILHI), false);
+        HU_PlayerMessage((r_detail == r_detail_low ? s_DETAILLO : s_DETAILHI), false, false);
         message_dontfuckwithme = true;
     }
     else
@@ -2267,7 +2267,7 @@ void M_ChangeGamma(dboolean shift)
     gammawait = I_GetTime() + HU_MSGTIMEOUT;
 
     if (r_gamma == 1.0f)
-        HU_PlayerMessage(s_GAMMAOFF, false);
+        HU_PlayerMessage(s_GAMMAOFF, false, false);
     else
     {
         static char buf[128];
@@ -2275,7 +2275,7 @@ void M_ChangeGamma(dboolean shift)
         M_snprintf(buf, sizeof(buf), s_GAMMALVL, r_gamma);
         if (buf[strlen(buf) - 1] == '0' && buf[strlen(buf) - 2] == '0')
             buf[strlen(buf) - 1] = '\0';
-        HU_PlayerMessage(buf, false);
+        HU_PlayerMessage(buf, false, false);
     }
 
     message_dontpause = true;
@@ -2315,7 +2315,7 @@ dboolean M_Responder(event_t *ev)
             // activate menu item
             if (gamepadbuttons & GAMEPAD_A)
             {
-                key = (messageToPrint && messageNeedsInput ? 'y' : KEY_ENTER);
+                key = (messageToPrint && messageNeedsInput ? (ch = 'y') : KEY_ENTER);
                 gamepadwait = I_GetTime() + 8 * !(currentMenu == &OptionsDef && itemOn == 5);
                 usinggamepad = true;
             }
@@ -2323,7 +2323,7 @@ dboolean M_Responder(event_t *ev)
             // previous/exit menu
             else if (gamepadbuttons & GAMEPAD_B)
             {
-                key = KEY_BACKSPACE;
+                key = (messageToPrint && messageNeedsInput ? (ch = 'n') : KEY_BACKSPACE);
                 gamepadwait = I_GetTime() + 8;
                 gamepadpress = true;
                 usinggamepad = true;
@@ -2332,7 +2332,7 @@ dboolean M_Responder(event_t *ev)
             // exit menu
             else if (gamepadbuttons & gamepadmenu)
             {
-                key = key_menu;
+                key = keyboardmenu;
                 currentMenu = &MainDef;
                 itemOn = MainDef.lastOn;
                 gamepadwait = I_GetTime() + 8;
@@ -2385,7 +2385,7 @@ dboolean M_Responder(event_t *ev)
             // open menu
             if (gamepadbuttons & gamepadmenu)
             {
-                key = key_menu;
+                key = keyboardmenu;
                 gamepadwait = I_GetTime() + 8;
                 usinggamepad = true;
             }
@@ -2463,7 +2463,7 @@ dboolean M_Responder(event_t *ev)
                 break;
 
             // delete character right of caret
-            case KEY_DEL:
+            case KEY_DELETE:
                 keydown = key;
                 if ((unsigned int)saveCharIndex < strlen(savegamestrings[saveSlot]))
                 {
@@ -2570,22 +2570,23 @@ dboolean M_Responder(event_t *ev)
     // Take care of any messages that need input
     if (messageToPrint && !keydown)
     {
-        keydown = key;
-        if (messageNeedsInput && key != key_menu && tolower(key) != 'y' && tolower(key) != 'n'
+        ch = tolower(ch);
+        if (messageNeedsInput && key != keyboardmenu && ch != 'y' && ch != 'n'
             && !(modstate & (KMOD_ALT | KMOD_CTRL)) && key != functionkey)
         {
             functionkey = 0;
             return false;
         }
+        keydown = key;
         menuactive = messageLastMenuActive;
         messageToPrint = false;
         if (messageRoutine)
-            messageRoutine(tolower(key));
+            messageRoutine(ch);
         functionkey = 0;
         if (endinggame)
             endinggame = false;
         else
-            S_StartSound(NULL, currentMenu == &ReadDef ? sfx_pistol : sfx_swtchx);
+            S_StartSound(NULL, (currentMenu == &ReadDef ? sfx_pistol : sfx_swtchx));
         return true;
     }
 
@@ -2614,13 +2615,12 @@ dboolean M_Responder(event_t *ev)
         }
 
         // Console
-        else if (key == key_console && !keydown)
+        else if (key == keyboardconsole && !keydown)
         {
             keydown = key;
             if (consoleheight < CONSOLEHEIGHT && consoledirection == -1 && !inhelpscreens && !wipe)
             {
-                consoleheight = MAX(1, consoleheight);
-                consoledirection = 1;
+                C_ShowConsole();
                 return true;
             }
             return false;
@@ -2724,8 +2724,7 @@ dboolean M_Responder(event_t *ev)
         }
 
         // Toggle graphic detail
-        else if (key == KEY_F5 && !functionkey && (viewactive || automapactive)
-                 && !keydown)
+        else if (key == KEY_F5 && !functionkey && viewactive && !keydown)
         {
             keydown = key;
             functionkey = KEY_F5;
@@ -2798,10 +2797,20 @@ dboolean M_Responder(event_t *ev)
         return false;
     }
 
+    // screenshot
+    if (key == keyboardscreenshot)
+    {
+#if defined(WIN32)
+        if (key != KEY_PRINTSCREEN)
+#endif
+            G_ScreenShot();
+        return false;
+    }
+
     // Pop-up menu?
     if (!menuactive)
     {
-        if (key == key_menu && !keydown && !splashscreen && !consoleheight)
+        if (key == keyboardmenu && !keydown && !splashscreen && !consoleheight)
         {
             keydown = key;
             if (paused)
@@ -2947,8 +2956,8 @@ dboolean M_Responder(event_t *ev)
             return false;
         }
 
-        else if (key == KEY_LEFTARROW || (key == KEY_MINUS && !(currentMenu == &OptionsDef
-            && itemOn == 1)) && !inhelpscreens)
+        else if ((key == KEY_LEFTARROW || (key == KEY_MINUS && !(currentMenu == &OptionsDef
+            && itemOn == 1))) && !inhelpscreens)
         {
             // Slide slider left
             if (currentMenu->menuitems[itemOn].routine
@@ -2963,8 +2972,8 @@ dboolean M_Responder(event_t *ev)
             return false;
         }
 
-        else if (key == KEY_RIGHTARROW || (key == KEY_EQUALS && !(currentMenu == &OptionsDef
-            && itemOn == 1)) && !inhelpscreens)
+        else if ((key == KEY_RIGHTARROW || (key == KEY_EQUALS && !(currentMenu == &OptionsDef
+            && itemOn == 1))) && !inhelpscreens)
         {
             // Slide slider right
             if (currentMenu->menuitems[itemOn].routine
@@ -2989,10 +2998,11 @@ dboolean M_Responder(event_t *ev)
                 M_ClearMenus();
                 S_StartSound(NULL, sfx_swtchx);
                 R_SetViewSize(r_screensize);
-                if (returntowidescreen)
+                if (returntowidescreen && gamestate == GS_LEVEL)
                     I_ToggleWidescreen(true);
                 return true;
             }
+
             if (currentMenu->menuitems[itemOn].routine &&
                 currentMenu->menuitems[itemOn].status)
             {
@@ -3017,7 +3027,7 @@ dboolean M_Responder(event_t *ev)
             return skipaction;
         }
 
-        else if ((key == key_menu || key == KEY_BACKSPACE) && !keydown)
+        else if ((key == keyboardmenu || key == KEY_BACKSPACE) && !keydown)
         {
             // Deactivate menu or go back to previous menu
             keydown = key;
@@ -3171,7 +3181,7 @@ void M_StartControlPanel(void)
 
     S_StopSounds();
 
-    if (gp_vibrate && vibrate)
+    if ((gp_vibrate_damage || gp_vibrate_weapons) && vibrate)
     {
         restoremotorspeed = idlemotorspeed;
         idlemotorspeed = 0;
@@ -3180,7 +3190,10 @@ void M_StartControlPanel(void)
 
     players[0].fixedcolormap = 0;
     I_SetPalette(W_CacheLumpName("PLAYPAL", PU_CACHE));
-    I_UpdateBlitFunc();
+    I_UpdateBlitFunc(false);
+
+    if (vid_motionblur)
+        I_SetMotionBlur(0);
 }
 
 //
@@ -3331,13 +3344,14 @@ void M_ClearMenus(void)
 {
     menuactive = false;
 
-    if (gp_vibrate && vibrate)
+    if ((gp_vibrate_damage || gp_vibrate_weapons) && vibrate)
     {
         idlemotorspeed = restoremotorspeed;
         XInputVibration(idlemotorspeed);
     }
 
-    I_SetPalette((byte *)W_CacheLumpName("PLAYPAL", PU_CACHE) + st_palette * 768);
+    if (gamestate == GS_LEVEL)
+        I_SetPalette((byte *)W_CacheLumpName("PLAYPAL", PU_CACHE) + st_palette * 768);
 }
 
 //

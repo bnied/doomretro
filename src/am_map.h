@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -40,7 +40,6 @@
 #define __AM_MAP_H__
 
 #include "d_event.h"
-#include "m_cheat.h"
 #include "m_fixed.h"
 
 #define MAPBITS         12
@@ -73,37 +72,34 @@ void AM_Start(dboolean mainwindow);
 void AM_Stop(void);
 
 void AM_Init(void);
-void AM_SetColors(void);
+void AM_setColors(void);
+void AM_addToPath(void);
 
-void D_PostEvent(event_t *ev);
+extern dboolean         message_dontfuckwithme;
+extern dboolean         message_external;
 
-extern byte     *tinttab60;
-extern byte     *tinttab80;
+extern int              gamepadwait;
 
-extern dboolean message_dontfuckwithme;
-extern dboolean message_clearable;
-extern dboolean idbehold;
-extern dboolean idclev;
-extern dboolean idmus;
+extern int              viewheight2;
 
-extern int      viewheight2;
+extern mpoint_t         *markpoints;
+extern int              markpointnum;
+extern int              markpointnum_max;
 
-extern mpoint_t *markpoints;
-extern int      markpointnum;
-extern int      markpointnum_max;
+extern dboolean         am_path;
+extern mpoint_t         *pathpoints;
+extern int              pathpointnum;
+extern int              pathpointnum_max;
 
 dboolean keystate(int key);
 
-typedef struct am_frame_s
+typedef struct
 {
-    fixed_t centerx;
-    fixed_t centery;
-    fixed_t sin;
-    fixed_t cos;
-
-    fixed_t bbox[4];
+    fixed_t             centerx;
+    fixed_t             centery;
+    fixed_t             sin;
+    fixed_t             cos;
+    fixed_t             bbox[4];
 } am_frame_t;
-
-extern am_frame_t am_frame;
 
 #endif

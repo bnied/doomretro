@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -241,7 +241,7 @@ typedef enum
     // Convert all red to blue, then apply 33% alpha translucency
     MF2_TRANSLUCENT_REDTOBLUE_33  = 0x00000100,
     // Apply 33% alpha translucency on all blue
-    MF2_TRANSLUCENT_BLUE_33       = 0x00000200,
+    MF2_TRANSLUCENT_BLUE_25       = 0x00000200,
 
     // Convert all red to green
     MF2_REDTOGREEN                = 0x00000400,
@@ -290,7 +290,10 @@ typedef enum
     MF2_SMOKETRAIL                = 0x02000000,
 
     // Object can be crushed into blood splats by moving sectors
-    MF2_CRUSHABLE                 = 0x04000000
+    MF2_CRUSHABLE                 = 0x04000000,
+
+    // All objects are being killed
+    MF2_MASSACRE                  = 0x08000000
 } mobjflag2_t;
 
 // Map Object definition.
@@ -338,9 +341,6 @@ typedef struct mobj_s
     fixed_t             momy;
     fixed_t             momz;
 
-    // If == validcount, already checked.
-    int                 validcount;
-
     mobjtype_t          type;
     mobjinfo_t          *info;          // &mobjinfo[mobj->type]
 
@@ -369,9 +369,6 @@ typedef struct mobj_s
     // Additional info record for player avatars only.
     // Only valid if type == MT_PLAYER
     struct player_s     *player;
-
-    // Player number last looked for.
-    int                 lastlook;
 
     // For nightmare respawn.
     mapthing_t          spawnpoint;
@@ -412,6 +409,8 @@ typedef struct mobj_s
     fixed_t             nudge;
 
     int                 pitch;
+
+    int                 id;
 } mobj_t;
 
 #endif

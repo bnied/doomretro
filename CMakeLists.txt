@@ -10,7 +10,7 @@
 #  Copyright © 2013-2016 Brad Harding.
 #
 #  DOOM Retro is a fork of Chocolate DOOM.
-#  For a list of credits, see the accompanying AUTHORS file.
+#  For a list of credits, see <http://credits.doomretro.com>.
 #
 #  This file is part of DOOM Retro.
 #
@@ -25,7 +25,7 @@
 #  General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+#  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 #
 #  DOOM is a registered trademark of id Software LLC, a ZeniMax Media
 #  company, in the US and/or other countries and is used without
@@ -41,6 +41,8 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.4)
 
 PROJECT(doomretro C)
+
+INCLUDE(GNUInstallDirs)
 
 FILE(GLOB SOURCES ${CMAKE_SOURCE_DIR}/src/*.c)
 
@@ -58,13 +60,27 @@ SET_TARGET_PROPERTIES(doomretro PROPERTIES LINKER_LANGUAGE C)
 INCLUDE(FindPkgConfig)
 PKG_SEARCH_MODULE(SDL2 REQUIRED sdl2)
 PKG_SEARCH_MODULE(SDL2_MIXER REQUIRED SDL2_mixer)
-INCLUDE_DIRECTORIES(${SDL2_INCLUDE_DIRS} ${SDL2_MIXER_INCLUDE_DIRS})
+PKG_SEARCH_MODULE(SDL2_IMAGE REQUIRED SDL2_image)
+INCLUDE_DIRECTORIES(${SDL2_INCLUDE_DIRS} ${SDL2_MIXER_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS})
 
 IF (APPLE)
 	FIND_LIBRARY(COCOA_LIBRARY Cocoa)
 ENDIF (APPLE)
 
-TARGET_LINK_LIBRARIES(doomretro ${SDL2_LIBRARIES} ${SDL2_MIXER_LIBRARIES} ${COCOA_LIBRARY} m)
+TARGET_LINK_LIBRARIES(
+	doomretro
+	${SDL2_LIBRARIES}
+	${SDL2_MIXER_LIBRARIES}
+	${SDL2_IMAGE_LIBRARIES}
+	${COCOA_LIBRARY}
+	m
+)
 
-FILE(GLOB RESOURCES ${CMAKE_SOURCE_DIR}/res/*)
+FILE(GLOB RESOURCES LIST_DIRECTORIES false ${CMAKE_SOURCE_DIR}/res/*)
 FILE(COPY ${RESOURCES} DESTINATION ${CMAKE_BINARY_DIR})
+FILE(GLOB BREACH LIST_DIRECTORIES false ${CMAKE_SOURCE_DIR}/res/breach/*)
+FILE(COPY ${BREACH} DESTINATION ${CMAKE_BINARY_DIR}/breach)
+
+INSTALL(TARGETS doomretro DESTINATION ${CMAKE_INSTALL_BINDIR})
+INSTALL(FILES ${RESOURCES} DESTINATION ${CMAKE_INSTALL_DATADIR}/doomretro)
+INSTALL(FILES ${BREACH} DESTINATION ${CMAKE_INSTALL_DATADIR}/doomretro/breach)

@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -48,20 +48,20 @@
 #define ANGLETOFINESHIFT        19
 
 // Effective size is 10240.
-fixed_t finesine[5 * FINEANGLES / 4];
+fixed_t         finesine[5 * FINEANGLES / 4];
 
 // Re-use data, is just PI/2 phase shift.
-extern fixed_t *finecosine;
+extern fixed_t  *finecosine;
 
 // Effective size is 4096.
-fixed_t finetangent[FINEANGLES / 2];
+fixed_t         finetangent[FINEANGLES / 2];
 
 // Binary Angle Measurement, BAM.
 #define ANG5                    (ANG90 / 18)
 #define ANG45                   0x20000000
 #define ANG90                   0x40000000
 #define ANG180                  0x80000000
-#define ANG270                  0xc0000000
+#define ANG270                  0xC0000000
 
 #define SLOPERANGE              2048
 #define SLOPEBITS               11
@@ -72,6 +72,6 @@ typedef unsigned angle_t;
 // Effective size is 2049;
 // The +1 size is to handle the case when x==y
 //  without additional checking.
-angle_t tantoangle[SLOPERANGE + 1];
+angle_t         tantoangle[SLOPERANGE + 1];
 
 #endif

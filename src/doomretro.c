@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,24 +36,22 @@
 ========================================================================
 */
 
-#include <stdio.h>
-
 #include "c_console.h"
 #include "d_main.h"
 #include "doomstat.h"
-#include "i_video.h"
+#include "i_gamepad.h"
 #include "m_argv.h"
-#include "m_fixed.h"
-#include "m_misc.h"
+#include "m_controls.h"
 #include "version.h"
 
 int     windowborderwidth = 0;
 int     windowborderheight = 0;
 
 #if defined(WIN32)
-#include <windows.h>
 
 #include "SDL_syswm.h"
+
+#include <windows.h>
 
 #if !defined(SM_CXPADDEDBORDER)
 #define SM_CXPADDEDBORDER       92
@@ -65,7 +63,7 @@ void I_SetProcessDPIAware(void)
 
     if (hLibrary)
     {
-        typedef BOOL (*SETPROCESSDPIAWARE)();
+        typedef dboolean (*SETPROCESSDPIAWARE)();
 
         SETPROCESSDPIAWARE pSetProcessDPIAware =
             (SETPROCESSDPIAWARE)GetProcAddress(hLibrary, "SetProcessDPIAware");
@@ -79,8 +77,8 @@ void I_SetProcessDPIAware(void)
 
 HHOOK           g_hKeyboardHook;
 
-extern int      vid_fullscreen;
-extern dboolean window_focused;
+extern dboolean vid_fullscreen;
+extern dboolean windowfocused;
 
 void G_ScreenShot(void);
 
@@ -95,14 +93,14 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             case WM_SYSKEYDOWN:
             case WM_KEYUP:
             case WM_SYSKEYUP:
-                if (window_focused)
+                if (windowfocused)
                 {
                     DWORD       vkCode = ((KBDLLHOOKSTRUCT *)lParam)->vkCode;
 
                     if (vkCode == VK_LWIN || vkCode == VK_RWIN)
-                        bEatKeystroke = (gamestate == GS_LEVEL && !vid_fullscreen && !menuactive &&
-                            !paused && !consoleactive);
-                    else if (vkCode == VK_SNAPSHOT)
+                        bEatKeystroke = ((!menuactive && !paused && !consoleactive)
+                            || vid_fullscreen);
+                    else if (keyboardscreenshot == KEY_PRINTSCREEN && vkCode == VK_SNAPSHOT)
                     {
                         if (wParam == WM_KEYDOWN)
                             G_ScreenShot();
@@ -119,7 +117,6 @@ WNDPROC oldProc;
 HICON   icon;
 
 dboolean MouseShouldBeGrabbed(void);
-void I_InitGamepad(void);
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -133,12 +130,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     else if (msg == WM_SYSCOMMAND)
     {
-        if ((wParam & 0xfff0) == SC_MAXIMIZE)
+        if ((wParam & 0xFFF0) == SC_MAXIMIZE)
         {
             I_ToggleFullscreen();
             return true;
         }
-        else if ((wParam & 0xfff0) == SC_KEYMENU)
+        else if ((wParam & 0xFFF0) == SC_KEYMENU)
             return false;
     }
     else if (msg == WM_SYSKEYDOWN && wParam == VK_RETURN && !(lParam & 0x40000000))

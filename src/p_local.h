@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -97,8 +97,11 @@ void P_SetPsprite(player_t *player, int position, statenum_t stnum);
 //
 // P_USER
 //
+// 16 pixels of bob
+#define MAXBOB                  0x100000
+
 void P_PlayerThink(player_t *player);
-void P_ResurrectPlayer(player_t *player);
+void P_ResurrectPlayer(player_t *player, int health);
 
 //
 // P_MOBJ
@@ -107,13 +110,14 @@ void P_ResurrectPlayer(player_t *player);
 #define ONCEILINGZ              INT_MAX
 
 // Time interval for item respawning.
-#define ITEMQUEUESIZE           128
+#define ITEMQUEUESIZE           512
 
 #define CARDNOTFOUNDYET         -1
 #define CARDNOTINMAP            0
 
+void (*P_BloodSplatSpawner)(fixed_t, fixed_t, int, int, mobj_t *);
+
 extern int                      r_blood;
-extern mobj_t                   *bloodsplats[r_bloodsplats_max_max];
 extern int                      r_bloodsplats_total;
 extern int                      r_bloodsplats_max;
 
@@ -121,6 +125,13 @@ extern dboolean                 r_corpses_mirrored;
 extern dboolean                 r_corpses_moreblood;
 extern dboolean                 r_corpses_slide;
 extern dboolean                 r_corpses_smearblood;
+
+extern mapthing_t               itemrespawnque[ITEMQUEUESIZE];
+extern int                      itemrespawntime[ITEMQUEUESIZE];
+extern int                      iquehead;
+extern int                      iquetail;
+
+void P_RespawnSpecials(void);
 
 void P_InitCards(player_t *player);
 
@@ -162,7 +173,8 @@ typedef struct
 {
     fixed_t     frac;           // along trace line
     dboolean    isaline;
-    union {
+    union
+    {
         mobj_t  *thing;
         line_t  *line;
     } d;
@@ -186,12 +198,11 @@ dboolean P_BlockThingsIterator(int x, int y, dboolean func(mobj_t *));
 
 #define PT_ADDLINES     1
 #define PT_ADDTHINGS    2
-#define PT_EARLYOUT     4
 
 extern divline_t        dlTrace;
 
 dboolean P_PathTraverse(fixed_t x1, fixed_t y1, fixed_t x2, fixed_t y2, int flags,
-                       dboolean (*trav)(intercept_t *));
+    dboolean (*trav)(intercept_t *));
 
 void P_UnsetThingPosition(mobj_t *thing);
 void P_SetThingPosition(mobj_t *thing);
@@ -256,13 +267,12 @@ extern mobj_t           **blocklinks;   // for thing chains
 //
 // P_INTER
 //
-
 #define BFGCELLS        40
 #define MAXHEALTH       100
 
-void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher);
+void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher, dboolean message);
 
-void P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, int damage);
+void P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, int damage, dboolean usearmor);
 
 extern int god_health;
 extern int idfa_armor;

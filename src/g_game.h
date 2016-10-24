@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -39,11 +39,9 @@
 #if !defined(__G_GAME_H__)
 #define __G_GAME_H__
 
-#include "doomdef.h"
-#include "d_event.h"
-#include "d_ticcmd.h"
+#include "i_video.h"
 
-#define NUMKEYS         256
+#define NUMKEYS 256
 
 //
 // GAME
@@ -87,12 +85,14 @@ extern dboolean flag667;
 extern dboolean message_dontpause;
 extern dboolean vibrate;
 extern dboolean gamepadpress;
-extern char     lbmname[256];
+extern char     lbmname1[MAX_PATH];
+extern char     lbmname2[MAX_PATH];
+extern char     lbmpath1[MAX_PATH];
+extern char     lbmpath2[MAX_PATH];
 extern char     mapnumandtitle[512];
 extern int      mousewait;
 extern int      gamepadwait;
 extern int      keydown;
-extern int      markpointnum;
 extern int      quickSaveSlot;
 extern int      st_facecount;
 extern dboolean oldweaponsowned[NUMWEAPONS];

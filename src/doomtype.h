@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -42,35 +42,22 @@
 #include <inttypes.h>
 #include <limits.h>
 
-#if defined(__cplusplus)
-
-// Use built in bool type with C++.
-typedef bool dboolean;
-
-#else
-
 typedef enum
 {
     false,
     true
 } dboolean;
 
-#endif
-
 typedef uint8_t byte;
 
 #if defined(WIN32)
-
 #define DIR_SEPARATOR   '\\'
 #define DIR_SEPARATOR_S "\\"
 #define PATH_SEPARATOR  ';'
-
 #else
-
 #define DIR_SEPARATOR   '/'
 #define DIR_SEPARATOR_S "/"
 #define PATH_SEPARATOR  ':'
-
 #endif
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))

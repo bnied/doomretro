@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -72,25 +72,18 @@ void I_ShutdownKeyboard(void);
 // Takes full 8 bit values.
 void I_SetPalette(byte *palette);
 
-void I_Blit(void);
-void I_Blit_NearestLinear(void);
-void I_Blit_ShowFPS(void);
-void I_Blit_NearestLinear_ShowFPS(void);
-void I_Blit_Shake(void);
-void I_Blit_NearestLinear_Shake(void);
-void I_Blit_ShowFPS_Shake(void);
-void I_Blit_NearestLinear_ShowFPS_Shake(void);
-void I_UpdateBlitFunc(void);
+void I_UpdateBlitFunc(dboolean shake);
 void I_Blit_Automap(void);
 void I_CreateExternalAutomap(dboolean output);
 void I_DestroyExternalAutomap(void);
 
 void I_ToggleFullscreen(void);
+void I_SetMotionBlur(int percent);
 
 // Wait for vertical retrace or pause a bit.
 void I_WaitVBL(int count);
 
-void I_ReadScreen(byte *scr);
+void I_ReadScreen(byte *screen);
 
 void M_QuitDOOM(int choice);
 void R_SetViewSize(int blocks);
@@ -122,6 +115,7 @@ extern dboolean         noinput;
 void (*blitfunc)(void);
 void (*mapblitfunc)(void);
 
+extern dboolean         vid_motionblur;
 extern dboolean         vid_showfps;
 extern dboolean         wipe;
 
@@ -130,9 +124,8 @@ extern int              windowy;
 extern int              windowheight;
 extern int              windowwidth;
 
-extern dboolean         nearestlinear;
-
 extern SDL_Window       *window;
+extern SDL_Renderer     *renderer;
 
 extern SDL_Window       *mapwindow;
 extern byte             *mapscreen;

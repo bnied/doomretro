@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -38,8 +38,6 @@
 
 #if !defined(__I_GAMEPAD_H__)
 #define __I_GAMEPAD_H__
-
-#include <math.h>
 
 #include "doomtype.h"
 
@@ -101,7 +99,8 @@ extern short    gamepadrightdeadzone;
 
 extern int      gp_sensitivity;
 extern dboolean gp_swapthumbsticks;
-extern dboolean gp_vibrate;
+extern int      gp_vibrate_damage;
+extern int      gp_vibrate_weapons;
 
 void I_InitGamepad(void);
 void I_ShutdownGamepad(void);
@@ -114,5 +113,7 @@ void I_PollThumbs_XInput_RightHanded(short LX, short LY, short RX, short RY);
 void XInputVibration(int motorspeed);
 void (*gamepadfunc)(void);
 void I_SetGamepadSensitivity(int value);
+void I_SetGamepadLeftDeadZone(float value);
+void I_SetGamepadRightDeadZone(float value);
 
 #endif

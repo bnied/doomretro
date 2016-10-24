@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,13 +36,8 @@
 ========================================================================
 */
 
-#include <stdlib.h>
-#include <string.h>
-
 #include "doomstat.h"
-#include "m_config.h"
 #include "p_local.h"
-#include "r_local.h"
 #include "z_zone.h"
 
 // killough 1/6/98: replaced globals with statics where appropriate
@@ -214,37 +209,20 @@ static void R_DrawMaskedColumn(const rpatch_t *patch, const rcolumn_t *column)
     for (i = 0; i < column->numPosts; ++i)
     {
         const rpost_t   *post = &column->posts[i];
-        int64_t         topscreen;
         int             length = post->length;
         int             topdelta = post->topdelta;
 
         // calculate unclipped screen coordinates for post
-        topscreen = sprtopscreen + spryscale * topdelta + 1;
+        int64_t         topscreen = sprtopscreen + spryscale * topdelta + 1;
 
         dc_yl = MAX((int)((topscreen + FRACUNIT) >> FRACBITS), mceilingclip[dc_x] + 1);
         dc_yh = MIN((int)((topscreen + spryscale * length) >> FRACBITS), mfloorclip[dc_x] - 1);
 
-        dc_texturefrac = dc_texturemid - (topdelta << FRACBITS) +
-            FixedMul((dc_yl - centery) << FRACBITS, dc_iscale);
-
-        if (dc_texturefrac < 0)
-        {
-            int cnt = (FixedDiv(-dc_texturefrac, dc_iscale) + FRACUNIT - 1) >> FRACBITS;
-
-            dc_yl += cnt;
-            dc_texturefrac += cnt * dc_iscale;
-        }
-
-        {
-            const fixed_t       endfrac = dc_texturefrac + (dc_yh - dc_yl) * dc_iscale;
-            const fixed_t       maxfrac = length << FRACBITS;
-
-            if (endfrac >= maxfrac)
-                dc_yh -= (FixedDiv(endfrac - maxfrac - 1, dc_iscale) + FRACUNIT - 1) >> FRACBITS;
-        }
-
         if (dc_yl <= dc_yh && dc_yh < viewheight)
         {
+            dc_texturefrac = dc_texturemid - (topdelta << FRACBITS)
+                + FixedMul((dc_yl - centery) << FRACBITS, dc_iscale);
+
             dc_source = column->pixels + post->topdelta;
             colfunc();
         }
@@ -598,7 +576,9 @@ static fixed_t R_ScaleFromGlobalAngle(angle_t visangle)
 //
 void R_StoreWallRange(int start, int stop)
 {
-    int64_t     dx, dy, dx1, dy1, len;
+    int64_t     dx, dy;
+    int64_t     dx1, dy1;
+    int64_t     len;
 
     linedef = curline->linedef;
 
@@ -686,7 +666,7 @@ void R_StoreWallRange(int start, int stop)
             || viewz > sectors[frontsector->heightsec].interpfloorheight))
             worldbottom += animatedliquiddiff;
 
-        if (r_liquid_current)
+        if (r_liquid_current && frontsector->heightsec == -1)
         {
             frontsector->floor_xoffs = animatedliquidxoffs;
             frontsector->floor_yoffs = animatedliquidyoffs;
@@ -708,7 +688,10 @@ void R_StoreWallRange(int start, int stop)
 
     // calculate texture boundaries
     //  and decide if floor / ceiling marks are needed
-    midtexture = toptexture = bottomtexture = maskedtexture = 0;
+    midtexture = 0;
+    toptexture = 0;
+    bottomtexture = 0;
+    maskedtexture = 0;
     ds_p->maskedtexturecol = NULL;
 
     if (!backsector)
@@ -719,7 +702,8 @@ void R_StoreWallRange(int start, int stop)
         midtexfullbright = texturefullbright[midtexture];
 
         // a single sided line is terminal, so it must mark ends
-        markfloor = markceiling = true;
+        markfloor = true;
+        markceiling = true;
 
         if (linedef->flags & ML_DONTPEGBOTTOM)
             // bottom of texture at bottom
@@ -847,8 +831,11 @@ void R_StoreWallRange(int start, int stop)
 
         if (backsector->interpceilingheight <= frontsector->interpfloorheight
             || backsector->interpfloorheight >= frontsector->interpceilingheight)
+        {
             // closed door
-            markceiling = markfloor = true;
+            markceiling = true;
+            markfloor = true;
+        }
 
         if (worldhigh < worldtop)
         {
@@ -941,6 +928,7 @@ void R_StoreWallRange(int start, int stop)
     // if a floor / ceiling plane is on the wrong side
     //  of the view plane, it is definitely invisible
     //  and doesn't need to be marked.
+
     // killough 3/7/98: add deep water check
     if (frontsector->heightsec == -1)
     {
@@ -984,16 +972,20 @@ void R_StoreWallRange(int start, int stop)
 
     // render it
     if (markceiling)
+    {
         if (ceilingplane)   // killough 4/11/98: add NULL ptr checks
             ceilingplane = R_CheckPlane(ceilingplane, rw_x, rw_stopx - 1);
         else
-            markceiling = 0;
+            markceiling = false;
+    }
 
     if (markfloor)
+    {
         if (floorplane)     // killough 4/11/98: add NULL ptr checks
             floorplane = R_CheckPlane(floorplane, rw_x, rw_stopx - 1);
         else
-            markfloor = 0;
+            markfloor = false;
+    }
 
     R_RenderSegLoop();
 

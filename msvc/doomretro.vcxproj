@@ -64,8 +64,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\src;$(ProjectDir)..\SDL2-2.0.4\include;$(ProjectDir)..\SDL2_mixer-2.0.1\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\src;$(ProjectDir)..\SDL2-2.0.5\include;$(ProjectDir)..\SDL2_mixer-2.0.1\include;$(ProjectDir)..\SDL2_image-2.0.1\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;PORTABILITY;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -78,9 +78,10 @@
       <CompileAs>CompileAsC</CompileAs>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <SuppressStartupBanner>false</SuppressStartupBanner>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>SDL2.lib;SDL2_mixer.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2_mixer.lib;SDL2_image.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)doomretro.exe</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -88,21 +89,24 @@
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
       <GenerateMapFile>true</GenerateMapFile>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\SDL2-2.0.4\lib\x86;$(ProjectDir)..\SDL2_mixer-2.0.1\lib\x86;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\SDL2-2.0.5\lib\x86;$(ProjectDir)..\SDL2_mixer-2.0.1\lib\x86;$(ProjectDir)..\SDL2_image-2.0.1\lib\x86</AdditionalLibraryDirectories>
     </Link>
     <ResourceCompile>
-      <Culture>0x0c09</Culture>
+      <SuppressStartupBanner>false</SuppressStartupBanner>
     </ResourceCompile>
     <Manifest>
-      <AdditionalManifestFiles>..\src\manifest.xml</AdditionalManifestFiles>
+      <AdditionalManifestFiles>..\src\doomretro.manifest</AdditionalManifestFiles>
     </Manifest>
+    <PostBuildEvent>
+      <Command>copy /Y $(TargetDir)..\..\res\$(ProjectName).wad $(TargetDir)$(ProjectName).wad</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <Optimization>Full</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\src;$(ProjectDir)..\SDL2-2.0.4\include;$(ProjectDir)..\SDL2_mixer-2.0.1\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_BIND_TO_CURRENT_VCLIBS_VERSION=1;_MSC_PLATFORM_TOOLSET=$(PlatformToolsetVersion);WIN32_LEAN_AND_MEAN;VC_EXTRALEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\src;$(ProjectDir)..\SDL2-2.0.5\include;$(ProjectDir)..\SDL2_mixer-2.0.1\include;$(ProjectDir)..\SDL2_image-2.0.1\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;PORTABILITY;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_BIND_TO_CURRENT_VCLIBS_VERSION=1;_MSC_PLATFORM_TOOLSET=$(PlatformToolsetVersion);WIN32_LEAN_AND_MEAN;VC_EXTRALEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
@@ -126,9 +130,10 @@
       <ExceptionHandling>false</ExceptionHandling>
       <AdditionalOptions>/GA /GF /Gs %(AdditionalOptions)</AdditionalOptions>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <SuppressStartupBanner>false</SuppressStartupBanner>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>SDL2.lib;SDL2_mixer.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2_mixer.lib;SDL2_image.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)doomretro.exe</OutputFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -149,13 +154,19 @@
       <EnableUAC>false</EnableUAC>
       <GenerateMapFile>true</GenerateMapFile>
       <MapExports>false</MapExports>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\SDL2-2.0.4\lib\x86;$(ProjectDir)..\SDL2_mixer-2.0.1\lib\x86;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\SDL2-2.0.5\lib\x86;$(ProjectDir)..\SDL2_mixer-2.0.1\lib\x86;$(ProjectDir)..\SDL2_image-2.0.1\lib\x86</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>..\src\doomretro.manifest</AdditionalManifestFiles>
       <EnableDPIAwareness>
       </EnableDPIAwareness>
     </Manifest>
+    <ResourceCompile>
+      <SuppressStartupBanner>false</SuppressStartupBanner>
+    </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /Y $(TargetDir)..\..\res\$(ProjectName).wad $(TargetDir)$(ProjectName).wad</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <CustomBuildStep Include="..\src\doomdata.h" />
@@ -277,13 +288,12 @@
     <ClInclude Include="..\src\hu_stuff.h" />
     <ClInclude Include="..\src\info.h" />
     <ClInclude Include="..\src\i_gamepad.h" />
-    <ClInclude Include="..\src\i_tinttab.h" />
+    <ClInclude Include="..\src\i_colors.h" />
     <ClInclude Include="..\src\i_swap.h" />
     <ClInclude Include="..\src\i_system.h" />
     <ClInclude Include="..\src\i_timer.h" />
     <ClInclude Include="..\src\i_video.h" />
     <ClInclude Include="..\src\memio.h" />
-    <ClInclude Include="..\src\midifile.h" />
     <ClInclude Include="..\src\mus2mid.h" />
     <ClInclude Include="..\src\m_argv.h" />
     <ClInclude Include="..\src\m_bbox.h" />
@@ -336,7 +346,6 @@
     <ClCompile Include="..\src\i_music.c" />
     <ClCompile Include="..\src\i_sound.c" />
     <ClCompile Include="..\src\memio.c" />
-    <ClCompile Include="..\src\midifile.c" />
     <ClCompile Include="..\src\mus2mid.c" />
     <ClCompile Include="..\src\m_controls.c" />
     <ClCompile Include="..\src\p_fix.c" />
@@ -357,7 +366,7 @@
     <ClCompile Include="..\src\hu_stuff.c" />
     <ClCompile Include="..\src\i_gamepad.c" />
     <ClCompile Include="..\src\doomretro.c" />
-    <ClCompile Include="..\src\i_tinttab.c" />
+    <ClCompile Include="..\src\i_colors.c" />
     <ClCompile Include="..\src\i_system.c" />
     <ClCompile Include="..\src\i_timer.c" />
     <ClCompile Include="..\src\i_video.c" />
@@ -401,9 +410,6 @@
     <ClCompile Include="..\src\v_data.c" />
     <ClCompile Include="..\src\v_video.c" />
     <ClCompile Include="..\src\w_file.c" />
-    <ClCompile Include="..\src\w_file_posix.c" />
-    <ClCompile Include="..\src\w_file_stdc.c" />
-    <ClCompile Include="..\src\w_file_win32.c" />
     <ClCompile Include="..\src\w_merge.c" />
     <ClCompile Include="..\src\w_wad.c" />
     <ClCompile Include="..\src\wi_stuff.c" />
@@ -415,9 +421,11 @@
   <ItemGroup>
     <None Include="..\.gitattributes" />
     <None Include="..\.gitignore" />
+    <None Include="..\.travis.yml" />
     <None Include="..\AUTHORS" />
     <None Include="..\LICENSE" />
     <None Include="..\README.md" />
+    <None Include="..\releasenotes.md" />
     <None Include="..\res\DEHACKED" />
     <None Include="..\res\doomretro.ico" />
     <None Include="..\res\NOLIQUID" />
@@ -429,8 +437,8 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\CMakeLists.txt" />
+    <Text Include="..\res\breach\breach.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

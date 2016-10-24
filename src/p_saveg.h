@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -38,8 +38,6 @@
 
 #if !defined(__P_SAVEG_H__)
 #define __P_SAVEG_H__
-
-#include <stdio.h>
 
 // maximum size of a savegame description
 #define SAVESTRINGSIZE          256
@@ -77,6 +75,6 @@ uint32_t P_ThinkerToIndex(thinker_t *thinker);
 thinker_t *P_IndexToThinker(uint32_t index);
 void P_RestoreTargets(void);
 
-extern FILE *save_stream;
+extern FILE     *save_stream;
 
 #endif

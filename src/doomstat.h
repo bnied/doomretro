@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -41,7 +41,6 @@
 
 // We need globally shared data structures,
 //  for defining the global state variables.
-#include "doomdata.h"
 #include "d_loop.h"
 
 // We need the player data structure as well.
@@ -50,12 +49,13 @@
 // ------------------------
 // Command line parameters.
 //
-extern  dboolean        nomonsters;     // checkparm of -nomonsters
-extern  dboolean        respawnparm;    // checkparm of -respawn
-extern  dboolean        pistolstart;    // [BH] checkparm of -pistolstart
-extern  dboolean        fastparm;       // checkparm of -fast
+extern  dboolean        nomonsters;             // checkparm of -nomonsters
+extern  dboolean        respawnitems;
+extern  dboolean        respawnmonsters;        // checkparm of -respawn
+extern  dboolean        pistolstart;            // [BH] checkparm of -pistolstart
+extern  dboolean        fastparm;               // checkparm of -fast
 
-extern  dboolean        devparm;        // DEBUG: launched with -devparm
+extern  dboolean        devparm;                // DEBUG: launched with -devparm
 
 // -----------------------------------------------------
 // Game Mode - identify IWAD as shareware, retail etc.
@@ -93,6 +93,8 @@ extern dboolean         bfgedition;
 
 extern dboolean         breach;
 extern dboolean         chex;
+extern dboolean         chex1;
+extern dboolean         chex2;
 extern dboolean         chexdeh;
 extern dboolean         hacx;
 extern dboolean         BTSX;
@@ -103,6 +105,7 @@ extern dboolean         BTSXE2B;
 extern dboolean         BTSXE3;
 extern dboolean         BTSXE3A;
 extern dboolean         BTSXE3B;
+extern dboolean         E1M4B;
 extern dboolean         E1M8B;
 
 extern dboolean         DMENUPIC;
@@ -125,10 +128,9 @@ extern dboolean         M_SAVEG;
 extern dboolean         M_SKILL;
 extern dboolean         M_SKULL1;
 extern dboolean         M_SVOL;
-extern dboolean         STARMS;
-extern dboolean         STBAR;
+extern int              STARMS;
+extern int              STBAR;
 extern dboolean         STCFN034;
-extern dboolean         STCFN039;
 extern dboolean         STCFN121;
 extern dboolean         STYSNUM0;
 extern dboolean         TITLEPIC;
@@ -151,8 +153,8 @@ extern int              musicVolume;
 // Status flags for refresh.
 //
 
-extern dboolean         automapactive;  // In AutoMap mode?
-extern dboolean         am_followmode;  // Following player in AutoMap mode?
+extern dboolean         automapactive;  // In automap mode?
+extern dboolean         am_followmode;  // Following player in automap mode?
 extern dboolean         menuactive;     // Menu overlayed?
 extern dboolean         paused;         // Game Pause?
 
@@ -213,9 +215,6 @@ extern int              gp_sensitivity;
 // Used for rendering,
 //  as well as tracking projectiles etc.
 extern int              skyflatnum;
-
-// Netgame stuff (buffers and pointers, i.e. indices).
-extern int              maketic;
 
 extern ticcmd_t         netcmds[BACKUPTICS];
 

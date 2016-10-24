@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -39,33 +39,15 @@
 #if !defined(__W_FILE_H__)
 #define __W_FILE_H__
 
+#if defined(__OpenBSD__)
 #include <stdio.h>
-
-#include "doomtype.h"
+#endif
 
 typedef struct _wad_file_s wad_file_t;
 
-typedef struct
-{
-    // Open a file for reading.
-    wad_file_t *(*OpenFile)(char *path);
-
-    // Close the specified file.
-    void (*CloseFile)(wad_file_t *file);
-
-    // Read data from the specified position in the file into the
-    // provided buffer. Returns the number of bytes read.
-    size_t (*Read)(wad_file_t *file, unsigned int offset, void *buffer, size_t buffer_len);
-} wad_file_class_t;
-
 struct _wad_file_s
 {
-    // Class of this file.
-    wad_file_class_t    *file_class;
-
-    // If this is NULL, the file cannot be mapped into memory. If this
-    // is non-NULL, it is a pointer to the mapped file.
-    byte                *mapped;
+    FILE                *fstream;
 
     // Length of the file, in bytes.
     unsigned int        length;

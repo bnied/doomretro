@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -45,144 +45,20 @@
 typedef enum
 {
     // Sprites 0 to 137
-    SPR_TROO,
-    SPR_SHTG,
-    SPR_PUNG,
-    SPR_PISG,
-    SPR_PISF,
-    SPR_SHTF,
-    SPR_SHT2,
-    SPR_CHGG,
-    SPR_CHGF,
-    SPR_MISG,
-    SPR_MISF,
-    SPR_SAWG,
-    SPR_PLSG,
-    SPR_PLSF,
-    SPR_BFGG,
-    SPR_BFGF,
-    SPR_BLUD,
-    SPR_PUFF,
-    SPR_BAL1,
-    SPR_BAL2,
-    SPR_PLSS,
-    SPR_PLSE,
-    SPR_MISL,
-    SPR_BFS1,
-    SPR_BFE1,
-    SPR_BFE2,
-    SPR_TFOG,
-    SPR_IFOG,
-    SPR_PLAY,
-    SPR_POSS,
-    SPR_SPOS,
-    SPR_VILE,
-    SPR_FIRE,
-    SPR_FATB,
-    SPR_FBXP,
-    SPR_SKEL,
-    SPR_MANF,
-    SPR_FATT,
-    SPR_CPOS,
-    SPR_SARG,
-    SPR_HEAD,
-    SPR_BAL7,
-    SPR_BOSS,
-    SPR_BOS2,
-    SPR_SKUL,
-    SPR_SPID,
-    SPR_BSPI,
-    SPR_APLS,
-    SPR_APBX,
-    SPR_CYBR,
-    SPR_PAIN,
-    SPR_SSWV,
-    SPR_KEEN,
-    SPR_BBRN,
-    SPR_BOSF,
-    SPR_ARM1,
-    SPR_ARM2,
-    SPR_BAR1,
-    SPR_BEXP,
-    SPR_FCAN,
-    SPR_BON1,
-    SPR_BON2,
-    SPR_BKEY,
-    SPR_RKEY,
-    SPR_YKEY,
-    SPR_BSKU,
-    SPR_RSKU,
-    SPR_YSKU,
-    SPR_STIM,
-    SPR_MEDI,
-    SPR_SOUL,
-    SPR_PINV,
-    SPR_PSTR,
-    SPR_PINS,
-    SPR_MEGA,
-    SPR_SUIT,
-    SPR_PMAP,
-    SPR_PVIS,
-    SPR_CLIP,
-    SPR_AMMO,
-    SPR_ROCK,
-    SPR_BROK,
-    SPR_CELL,
-    SPR_CELP,
-    SPR_SHEL,
-    SPR_SBOX,
-    SPR_BPAK,
-    SPR_BFUG,
-    SPR_MGUN,
-    SPR_CSAW,
-    SPR_LAUN,
-    SPR_PLAS,
-    SPR_SHOT,
-    SPR_SGN2,
-    SPR_COLU,
-    SPR_SMT2,
-    SPR_GOR1,
-    SPR_POL2,
-    SPR_POL5,
-    SPR_POL4,
-    SPR_POL3,
-    SPR_POL1,
-    SPR_POL6,
-    SPR_GOR2,
-    SPR_GOR3,
-    SPR_GOR4,
-    SPR_GOR5,
-    SPR_SMIT,
-    SPR_COL1,
-    SPR_COL2,
-    SPR_COL3,
-    SPR_COL4,
-    SPR_CAND,
-    SPR_CBRA,
-    SPR_COL6,
-    SPR_TRE1,
-    SPR_TRE2,
-    SPR_ELEC,
-    SPR_CEYE,
-    SPR_FSKU,
-    SPR_COL5,
-    SPR_TBLU,
-    SPR_TGRN,
-    SPR_TRED,
-    SPR_SMBT,
-    SPR_SMGT,
-    SPR_SMRT,
-    SPR_HDB1,
-    SPR_HDB2,
-    SPR_HDB3,
-    SPR_HDB4,
-    SPR_HDB5,
-    SPR_HDB6,
-    SPR_POB1,
-    SPR_POB2,
-    SPR_BRS1,
-    SPR_TLMP,
-    SPR_TLP2,
+    SPR_TROO, SPR_SHTG, SPR_PUNG, SPR_PISG, SPR_PISF, SPR_SHTF, SPR_SHT2, SPR_CHGG, SPR_CHGF, SPR_MISG,
+    SPR_MISF, SPR_SAWG, SPR_PLSG, SPR_PLSF, SPR_BFGG, SPR_BFGF, SPR_BLUD, SPR_PUFF, SPR_BAL1, SPR_BAL2,
+    SPR_PLSS, SPR_PLSE, SPR_MISL, SPR_BFS1, SPR_BFE1, SPR_BFE2, SPR_TFOG, SPR_IFOG, SPR_PLAY, SPR_POSS,
+    SPR_SPOS, SPR_VILE, SPR_FIRE, SPR_FATB, SPR_FBXP, SPR_SKEL, SPR_MANF, SPR_FATT, SPR_CPOS, SPR_SARG,
+    SPR_HEAD, SPR_BAL7, SPR_BOSS, SPR_BOS2, SPR_SKUL, SPR_SPID, SPR_BSPI, SPR_APLS, SPR_APBX, SPR_CYBR,
+    SPR_PAIN, SPR_SSWV, SPR_KEEN, SPR_BBRN, SPR_BOSF, SPR_ARM1, SPR_ARM2, SPR_BAR1, SPR_BEXP, SPR_FCAN,
+    SPR_BON1, SPR_BON2, SPR_BKEY, SPR_RKEY, SPR_YKEY, SPR_BSKU, SPR_RSKU, SPR_YSKU, SPR_STIM, SPR_MEDI,
+    SPR_SOUL, SPR_PINV, SPR_PSTR, SPR_PINS, SPR_MEGA, SPR_SUIT, SPR_PMAP, SPR_PVIS, SPR_CLIP, SPR_AMMO,
+    SPR_ROCK, SPR_BROK, SPR_CELL, SPR_CELP, SPR_SHEL, SPR_SBOX, SPR_BPAK, SPR_BFUG, SPR_MGUN, SPR_CSAW,
+    SPR_LAUN, SPR_PLAS, SPR_SHOT, SPR_SGN2, SPR_COLU, SPR_SMT2, SPR_GOR1, SPR_POL2, SPR_POL5, SPR_POL4,
+    SPR_POL3, SPR_POL1, SPR_POL6, SPR_GOR2, SPR_GOR3, SPR_GOR4, SPR_GOR5, SPR_SMIT, SPR_COL1, SPR_COL2,
+    SPR_COL3, SPR_COL4, SPR_CAND, SPR_CBRA, SPR_COL6, SPR_TRE1, SPR_TRE2, SPR_ELEC, SPR_CEYE, SPR_FSKU,
+    SPR_COL5, SPR_TBLU, SPR_TGRN, SPR_TRED, SPR_SMBT, SPR_SMGT, SPR_SMRT, SPR_HDB1, SPR_HDB2, SPR_HDB3,
+    SPR_HDB4, SPR_HDB5, SPR_HDB6, SPR_POB1, SPR_POB2, SPR_BRS1, SPR_TLMP, SPR_TLP2,
 
     // Sprites 138 to 143
     SPR_TNT1,   // add invisible sprite phares 3/8/98
@@ -1343,7 +1219,7 @@ typedef struct
     long        misc2;
     dboolean    translucent;
     dboolean    dehacked;
-    int         num;
+    statenum_t  num;
 } state_t;
 
 extern state_t  states[NUMSTATES];
@@ -1555,6 +1431,7 @@ typedef struct
     int         deathsound;
     int         speed;
     int         radius;
+    int         pickupradius;
     int         height;
     int         projectilepassheight;
     int         mass;
@@ -1564,12 +1441,15 @@ typedef struct
     int         flags2;
     int         raisestate;
     int         frames;
+    dboolean    fullbright;
     int         blood;
     int         shadowoffset;
     char        name1[100];
     char        plural1[100];
     char        name2[100];
     char        plural2[100];
+    char        name3[100];
+    char        plural3[100];
     void        (*colfunc)(void);
 } mobjinfo_t;
 

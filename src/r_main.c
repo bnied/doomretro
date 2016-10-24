@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -37,11 +37,8 @@
 */
 
 #include "c_console.h"
-#include "d_loop.h"
 #include "doomstat.h"
 #include "i_timer.h"
-#include "m_config.h"
-#include "m_menu.h"
 #include "p_local.h"
 #include "r_sky.h"
 #include "v_video.h"
@@ -112,15 +109,10 @@ lighttable_t            **colormaps;
 // bumped light from gun blasts
 int                     extralight;
 
+dboolean                r_homindicator = r_homindicator_default;
 dboolean                r_translucency = r_translucency_default;
 
-dboolean                r_homindicator = r_homindicator_default;
-
-int                     r_frame_count;
-
 extern int              viewheight2;
-extern int              gametic;
-extern dboolean         canmodify;
 
 void (*colfunc)(void);
 void (*wallcolfunc)(void);
@@ -138,7 +130,7 @@ void (*tlredwhite50colfunc)(void);
 void (*tlbluecolfunc)(void);
 void (*tlgreen33colfunc)(void);
 void (*tlred33colfunc)(void);
-void (*tlblue33colfunc)(void);
+void (*tlblue25colfunc)(void);
 void (*redtobluecolfunc)(void);
 void (*transcolfunc)(void);
 void (*spanfunc)(void);
@@ -331,10 +323,8 @@ static void R_InitPointToAngle(void)
 //
 void R_InitTextureMapping(void)
 {
-    int         i;
-    int         x;
-    int         t;
-    fixed_t     focallength;
+    int                 i;
+    int                 x;
 
     // Use tangent table to generate viewangletox:
     //  viewangletox will give the next greatest x
@@ -346,22 +336,19 @@ void R_InitTextureMapping(void)
 
     // Calc focallength
     //  so FIELDOFVIEW angles covers SCREENWIDTH.
-    focallength = FixedDiv(centerxfrac, hitan);
+    fixed_t             focallength = FixedDiv(centerxfrac, hitan);
 
     for (i = 0; i < FINEANGLES / 2; i++)
     {
         fixed_t tangent = finetangent[i];
 
         if (tangent > hitan)
-            t = -1;
+            viewangletox[i] = -1;
         else if (tangent < lotan)
-            t = highend;
+            viewangletox[i] = highend;
         else
-        {
-            t = (centerxfrac - FixedMul(tangent, focallength) + FRACUNIT - 1) >> FRACBITS;
-            t = BETWEEN(-1, t, highend);
-        }
-        viewangletox[i] = t;
+            viewangletox[i] = BETWEEN(-1, (centerxfrac - FixedMul(tangent, focallength)
+                + FRACUNIT - 1) >> FRACBITS, highend);
     }
 
     // Scan viewangletox[] to generate xtoviewangle[]:
@@ -375,12 +362,10 @@ void R_InitTextureMapping(void)
 
     // Take out the fencepost cases from viewangletox.
     for (i = 0; i < FINEANGLES / 2; i++)
-    {
         if (viewangletox[i] == -1)
             viewangletox[i] = 0;
         else if (viewangletox[i] == highend)
             viewangletox[i]--;
-    }
 
     clipangle = xtoviewangle[0];
 }
@@ -405,12 +390,14 @@ void R_InitLightTables(void)
     //  for each level / distance combination.
     for (i = 0; i < LIGHTLEVELS; i++)
     {
-        int j, startmap = ((LIGHTLEVELS - LIGHTBRIGHT - i) * 2) * NUMCOLORMAPS / LIGHTLEVELS;
+        int     j;
+        int     startmap = ((LIGHTLEVELS - LIGHTBRIGHT - i) * 2) * NUMCOLORMAPS / LIGHTLEVELS;
 
         for (j = 0; j < MAXLIGHTZ; j++)
         {
             int scale = FixedDiv(SCREENWIDTH / 2 * FRACUNIT, (j + 1) << LIGHTZSHIFT);
-            int t, level = BETWEEN(0, startmap - (scale >>= LIGHTSCALESHIFT) / DISTMAP,
+            int t;
+            int level = BETWEEN(0, startmap - (scale >>= LIGHTSCALESHIFT) / DISTMAP,
                 NUMCOLORMAPS - 1) * 256;
 
             // killough 3/20/98: Initialize multiple colormaps
@@ -484,18 +471,10 @@ void R_ExecuteSetViewSize(void)
 
     // planes
     for (i = 0; i < viewheight; i++)
-    {
-        fixed_t dy = ABS(((i - viewheight / 2) << FRACBITS) + FRACUNIT / 2);
-
-        yslope[i] = FixedDiv(projectiony, dy);
-    }
+        yslope[i] = FixedDiv(projectiony, ABS(((i - viewheight / 2) << FRACBITS) + FRACUNIT / 2));
 
     for (i = 0; i < viewwidth; i++)
-    {
-        fixed_t cosadj = ABS(finecosine[xtoviewangle[i] >> ANGLETOFINESHIFT]);
-
-        distscale[i] = FixedDiv(FRACUNIT, cosadj);
-    }
+        distscale[i] = FixedDiv(FRACUNIT, ABS(finecosine[xtoviewangle[i] >> ANGLETOFINESHIFT]));
 
     // Calculate the light levels to use
     //  for each level / scale combination.
@@ -551,7 +530,7 @@ void R_InitColumnFunctions(void)
         tlbluecolfunc = R_DrawTranslucentBlueColumn;
         tlgreen33colfunc = R_DrawTranslucentGreen33Column;
         tlred33colfunc = R_DrawTranslucentRed33Column;
-        tlblue33colfunc = R_DrawTranslucentBlue33Column;
+        tlblue25colfunc = R_DrawTranslucentBlue25Column;
         tlredtoblue33colfunc = R_DrawTranslucentRedToBlue33Column;
         tlredtogreen33colfunc = R_DrawTranslucentRedToGreen33Column;
         bloodsplatcolfunc = R_DrawBloodSplatColumn;
@@ -570,7 +549,7 @@ void R_InitColumnFunctions(void)
         tlbluecolfunc = R_DrawColumn;
         tlgreen33colfunc = R_DrawColumn;
         tlred33colfunc = R_DrawColumn;
-        tlblue33colfunc = R_DrawColumn;
+        tlblue25colfunc = R_DrawColumn;
         tlredtoblue33colfunc = R_DrawRedToBlueColumn;
         tlredtogreen33colfunc = R_DrawRedToGreenColumn;
         bloodsplatcolfunc = R_DrawSolidBloodSplatColumn;
@@ -611,8 +590,8 @@ void R_InitColumnFunctions(void)
             info->colfunc = tlredtogreen33colfunc;
         else if (flags2 & MF2_TRANSLUCENT_REDTOBLUE_33)
             info->colfunc = tlredtoblue33colfunc;
-        else if (flags2 & MF2_TRANSLUCENT_BLUE_33)
-            info->colfunc = tlblue33colfunc;
+        else if (flags2 & MF2_TRANSLUCENT_BLUE_25)
+            info->colfunc = tlblue25colfunc;
         else if (flags2 & MF2_REDTOGREEN)
             info->colfunc = redtogreencolfunc;
         else if (flags2 & MF2_REDTOBLUE)
@@ -747,8 +726,6 @@ void R_SetupFrame(player_t *player)
 //
 void R_RenderPlayerView(player_t *player)
 {
-    ++r_frame_count;
-
     R_SetupFrame(player);
 
     // Clear buffers.

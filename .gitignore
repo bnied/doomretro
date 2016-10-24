@@ -127,8 +127,7 @@ publish/
 *.azurePubxml
 
 # NuGet Packages Directory
-## TODO: If you have NuGet Package Restore enabled, uncomment the next line
-#packages/*
+msvc/packages/*
 ## TODO: If the tool you use requires repositories.config, also uncomment the next line
 #!packages/repositories.config
 
@@ -193,8 +192,16 @@ Desktop.ini
 $RECYCLE.BIN/
 *.bak
 
-savegames/
 *.exp
+
+savegames/
+screenshots/
+msvc/Release/condump*.txt
+msvc/Release/doomretro.cfg
+msvc/Release/doomretro.wad
+msvc/Debug/condump*.txt
+msvc/Debug/doomretro.cfg
+msvc/Debug/doomretro.wad
 
 # =========================
 # OSX detritus
@@ -207,9 +214,6 @@ savegames/
 xcuserdata/
 project.xcworkspace/
 DerivedData/
-
-msvc/Release/doomretro.cfg
-msvc/Debug/doomretro.cfg
 
 # Files built on Unix systems
 *.[oa]

@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -38,9 +38,7 @@
 
 #include "am_map.h"
 #include "c_console.h"
-#include "d_deh.h"
 #include "doomstat.h"
-#include "dstrings.h"
 #include "i_system.h"
 #include "m_misc.h"
 #include "p_local.h"
@@ -285,9 +283,6 @@ static void saveg_read_mobj_t(mobj_t *str)
     // fixed_t momz
     str->momz = saveg_read32();
 
-    // int validcount
-    str->validcount = saveg_read32();
-
     // mobjtype_t type
     str->type = (mobjtype_t)saveg_read_enum();
 
@@ -333,9 +328,6 @@ static void saveg_read_mobj_t(mobj_t *str)
     else
         str->player = NULL;
 
-    // int lastlook
-    str->lastlook = saveg_read32();
-
     // mapthing_t spawnpoint
     saveg_read_mapthing_t(&str->spawnpoint);
 
@@ -380,6 +372,9 @@ static void saveg_read_mobj_t(mobj_t *str)
 
     // int pitch
     str->pitch = saveg_read32();
+
+    // int id
+    str->id = saveg_read32();
 }
 
 static void saveg_write_mobj_t(mobj_t *str)
@@ -444,9 +439,6 @@ static void saveg_write_mobj_t(mobj_t *str)
     // fixed_t momz
     saveg_write32(str->momz);
 
-    // int validcount
-    saveg_write32(str->validcount);
-
     // mobjtype_t type
     saveg_write_enum(str->type);
 
@@ -486,9 +478,6 @@ static void saveg_write_mobj_t(mobj_t *str)
     // struct player_s *player
     saveg_write32(str->player ? str->player - players + 1 : 0);
 
-    // int lastlook
-    saveg_write32(str->lastlook);
-
     // mapthing_t spawnpoint
     saveg_write_mapthing_t(&str->spawnpoint);
 
@@ -527,6 +516,9 @@ static void saveg_write_mobj_t(mobj_t *str)
 
     // int pitch
     saveg_write32(str->pitch);
+
+    // int id
+    saveg_write32(str->id);
 }
 
 //
@@ -778,6 +770,27 @@ static void saveg_read_player_t(player_t *str)
     // int mobjcount[NUMMOBJTYPES];
     for (i = 0; i < NUMMOBJTYPES; ++i)
         str->mobjcount[i] = saveg_read32();
+
+    // int distancetraveled
+    str->distancetraveled = saveg_read32();
+
+    // int itemspickedup_ammo_bullets
+    str->itemspickedup_ammo_bullets = saveg_read32();
+
+    // int itemspickedup_ammo_cells
+    str->itemspickedup_ammo_cells = saveg_read32();
+
+    // int itemspickedup_ammo_rockets
+    str->itemspickedup_ammo_rockets = saveg_read32();
+
+    // int itemspickedup_ammo_shells
+    str->itemspickedup_ammo_shells = saveg_read32();
+
+    // int itemspickedup_armor
+    str->itemspickedup_armor = saveg_read32();
+
+    // int itemspickedup_health
+    str->itemspickedup_health = saveg_read32();
 }
 
 static void saveg_write_player_t(player_t *str)
@@ -949,6 +962,27 @@ static void saveg_write_player_t(player_t *str)
     // int mobjcount[NUMMOBJTYPES]
     for (i = 0; i < NUMMOBJTYPES; ++i)
         saveg_write32(str->mobjcount[i]);
+
+    // int distancetraveled
+    saveg_write32(str->distancetraveled);
+
+    // int itemspickedup_ammo_bullets
+    saveg_write32(str->itemspickedup_ammo_bullets);
+
+    // int itemspickedup_ammo_cells
+    saveg_write32(str->itemspickedup_ammo_cells);
+
+    // int itemspickedup_ammo_rockets
+    saveg_write32(str->itemspickedup_ammo_rockets);
+
+    // int itemspickedup_ammo_shells
+    saveg_write32(str->itemspickedup_ammo_shells);
+
+    // int itemspickedup_armor
+    saveg_write32(str->itemspickedup_armor);
+
+    // int itemspickedup_health
+    saveg_write32(str->itemspickedup_health);
 }
 
 //
@@ -1398,8 +1432,8 @@ static void saveg_write_fireflicker_t(fireflicker_t *str)
 
 static void saveg_read_elevator_t(elevator_t *str)
 {
-    // floor_e type
-    str->type = (floor_e)saveg_read_enum();
+    // elevator_e type
+    str->type = (elevator_e)saveg_read_enum();
 
     // sector_t *sector
     str->sector = &sectors[saveg_read32()];
@@ -1419,7 +1453,7 @@ static void saveg_read_elevator_t(elevator_t *str)
 
 static void saveg_write_elevator_t(elevator_t *str)
 {
-    // floor_e type
+    // elevator_e type
     saveg_write_enum(str->type);
 
     // sector_t *sector
@@ -1632,8 +1666,7 @@ dboolean P_ReadSaveGameHeader(char *description)
     if (strcmp(read_vcheck, vcheck))
     {
         menuactive = false;
-        consoleheight = 1;
-        consoledirection = 1;
+        C_ShowConsole();
         C_Warning("This savegame requires %s.", read_vcheck);
         return false;   // bad version
     }
@@ -1956,15 +1989,17 @@ void P_UnArchiveThinkers(void)
 uint32_t P_ThinkerToIndex(thinker_t *thinker)
 {
     thinker_t   *th;
-    uint32_t    i;
+    uint32_t    i = 0;
 
     if (!thinker)
         return 0;
 
-    for (th = thinkerclasscap[th_mobj].cnext, i = 1; th != &thinkerclasscap[th_mobj];
-        th = th->cnext, ++i)
+    for (th = thinkerclasscap[th_mobj].cnext; th != &thinkerclasscap[th_mobj]; th = th->cnext)
+    {
+        ++i;
         if (th == thinker)
             return i;
+    }
 
     return 0;
 }
@@ -1972,14 +2007,13 @@ uint32_t P_ThinkerToIndex(thinker_t *thinker)
 thinker_t *P_IndexToThinker(uint32_t index)
 {
     thinker_t   *th;
-    uint32_t    i;
+    uint32_t    i = 0;
 
     if (!index)
         return NULL;
 
-    for (th = thinkerclasscap[th_mobj].cnext, i = 1; th != &thinkerclasscap[th_mobj];
-        th = th->cnext, ++i)
-        if (i == index)
+    for (th = thinkerclasscap[th_mobj].cnext; th != &thinkerclasscap[th_mobj]; th = th->cnext)
+        if (++i == index)
             return th;
 
     return NULL;
@@ -2002,7 +2036,7 @@ void P_RestoreTargets(void)
 //
 // P_ArchiveSpecials
 //
-enum
+typedef enum
 {
     tc_ceiling,
     tc_door,
@@ -2017,7 +2051,7 @@ enum
     tc_fireflicker,     // killough 10/4/98
     tc_button,
     tc_endspecials
-} specials_e;
+} specials_t;
 
 void P_ArchiveSpecials(void)
 {
@@ -2311,6 +2345,7 @@ void P_ArchiveMap(void)
 {
     saveg_write32(automapactive);
     saveg_write32(markpointnum);
+    saveg_write32(pathpointnum);
 
     if (markpointnum)
     {
@@ -2322,6 +2357,17 @@ void P_ArchiveMap(void)
             saveg_write32(markpoints[i].y);
         }
     }
+
+    if (pathpointnum)
+    {
+        int     i;
+
+        for (i = 0; i < pathpointnum; ++i)
+        {
+            saveg_write32(pathpoints[i].x);
+            saveg_write32(pathpoints[i].y);
+        }
+    }
 }
 
 //
@@ -2331,6 +2377,7 @@ void P_UnArchiveMap(void)
 {
     automapactive = saveg_read32();
     markpointnum = saveg_read32();
+    pathpointnum = saveg_read32();
 
     if (automapactive || mapwindow)
         AM_Start(automapactive);
@@ -2349,6 +2396,23 @@ void P_UnArchiveMap(void)
         {
             markpoints[i].x = saveg_read32();
             markpoints[i].y = saveg_read32();
+        }
+    }
+
+    if (pathpointnum)
+    {
+        int     i;
+
+        while (pathpointnum >= pathpointnum_max)
+        {
+            pathpointnum_max = (pathpointnum_max ? pathpointnum_max << 1 : 16);
+            pathpoints = Z_Realloc(pathpoints, pathpointnum_max * sizeof(*pathpoints));
+        }
+
+        for (i = 0; i < pathpointnum; ++i)
+        {
+            pathpoints[i].x = saveg_read32();
+            pathpoints[i].y = saveg_read32();
         }
     }
 }

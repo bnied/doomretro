@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -37,17 +37,15 @@
 */
 
 #include "c_console.h"
-#include "d_event.h"
 #include "doomstat.h"
 #include "i_gamepad.h"
-#include "i_video.h"
-#include "m_config.h"
 #include "p_local.h"
 #include "s_sound.h"
 
-extern dboolean oldweaponsowned[];
+extern fixed_t  animatedliquiddiff;
 extern dboolean skipaction;
-extern dboolean r_liquid_clipsprites;
+
+extern dboolean r_liquid_bob;
 
 void G_RemoveChoppers(void);
 
@@ -55,21 +53,18 @@ void G_RemoveChoppers(void);
 // Movement
 //
 
-// 16 pixels of bob
-#define MAXBOB  0x100000
-
 int             movebob = movebob_default;
 int             stillbob = stillbob_default;
-int             r_liquid_lowerview = r_liquid_lowerview_default;
+dboolean        r_liquid_lowerview = r_liquid_lowerview_default;
 int             r_shakescreen = r_shakescreen_default;
 
-dboolean onground;
+static dboolean onground;
 
 //
 // P_Thrust
 // Moves the given origin along a given angle.
 //
-void P_Thrust(player_t *player, angle_t angle, fixed_t move)
+static void P_Thrust(player_t *player, angle_t angle, fixed_t move)
 {
     player->mo->momx += FixedMul(move, finecosine[angle >>= ANGLETOFINESHIFT]);
     player->mo->momy += FixedMul(move, finesine[angle]);
@@ -85,7 +80,7 @@ void P_Thrust(player_t *player, angle_t angle, fixed_t move)
 // occur on conveyors, unless the player walks on one, and bobbing should be
 // reduced at a regular rate, even on ice (where the player coasts).
 //
-void P_Bob(player_t *player, angle_t angle, fixed_t move)
+static void P_Bob(player_t *player, angle_t angle, fixed_t move)
 {
     player->momx += FixedMul(move, finecosine[angle >>= ANGLETOFINESHIFT]);
     player->momy += FixedMul(move, finesine[angle]);
@@ -99,13 +94,11 @@ void P_CalcHeight(player_t *player)
 {
     mobj_t      *mo = player->mo;
 
-    if (!onground)
-        player->viewz = MIN(mo->z + VIEWHEIGHT, mo->ceilingz - 4 * FRACUNIT);
-    else if (player->playerstate == PST_LIVE)
+    if (player->playerstate == PST_LIVE)
     {
-        int     angle = (FINEANGLES / 20 * leveltime) & FINEMASK;
-        fixed_t bob = ((FixedMul(player->momx, player->momx)
-            + FixedMul(player->momy, player->momy)) >> 2);
+        fixed_t momx = player->momx;
+        fixed_t momy = player->momy;
+        fixed_t bob = (FixedMul(momx, momx) + FixedMul(momy, momy)) >> 2;
 
         // Regular movement bobbing
         // (needs to be calculated for gun swing
@@ -113,7 +106,7 @@ void P_CalcHeight(player_t *player)
         player->bob = (bob ? MAX(MIN(bob, MAXBOB) * movebob / 100, MAXBOB * stillbob / 400) :
             MAXBOB * stillbob / 400);
 
-        bob = FixedMul(player->bob / 2, finesine[angle]);
+        bob = FixedMul(player->bob / 2, finesine[(FINEANGLES / 20 * leveltime) & FINEMASK]);
 
         // move viewheight
         player->viewheight += player->deltaviewheight;
@@ -142,7 +135,7 @@ void P_CalcHeight(player_t *player)
     else
         player->viewz = mo->z + player->viewheight;
 
-    if ((mo->flags2 & MF2_FEETARECLIPPED) && r_liquid_lowerview)
+    if (mo->flags2 & MF2_FEETARECLIPPED)
     {
         dboolean                    liquid = true;
         const struct msecnode_s     *seclist;
@@ -155,7 +148,15 @@ void P_CalcHeight(player_t *player)
             }
 
         if (liquid)
-            player->viewz -= FOOTCLIPSIZE;
+        {
+            if (player->playerstate == PST_DEAD && r_liquid_bob)
+            {
+                player->viewz += animatedliquiddiff;
+                return;
+            }
+            else if (r_liquid_lowerview)
+                player->viewz -= FOOTCLIPSIZE;
+        }
     }
 
     player->viewz = BETWEEN(mo->floorz + 4 * FRACUNIT, player->viewz, mo->ceilingz - 4 * FRACUNIT);
@@ -164,10 +165,12 @@ void P_CalcHeight(player_t *player)
 //
 // P_MovePlayer
 //
-void P_MovePlayer(player_t *player)
+static void P_MovePlayer(player_t *player)
 {
     ticcmd_t    *cmd = &player->cmd;
     mobj_t      *mo = player->mo;
+    char        forwardmove = cmd->forwardmove;
+    char        sidemove = cmd->sidemove;
 
     mo->angle += cmd->angleturn << FRACBITS;
     onground = (mo->z <= mo->floorz || (mo->flags2 & MF2_ONMOBJ));
@@ -178,7 +181,7 @@ void P_MovePlayer(player_t *player)
     // anomalies. The thrust applied to bobbing is always the same strength on
     // ice, because the player still "works just as hard" to move, while the
     // thrust applied to the movement varies with 'movefactor'.
-    if (cmd->forwardmove | cmd->sidemove)       // killough 10/98
+    if (forwardmove | sidemove)                 // killough 10/98
     {
         if (onground)                           // killough 8/9/98
         {
@@ -190,16 +193,16 @@ void P_MovePlayer(player_t *player)
             // On ice, make it depend on effort.
             int bobfactor = (friction < ORIG_FRICTION ? movefactor : ORIG_FRICTION_FACTOR);
 
-            if (cmd->forwardmove)
+            if (forwardmove)
             {
-                P_Bob(player, mo->angle, cmd->forwardmove * bobfactor);
-                P_Thrust(player, mo->angle, cmd->forwardmove * movefactor);
+                P_Bob(player, mo->angle, forwardmove * bobfactor);
+                P_Thrust(player, mo->angle, forwardmove * movefactor);
             }
 
-            if (cmd->sidemove)
+            if (sidemove)
             {
-                P_Bob(player, mo->angle - ANG90, cmd->sidemove * bobfactor);
-                P_Thrust(player, mo->angle - ANG90, cmd->sidemove * movefactor);
+                P_Bob(player, mo->angle - ANG90, sidemove * bobfactor);
+                P_Thrust(player, mo->angle - ANG90, sidemove * movefactor);
             }
         }
 
@@ -208,20 +211,16 @@ void P_MovePlayer(player_t *player)
     }
 }
 
-void P_ReduceDamageCount(player_t *player)
+//
+// P_ReduceDamageCount
+//
+static void P_ReduceDamageCount(player_t *player)
 {
     if (player->damagecount)
         --player->damagecount;
 
     if (r_shakescreen)
-    {
-        if (player->damagecount)
-            blitfunc = (vid_showfps ? (nearestlinear ? I_Blit_NearestLinear_ShowFPS_Shake
-                : I_Blit_ShowFPS_Shake) : (nearestlinear ? I_Blit_NearestLinear_Shake
-                : I_Blit_Shake));
-        else
-            I_UpdateBlitFunc();
-    }
+        I_UpdateBlitFunc(player->damagecount);
 }
 
 //
@@ -229,8 +228,7 @@ void P_ReduceDamageCount(player_t *player)
 // Fall on your face when dying.
 // Decrease POV height to floor height.
 //
-
-void P_DeathThink(player_t *player)
+static void P_DeathThink(player_t *player)
 {
     static int          count;
     static dboolean     facingkiller;
@@ -245,9 +243,7 @@ void P_DeathThink(player_t *player)
     P_MovePsprites(player);
 
     // fall to the ground
-    player->deltaviewheight = 0;
-    onground = (mo->z <= mo->floorz || (mo->flags2 & MF2_ONMOBJ));
-    if (onground)
+    if ((onground = (mo->z <= mo->floorz || (mo->flags2 & MF2_ONMOBJ))))
     {
         if (player->viewheight > 6 * FRACUNIT)
             player->viewheight -= FRACUNIT;
@@ -255,6 +251,7 @@ void P_DeathThink(player_t *player)
         if (player->viewheight < 6 * FRACUNIT)
             player->viewheight = 6 * FRACUNIT;
     }
+    player->deltaviewheight = 0;
     P_CalcHeight(player);
 
     if (attacker && attacker != mo && !facingkiller)
@@ -271,10 +268,8 @@ void P_DeathThink(player_t *player)
 
             facingkiller = true;
         }
-        else if (delta < ANG180)
-            mo->angle += ANG5;
         else
-            mo->angle -= ANG5;
+            mo->angle += (delta < ANG180 ? ANG5 : -ANG5);
     }
     else
         P_ReduceDamageCount(player);
@@ -282,9 +277,9 @@ void P_DeathThink(player_t *player)
     if (consoleheight)
         return;
 
-    if (((player->cmd.buttons & BT_USE)
-        || ((player->cmd.buttons & BT_ATTACK) && !player->damagecount && count > TICRATE * 2)
-        || keystate[SDL_SCANCODE_RETURN] || keystate[SDL_SCANCODE_KP_ENTER]))
+    if (((player->cmd.buttons & BT_USE) || ((player->cmd.buttons & BT_ATTACK)
+        && !player->damagecount && count > TICRATE * 2) || keystate[SDL_SCANCODE_RETURN]
+        || keystate[SDL_SCANCODE_KP_ENTER]))
     {
         count = 0;
         damagevibrationtics = 1;
@@ -296,7 +291,10 @@ void P_DeathThink(player_t *player)
         count++;
 }
 
-void P_ResurrectPlayer(player_t *player)
+//
+// P_ResurrectPlayer
+//
+void P_ResurrectPlayer(player_t *player, int health)
 {
     fixed_t     x, y;
     int         angle;
@@ -309,24 +307,23 @@ void P_ResurrectPlayer(player_t *player)
     x = player->mo->x;
     y = player->mo->y;
     angle = player->mo->angle >> ANGLETOFINESHIFT;
-    thing = P_SpawnMobj(x + 20 * finecosine[angle], y + 20 * finesine[angle],
-        ONFLOORZ, MT_TFOG);
+    thing = P_SpawnMobj(x + 20 * finecosine[angle], y + 20 * finesine[angle], ONFLOORZ, MT_TFOG);
     thing->angle = player->mo->angle;
     S_StartSound(thing, sfx_telept);
 
     // telefrag anything in this spot
     P_TeleportMove(thing, thing->x, thing->y, thing->z, true);
 
-    // respawn the player.
+    // respawn the player
     thing = P_SpawnMobj(x, y, ONFLOORZ, MT_PLAYER);
     thing->angle = player->mo->angle;
     thing->player = player;
-    thing->health = initial_health;
+    thing->health = health;
     thing->reactiontime = 18;
     player->mo = thing;
     player->playerstate = PST_LIVE;
     player->viewheight = VIEWHEIGHT;
-    player->health = initial_health;
+    player->health = health;
     infight = false;
     P_SetupPsprites(player);
     P_MapEnd();
@@ -341,6 +338,7 @@ void P_PlayerThink(player_t *player)
 {
     ticcmd_t    *cmd = &player->cmd;
     mobj_t      *mo = player->mo;
+    static int  motionblur;
 
     // [AM] Assume we can interpolate at the beginning
     //      of the tic.
@@ -367,6 +365,24 @@ void P_PlayerThink(player_t *player)
         mo->flags &= ~MF_JUSTATTACKED;
     }
 
+    if (vid_motionblur)
+    {
+        motionblur = 0;
+        if (!automapactive)
+        {
+            if (cmd->angleturn)
+                motionblur = MIN(ABS(cmd->angleturn) / 960 * 100, 150);
+            if (player->damagecount)
+                motionblur = MAX(motionblur, 100);
+        }
+        I_SetMotionBlur(motionblur);
+    }
+    else if (motionblur)
+    {
+        motionblur = 0;
+        I_SetMotionBlur(0);
+    }
+
     if (player->playerstate == PST_DEAD)
     {
         P_DeathThink(player);
@@ -374,7 +390,7 @@ void P_PlayerThink(player_t *player)
     }
 
     // Move around.
-    // Reactiontime is used to prevent movement for a bit after a teleport.
+    // Reaction time is used to prevent movement for a bit after a teleport.
     if (mo->reactiontime)
         mo->reactiontime--;
     else
@@ -428,12 +444,10 @@ void P_PlayerThink(player_t *player)
         else if (newweapon == wp_shotgun)
         {
             if ((!player->weaponowned[wp_shotgun] || player->readyweapon == wp_shotgun)
-                && player->weaponowned[wp_supershotgun]
-                && player->ammo[am_shell] >= 2)
+                && player->weaponowned[wp_supershotgun] && player->ammo[am_shell] >= 2)
                 player->preferredshotgun = wp_supershotgun;
             else if (player->readyweapon == wp_supershotgun
-                     || (player->preferredshotgun == wp_supershotgun
-                         && player->ammo[am_shell] == 1))
+                || (player->preferredshotgun == wp_supershotgun && player->ammo[am_shell] == 1))
                 player->preferredshotgun = wp_shotgun;
             newweapon = player->preferredshotgun;
         }
@@ -489,6 +503,7 @@ void P_PlayerThink(player_t *player)
     if (player->powers[pw_invulnerability] > 4 * 32
         || (player->powers[pw_invulnerability] & 8))
         player->fixedcolormap = INVERSECOLORMAP;
-    else player->fixedcolormap = (player->powers[pw_infrared] > 4 * 32
-                                  || (player->powers[pw_infrared] & 8));
+    else
+        player->fixedcolormap = (player->powers[pw_infrared] > 4 * 32
+            || (player->powers[pw_infrared] & 8));
 }

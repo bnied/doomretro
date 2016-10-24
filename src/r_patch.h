@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -87,10 +87,6 @@ void R_UnlockTextureCompositePatchNum(int id);
 
 rcolumn_t *R_GetPatchColumnWrapped(rpatch_t *patch, int columnIndex);
 rcolumn_t *R_GetPatchColumnClamped(rpatch_t *patch, int columnIndex);
-
-// returns R_GetPatchColumnWrapped for square, non-holed textures
-// and R_GetPatchColumnClamped otherwise
-rcolumn_t *R_GetPatchColumn(rpatch_t *patch, int columnIndex);
 
 void R_InitPatches(void);
 

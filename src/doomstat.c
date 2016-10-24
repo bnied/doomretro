@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -49,6 +49,8 @@ dboolean        bfgedition = false;
 
 dboolean        breach = false;
 dboolean        chex = false;
+dboolean        chex1 = false;
+dboolean        chex2 = false;
 dboolean        chexdeh = false;
 dboolean        hacx = false;
 dboolean        BTSX = false;
@@ -59,6 +61,7 @@ dboolean        BTSXE2B = false;
 dboolean        BTSXE3 = false;
 dboolean        BTSXE3A = false;
 dboolean        BTSXE3B = false;
+dboolean        E1M4B = false;
 dboolean        E1M8B = false;
 
 // Set if homebrew PWAD stuff has been added.
@@ -84,10 +87,9 @@ dboolean        M_SAVEG = false;
 dboolean        M_SKILL = false;
 dboolean        M_SKULL1 = false;
 dboolean        M_SVOL = false;
-dboolean        STARMS = false;
-dboolean        STBAR = false;
+int             STARMS = 0;
+int             STBAR = 0;
 dboolean        STCFN034 = false;
-dboolean        STCFN039 = false;
 dboolean        STCFN121 = false;
 dboolean        STYSNUM0 = false;
 dboolean        TITLEPIC = false;

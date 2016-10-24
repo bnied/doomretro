@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -70,36 +70,33 @@
 #define KEY_EQUALS      0x3D
 #define KEY_MINUS       0x2D
 
-#define KEY_RSHIFT      (0x80 + 0x36)
-#define KEY_RCTRL       (0x80 + 0x1D)
-#define KEY_RALT        (0x80 + 0x38)
-
-#define KEY_LALT        KEY_RALT
+#define KEY_SHIFT       (0x80 + 0x36)
+#define KEY_CTRL        (0x80 + 0x1D)
+#define KEY_ALT         (0x80 + 0x38)
 
 // new keys:
 #define KEY_NUMLOCK     (0x80 + 0x39)
 #define KEY_CAPSLOCK    (0x80 + 0x3A)
-#define KEY_SCRLCK      (0x80 + 0x46)
+#define KEY_SCROLLLOCK  (0x80 + 0x46)
 
 #define KEY_HOME        (0x80 + 0x47)
 #define KEY_END         (0x80 + 0x4F)
-#define KEY_PGUP        (0x80 + 0x49)
-#define KEY_PGDN        (0x80 + 0x51)
-#define KEY_INS         (0x80 + 0x52)
-#define KEY_DEL         (0x80 + 0x60)
-
-#define KEY_TILDE       '`'
+#define KEY_PAGEUP      (0x80 + 0x49)
+#define KEY_PAGEDOWN    (0x80 + 0x51)
+#define KEY_INSERT      (0x80 + 0x52)
+#define KEY_PRINTSCREEN (0x80 + 0x59)
+#define KEY_DELETE      (0x80 + 0x60)
 
 #define KEYP_0          0x100
 #define KEYP_1          KEY_END
 #define KEYP_2          KEY_DOWNARROW
-#define KEYP_3          KEY_PGDN
+#define KEYP_3          KEY_PAGEDOWN
 #define KEYP_4          KEY_LEFTARROW
 #define KEYP_5          0x105
 #define KEYP_6          KEY_RIGHTARROW
 #define KEYP_7          KEY_HOME
 #define KEYP_8          KEY_UPARROW
-#define KEYP_9          KEY_PGUP
+#define KEYP_9          KEY_PAGEUP
 
 #define KEYP_DIVIDE     '/'
 #define KEYP_PLUS       KEY_EQUALS

@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -39,7 +39,6 @@
 #if !defined(__D_EVENT_H__)
 #define __D_EVENT_H__
 
-#include "doomtype.h"
 #include "i_video.h"
 
 //
@@ -82,7 +81,7 @@ typedef enum
 //
 // Button/action code definitions.
 //
-typedef enum
+enum
 {
     // Press "Fire".
     BT_ATTACK           = 1,
@@ -109,14 +108,12 @@ typedef enum
     //  occupy the second byte of buttons.
     BTS_SAVEMASK        = (4 + 8 + 16),
     BTS_SAVESHIFT       = 2
-} buttoncode_t;
+};
 
 //
 // GLOBAL VARIABLES
 //
-
 extern gameaction_t     gameaction;
-
 extern dboolean         altdown;
 
 #endif

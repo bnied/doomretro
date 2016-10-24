@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -52,6 +52,10 @@
 #define strncasecmp     strnicmp
 #else
 #include <strings.h>
+#endif
+
+#if !defined(MAX_PATH)
+#define MAX_PATH        260
 #endif
 
 //
@@ -109,7 +113,6 @@ typedef enum
 } GameVersion_t;
 
 // Screen width and height.
-
 #define ORIGINALWIDTH           320
 #define ORIGINALHEIGHT          200
 
@@ -122,8 +125,7 @@ typedef enum
 
 #define SBARHEIGHT              (ORIGINALSBARHEIGHT * SCREENSCALE)
 
-// The maximum number of players, multiplayer/networking.
-#define MAXPLAYERS              4
+#define MAXPLAYERS              1
 
 // State updates, number of tics / second.
 #define TICRATE                 35
@@ -227,10 +229,10 @@ typedef enum
 //
 typedef enum
 {
-    INVULNTICS  = (30 * TICRATE),
-    INVISTICS   = (60 * TICRATE),
-    INFRATICS   = (120 * TICRATE),
-    IRONTICS    = (60 * TICRATE)
+    INVULNTICS =  30 * TICRATE,
+    INVISTICS  =  60 * TICRATE,
+    INFRATICS  = 120 * TICRATE,
+    IRONTICS   =  60 * TICRATE
 } powerduration_t;
 
 #define STARTFLASHING           127

@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -44,8 +44,6 @@
 //
 // VIDEO
 //
-
-fixed_t         DX, DY, DXI, DYI;
 
 // Screen 0 is the screen updated by I_Update screen.
 // Screen 1 is an extra buffer.
@@ -69,14 +67,14 @@ void V_Init(void);
 void V_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int destx, int desty,
     int destscrn);
 
-void V_FillRect(int scrn, int x, int y, int width, int height, byte color);
-void V_FillTransRect(int x, int y, int width, int height, int color);
+void V_FillRect(int scrn, int x, int y, int width, int height, int color);
+void V_FillTransRect(int scrn, int x, int y, int width, int height, int color);
 
 void V_DrawPatch(int x, int y, int scrn, patch_t *patch);
 void V_DrawTranslucentPatch(int x, int y, int scrn, patch_t *patch);
 void V_DrawBigPatch(int x, int y, int scrn, patch_t *patch);
-void V_DrawConsoleChar(int x, int y, patch_t *patch, int color1, int color2, dboolean italics,
-    byte *tinttab);
+void V_DrawConsolePatch(int x, int y, patch_t *patch, int color, int backgroundcolor,
+    dboolean italics, byte *tinttab);
 void V_DrawShadowPatch(int x, int y, patch_t *patch);
 void V_DrawSolidShadowPatch(int x, int y, patch_t *patch);
 void V_DrawSpectreShadowPatch(int x, int y, patch_t *patch);
@@ -97,6 +95,7 @@ void V_DrawTranslucentHUDPatch(int x, int y, patch_t *patch, byte *tinttab);
 void V_DrawTranslucentHUDNumberPatch(int x, int y, patch_t *patch, byte *tinttab);
 void V_DrawTranslucentYellowHUDPatch(int x, int y, patch_t *patch, byte *tinttab);
 void V_DrawAltHUDPatch(int x, int y, patch_t *patch, int from, int to);
+void V_DrawTranslucentAltHUDPatch(int x, int y, patch_t *patch, int from, int to);
 void V_DrawTranslucentNoGreenPatch(int x, int y, patch_t *patch);
 void V_DrawTranslucentRedPatch(int x, int y, patch_t *patch);
 void V_DrawFlippedTranslucentRedPatch(int x, int y, patch_t *patch);
@@ -105,14 +104,12 @@ void V_DrawPagePatch(patch_t *patch);
 
 void V_DrawPixel(int x, int y, byte color, dboolean shadow);
 
-void GetPixelSize(void);
-void V_LowGraphicDetail(int height);
+void GetPixelSize(dboolean reset);
+void V_LowGraphicDetail(void);
 
 // Draw a linear block of pixels into the view buffer.
 void V_DrawBlock(int x, int y, int width, int height, byte *src);
 
 dboolean V_ScreenShot(void);
-
-void V_AverageColorInPatch(patch_t *patch, int *red, int *green, int *blue, int *total);
 
 #endif

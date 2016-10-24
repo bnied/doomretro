@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -38,10 +38,7 @@
 
 #include "c_console.h"
 #include "doomstat.h"
-#include "i_system.h"
-#include "i_timer.h"
 #include "p_local.h"
-#include "r_local.h"
 #include "r_sky.h"
 #include "w_wad.h"
 #include "z_zone.h"
@@ -84,9 +81,6 @@ fixed_t                 yslope[SCREENHEIGHT];
 fixed_t                 distscale[SCREENWIDTH];
 
 dboolean                r_liquid_swirl = r_liquid_swirl_default;
-
-extern fixed_t          animatedliquiddiff;
-extern dboolean         r_liquid_bob;
 
 //
 // R_MapPlane
@@ -172,7 +166,10 @@ visplane_t *R_FindPlane(fixed_t height, int picnum, int lightlevel, fixed_t xoff
     unsigned int        hash;                                   // killough
 
     if (picnum == skyflatnum || (picnum & PL_SKYFLAT))          // killough 10/98
-        height = lightlevel = 0;                // killough 7/19/98: most skies map together
+    {
+        height = 0;                             // killough 7/19/98: most skies map together
+        lightlevel = 0;
+    }
 
     // New visplane algorithm uses hash table -- killough
     hash = visplane_hash(picnum, lightlevel, height);
@@ -192,7 +189,7 @@ visplane_t *R_FindPlane(fixed_t height, int picnum, int lightlevel, fixed_t xoff
     check->xoffs = xoffs;                                      // killough 2/28/98: Save offsets
     check->yoffs = yoffs;
 
-    memset(check->top, SHRT_MAX, sizeof(check->top));
+    memset(check->top, USHRT_MAX, sizeof(check->top));
 
     return check;
 }
@@ -230,7 +227,7 @@ visplane_t *R_CheckPlane(visplane_t *pl, int start, int stop)
         intrh = stop;
     }
 
-    for (x = intrl; x <= intrh && pl->top[x] == SHRT_MAX; x++);
+    for (x = intrl; x <= intrh && pl->top[x] == USHRT_MAX; x++);
 
     // [crispy] fix HOM if ceilingplane and floorplane are the same
     // visplane (e.g. both skies)
@@ -253,7 +250,7 @@ visplane_t *R_CheckPlane(visplane_t *pl, int start, int stop)
         pl = new_pl;
         pl->minx = start;
         pl->maxx = stop;
-        memset(pl->top, SHRT_MAX, sizeof(pl->top));
+        memset(pl->top, USHRT_MAX, sizeof(pl->top));
     }
 
     return pl;
@@ -378,14 +375,14 @@ void R_DrawPlanes(void)
                     int         x;
                     int         texture;
                     int         offset;
-                    angle_t     an, flip;
+                    angle_t     flip;
                     rpatch_t    *tex_patch;
 
                     // killough 10/98: allow skies to come from sidedefs.
                     // Allows scrolling and/or animated skies, as well as
                     // arbitrary multiple skies per level without having
                     // to use info lumps.
-                    an = viewangle;
+                    angle_t     an = viewangle;
 
                     if (picnum & PL_SKYFLAT)
                     {
@@ -422,10 +419,6 @@ void R_DrawPlanes(void)
                         flip = 0;                       // DOOM flips it
                     }
 
-                    // Sky is always drawn full bright,
-                    //  i.e. colormaps[0] is used.
-                    // Because of this hack, sky is not affected
-                    //  by INVUL inverse mapping.
                     dc_colormap = (fixedcolormap ? fixedcolormap : fullcolormap);
 
                     dc_texheight = textureheight[texture] >> FRACBITS;
@@ -454,9 +447,8 @@ void R_DrawPlanes(void)
                 else
                 {
                     // regular flat
-                    dboolean    liquid = isliquid[picnum];
-                    dboolean    swirling = (liquid && r_liquid_swirl);
-                    int         lumpnum = firstflat + flattranslation[picnum];
+                    dboolean        swirling = (isliquid[picnum] && r_liquid_swirl);
+                    int             lumpnum = firstflat + flattranslation[picnum];
 
                     ds_source = (swirling ? R_DistortedFlat(picnum) :
                         W_CacheLumpNum(lumpnum, PU_STATIC));
@@ -465,13 +457,10 @@ void R_DrawPlanes(void)
                     yoffs = pl->yoffs;
                     planeheight = ABS(pl->height - viewz);
 
-                    if (liquid && pl->sector && r_liquid_bob && isliquid[pl->sector->floorpic])
-                        planeheight -= animatedliquiddiff;
-
                     planezlight = zlight[BETWEEN(0, (pl->lightlevel >> LIGHTSEGSHIFT)
                         + extralight * LIGHTBRIGHT, LIGHTLEVELS - 1)];
 
-                    pl->top[pl->minx - 1] = pl->top[pl->maxx + 1] = SHRT_MAX;
+                    pl->top[pl->minx - 1] = pl->top[pl->maxx + 1] = USHRT_MAX;
 
                     R_MakeSpans(pl);
 

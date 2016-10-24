@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -39,8 +39,6 @@
 #if !defined(__HU_STUFF_H__)
 #define __HU_STUFF_H__
 
-#include "d_event.h"
-
 //
 // Globally visible constants.
 //
@@ -50,7 +48,7 @@
 // Calculate # of glyphs in font.
 #define HU_FONTSIZE                     (HU_FONTEND - HU_FONTSTART + 1)
 
-#define HU_MSGX                         (automapactive && vid_fullscreen && !vid_widescreen ? 0 : 3)
+#define HU_MSGX                         3
 #define HU_MSGY                         2
 #define HU_MSGHEIGHT                    1       // in lines
 
@@ -84,13 +82,15 @@
 // HEADS UP TEXT
 //
 void HU_Init(void);
+void HU_SetTranslucency(void);
 void HU_Start(void);
 
 void HU_Ticker(void);
 void HU_Drawer(void);
 void HU_Erase(void);
 
-void HU_PlayerMessage(char *message, dboolean ingame);
+void HU_SetPlayerMessage(char *message, dboolean external);
+void HU_PlayerMessage(char *message, dboolean ingame, dboolean external);
 
 void HU_ClearMessages(void);
 void HU_DrawDisk(void);

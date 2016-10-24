@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -40,6 +40,7 @@
 #include "doomstat.h"
 #include "p_local.h"
 #include "p_tick.h"
+#include "s_sound.h"
 #include "z_zone.h"
 
 int     leveltime;
@@ -65,7 +66,7 @@ void P_InitThinkers(void)
     int i;
 
     // killough 8/29/98: initialize threaded lists
-    for (i = 0; i < NUMTHCLASS; i++)
+    for (i = 0; i < NUMTHCLASS; ++i)
         thinkerclasscap[i].cprev = thinkerclasscap[i].cnext = &thinkerclasscap[i];
 
     thinkercap.prev = thinkercap.next = &thinkercap;
@@ -223,6 +224,9 @@ static void P_RunThinkers(void)
             currentthinker->function(currentthinker);
         currentthinker = currentthinker->next;
     }
+
+    // Dedicated thinkers
+    T_MAPMusic();
 }
 
 //
@@ -238,10 +242,11 @@ void P_Ticker(void)
 
     P_RunThinkers();
     P_UpdateSpecials();
+    P_RespawnSpecials();
 
     P_MapEnd();
 
     // for par times
-    leveltime++;
+    ++leveltime;
     stat_time = SafeAdd(stat_time, 1);
 }

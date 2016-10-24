@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,12 +36,9 @@
 ========================================================================
 */
 
-#include <string.h>
-
 #include "c_console.h"
 #include "doomstat.h"
 #include "g_game.h"
-#include "m_misc.h"
 #include "i_system.h"
 #include "i_swap.h"
 #include "p_local.h"
@@ -212,7 +209,7 @@ dboolean P_UseSpecialLine(mobj_t *thing, line_t *line, int side)
     {
         // pointer to line function is NULL by default, set non-null if
         // line special is push or switch generalized linedef type
-        dboolean (*linefunc)(line_t *line) = NULL;
+        dboolean(*linefunc)(line_t *line) = NULL;
 
         // check each range of generalized linedefs
         if ((unsigned int)line->special >= GenFloorBase)
@@ -280,18 +277,22 @@ dboolean P_UseSpecialLine(mobj_t *thing, line_t *line, int side)
                         if (linefunc(line))
                             line->special = 0;
                     return true;
+
                 case PushMany:
                     if (!side)
                         linefunc(line);
                     return true;
+
                 case SwitchOnce:
                     if (linefunc(line))
                         P_ChangeSwitchTexture(line, 0);
                     return true;
+
                 case SwitchMany:
                     if (linefunc(line))
                         P_ChangeSwitchTexture(line, 1);
                     return true;
+
                 default:
                     // if not a switch/push type, do nothing here
                     return false;
@@ -350,6 +351,7 @@ dboolean P_UseSpecialLine(mobj_t *thing, line_t *line, int side)
                 EV_DoFloor(&junk, lowerFloorToLowest);
                 line->flags &= ~ML_TRIGGER666;
             }
+
         case D1_Door_OpenStay_Fast:
             EV_VerticalDoor(line, thing);
             break;

@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,55 +36,55 @@
 ========================================================================
 */
 
-#include "doomkeys.h"
 #include "i_gamepad.h"
 #include "m_config.h"
 #include "p_local.h"
 
-int     key_alwaysrun = KEYALWAYSRUN_DEFAULT;
-int     key_automap = KEYAUTOMAP_DEFAULT;
-int     key_automap_clearmark = KEYAUTOMAPCLEARMARK_DEFAULT;
-int     key_automap_followmode = KEYAUTOMAPFOLLOWMODE_DEFAULT;
-int     key_automap_grid = KEYAUTOMAPGRID_DEFAULT;
-int     key_automap_mark = KEYAUTOMAPMARK_DEFAULT;
-int     key_automap_maxzoom = KEYAUTOMAPMAXZOOM_DEFAULT;
-int     key_automap_rotatemode = KEYAUTOMAPROTATEMODE_DEFAULT;
-int     key_automap_zoomin = KEYAUTOMAPZOOMIN_DEFAULT;
-int     key_automap_zoomout = KEYAUTOMAPZOOMOUT_DEFAULT;
-int     key_console = KEYCONSOLE_DEFAULT;
-int     key_down = KEYDOWN_DEFAULT;
-int     key_down2 = KEYDOWN2_DEFAULT;
-int     key_fire = KEYFIRE_DEFAULT;
-int     key_left = KEYLEFT_DEFAULT;
-int     key_menu = KEY_ESCAPE;
-int     key_nextweapon = KEYNEXTWEAPON_DEFAULT;
-int     key_prevweapon = KEYPREVWEAPON_DEFAULT;
-int     key_right = KEYRIGHT_DEFAULT;
-int     key_run = KEYRUN_DEFAULT;
-int     key_strafe = KEYSTRAFE_DEFAULT;
-int     key_strafeleft = KEYSTRAFELEFT_DEFAULT;
-int     key_strafeleft2 = KEYSTRAFELEFT2_DEFAULT;
-int     key_straferight = KEYSTRAFERIGHT_DEFAULT;
-int     key_straferight2 = KEYSTRAFERIGHT2_DEFAULT;
-int     key_up = KEYUP_DEFAULT;
-int     key_up2 = KEYUP2_DEFAULT;
-int     key_use = KEYUSE_DEFAULT;
-int     key_use2 = KEYUSE2_DEFAULT;
-int     key_weapon1 = KEYWEAPON1_DEFAULT;
-int     key_weapon2 = KEYWEAPON2_DEFAULT;
-int     key_weapon3 = KEYWEAPON3_DEFAULT;
-int     key_weapon4 = KEYWEAPON4_DEFAULT;
-int     key_weapon5 = KEYWEAPON5_DEFAULT;
-int     key_weapon6 = KEYWEAPON6_DEFAULT;
-int     key_weapon7 = KEYWEAPON7_DEFAULT;
+int     keyboardalwaysrun = KEYALWAYSRUN_DEFAULT;
+int     keyboardautomap = KEYAUTOMAP_DEFAULT;
+int     keyboardautomapclearmark = KEYAUTOMAPCLEARMARK_DEFAULT;
+int     keyboardautomapfollowmode = KEYAUTOMAPFOLLOWMODE_DEFAULT;
+int     keyboardautomapgrid = KEYAUTOMAPGRID_DEFAULT;
+int     keyboardautomapmark = KEYAUTOMAPMARK_DEFAULT;
+int     keyboardautomapmaxzoom = KEYAUTOMAPMAXZOOM_DEFAULT;
+int     keyboardautomaprotatemode = KEYAUTOMAPROTATEMODE_DEFAULT;
+int     keyboardautomapzoomin = KEYAUTOMAPZOOMIN_DEFAULT;
+int     keyboardautomapzoomout = KEYAUTOMAPZOOMOUT_DEFAULT;
+int     keyboardconsole = KEYCONSOLE_DEFAULT;
+int     keyboardback = KEYDOWN_DEFAULT;
+int     keyboardback2 = KEYDOWN2_DEFAULT;
+int     keyboardfire = KEYFIRE_DEFAULT;
+int     keyboardleft = KEYLEFT_DEFAULT;
+int     keyboardmenu = KEY_ESCAPE;
+int     keyboardnextweapon = KEYNEXTWEAPON_DEFAULT;
+int     keyboardprevweapon = KEYPREVWEAPON_DEFAULT;
+int     keyboardright = KEYRIGHT_DEFAULT;
+int     keyboardrun = KEYRUN_DEFAULT;
+int     keyboardscreenshot = KEYSCREENSHOT_DEFAULT;
+int     keyboardstrafe = KEYSTRAFE_DEFAULT;
+int     keyboardstrafeleft = KEYSTRAFELEFT_DEFAULT;
+int     keyboardstrafeleft2 = KEYSTRAFELEFT2_DEFAULT;
+int     keyboardstraferight = KEYSTRAFERIGHT_DEFAULT;
+int     keyboardstraferight2 = KEYSTRAFERIGHT2_DEFAULT;
+int     keyboardforward = KEYUP_DEFAULT;
+int     keyboardforward2 = KEYUP2_DEFAULT;
+int     keyboarduse = KEYUSE_DEFAULT;
+int     keyboarduse2 = KEYUSE2_DEFAULT;
+int     keyboardweapon1 = KEYWEAPON1_DEFAULT;
+int     keyboardweapon2 = KEYWEAPON2_DEFAULT;
+int     keyboardweapon3 = KEYWEAPON3_DEFAULT;
+int     keyboardweapon4 = KEYWEAPON4_DEFAULT;
+int     keyboardweapon5 = KEYWEAPON5_DEFAULT;
+int     keyboardweapon6 = KEYWEAPON6_DEFAULT;
+int     keyboardweapon7 = KEYWEAPON7_DEFAULT;
 
-int     mousebfire = MOUSEFIRE_DEFAULT;
-int     mousebforward = MOUSEFORWARD_DEFAULT;
-int     mousebnextweapon = MOUSENEXTWEAPON_DEFAULT;
-int     mousebprevweapon = MOUSEPREVWEAPON_DEFAULT;
-int     mousebrun = MOUSERUN_DEFAULT;
-int     mousebstrafe = MOUSESTRAFE_DEFAULT;
-int     mousebuse = MOUSEUSE_DEFAULT;
+int     mousefire = MOUSEFIRE_DEFAULT;
+int     mouseforward = MOUSEFORWARD_DEFAULT;
+int     mousenextweapon = MOUSENEXTWEAPON_DEFAULT;
+int     mouseprevweapon = MOUSEPREVWEAPON_DEFAULT;
+int     mouserun = MOUSERUN_DEFAULT;
+int     mousestrafe = MOUSESTRAFE_DEFAULT;
+int     mouseuse = MOUSEUSE_DEFAULT;
 
 int     gamepadalwaysrun = GAMEPADALWAYSRUN_DEFAULT;
 int     gamepadautomap = GAMEPADAUTOMAP_DEFAULT;
@@ -96,12 +96,20 @@ int     gamepadautomapmaxzoom = GAMEPADAUTOMAPMAXZOOM_DEFAULT;
 int     gamepadautomaprotatemode = GAMEPADAUTOMAPROTATEMODE_DEFAULT;
 int     gamepadautomapzoomin = GAMEPADAUTOMAPZOOMIN_DEFAULT;
 int     gamepadautomapzoomout = GAMEPADAUTOMAPZOOMOUT_DEFAULT;
+int     gamepadback = GAMEPADBACK_DEFAULT;
 int     gamepadfire = GAMEPADFIRE_DEFAULT;
+int     gamepadforward = GAMEPADFORWARD_DEFAULT;
+int     gamepadleft = GAMEPADLEFT_DEFAULT;
 int     gamepadmenu = GAMEPADMENU_DEFAULT;
 int     gamepadnextweapon = GAMEPADNEXTWEAPON_DEFAULT;
 int     gamepadprevweapon = GAMEPADPREVWEAPON_DEFAULT;
+int     gamepadright = GAMEPADRIGHT_DEFAULT;
 int     gamepadrun = GAMEPADRUN_DEFAULT;
+int     gamepadstrafe = GAMEPADSTRAFE_DEFAULT;
+int     gamepadstrafeleft = GAMEPADSTRAFELEFT_DEFAULT;
+int     gamepadstraferight = GAMEPADSTRAFERIGHT_DEFAULT;
 int     gamepaduse = GAMEPADUSE_DEFAULT;
+int     gamepaduse2 = GAMEPADUSE2_DEFAULT;
 int     gamepadweapon1 = GAMEPADWEAPON_DEFAULT;
 int     gamepadweapon2 = GAMEPADWEAPON_DEFAULT;
 int     gamepadweapon3 = GAMEPADWEAPON_DEFAULT;

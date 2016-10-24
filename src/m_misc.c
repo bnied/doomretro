@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,29 +36,44 @@
 ========================================================================
 */
 
-#include <errno.h>
-#include <stdarg.h>
-
 #if defined(WIN32)
-#include <windows.h>
-#include <io.h>
+#pragma warning( disable : 4091 )
+#include <ShlObj.h>
 #if defined(_MSC_VER)
 #include <direct.h>
 #endif
 #else
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <pwd.h>
 #endif
 
 #include "doomdef.h"
+#include "i_system.h"
 #include "m_fixed.h"
 #include "m_misc.h"
-#include "i_system.h"
+#include "version.h"
 #include "z_zone.h"
 
 #if defined(__MACOSX__)
-#include "version.h"
 #import <Cocoa/Cocoa.h>
+#include <dirent.h>
+#include <libgen.h>
+#include <mach-o/dyld.h>
+#endif
+
+#if defined(__OpenBSD__)
+#include <dirent.h>
+#include <errno.h>
+#include <libgen.h>
+#include <unistd.h>
+#endif
+
+#if defined(__linux__)
+#include <dirent.h>
+#include <errno.h>
+#include <libgen.h>
+#include <unistd.h>
 #endif
 
 #if !defined(MAX_PATH)
@@ -80,9 +95,7 @@ void M_MakeDirectory(const char *path)
 // Check if a file exists
 dboolean M_FileExists(const char *filename)
 {
-    FILE        *fstream;
-
-    fstream = fopen(filename, "r");
+    FILE        *fstream = fopen(filename, "r");
 
     if (fstream)
     {
@@ -100,11 +113,10 @@ dboolean M_FileExists(const char *filename)
 //
 long M_FileLength(FILE *handle)
 {
-    long        savedpos;
     long        length;
 
     // save the current position in the file
-    savedpos = ftell(handle);
+    long        savedpos = ftell(handle);
 
     // jump to the end and find the length
     fseek(handle, 0, SEEK_END);
@@ -151,33 +163,88 @@ char *M_ExtractFolder(char *path)
 
 char *M_GetAppDataFolder(void)
 {
-    //On OSX, store generated application files in ~/Library/Application Support/DOOM Retro.
-#if defined(__MACOSX__)
-    NSFileManager      *manager = [NSFileManager defaultManager];
-    NSURL              *baseAppSupportURL = [manager URLsForDirectory: NSApplicationSupportDirectory
-                           inDomains: NSUserDomainMask].firstObject;
-    NSURL              *appSupportURL = [baseAppSupportURL URLByAppendingPathComponent:
-                           @PACKAGE_NAME];
+    char        *executableFolder = M_GetExecutableFolder();
 
-    return appSupportURL.fileSystemRepresentation;
+#if defined(WIN32)
+
+#if !defined(PORTABILITY)
+    // On Windows, store generated application files in <username>\DOOM Retro.
+    TCHAR   buffer[MAX_PATH];
+
+    if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, 0, buffer)))
+        return M_StringJoin(buffer, DIR_SEPARATOR_S, PACKAGE_NAME, NULL);
+    else
+        return executableFolder;
 #else
-    // On Windows and Linux, store generated files in the same folder as the executable.
-    // TODO: on Windows this should probably use %APPDATA%/PACKAGE_NAME,
-    // and on Unix it should probably use somewhere within ~.
-    return M_GetExecutableFolder();
+    return executableFolder;
+#endif
+
+#else
+    // On Linux and OS X, if ../share/doomretro doesn't exist then we're dealing with
+    // a portable installation, and we write doomretro.cfg to the executable directory.
+    char        *resourceFolder = M_StringJoin(executableFolder, DIR_SEPARATOR_S".."
+                    DIR_SEPARATOR_S"share"DIR_SEPARATOR_S"doomretro", NULL);
+    DIR         *resourceDir = opendir(resourceFolder);
+
+    if (resourceDir)
+    {
+        closedir(resourceDir);
+
+#if defined(__MACOSX__)
+        // On OSX, store generated application files in ~/Library/Application Support/DOOM Retro.
+        NSFileManager   *manager = [NSFileManager defaultManager];
+        NSURL           *baseAppSupportURL = [manager URLsForDirectory: NSApplicationSupportDirectory
+                            inDomains: NSUserDomainMask].firstObject;
+        NSURL           *appSupportURL = [baseAppSupportURL URLByAppendingPathComponent:
+                            @PACKAGE_NAME];
+
+        return appSupportURL.fileSystemRepresentation;
+#else
+        // On Linux, store generated application files in /home/<username>/.config/doomretro
+        char            *buffer;
+
+        if (!(buffer = getenv("HOME")))
+            buffer = getpwuid(getuid())->pw_dir;
+
+        return M_StringJoin(buffer, DIR_SEPARATOR_S".config"DIR_SEPARATOR_S, PACKAGE, NULL);
+#endif
+    }
+    else
+        return executableFolder;
 #endif
 }
 
 char *M_GetResourceFolder(void)
 {
+    char        *executableFolder = M_GetExecutableFolder();
+
+#if !defined(WIN32)
+    // On Linux and OS X, first assume that the executable is in .../bin and
+    // try to load resources from .../share/doomretro.
+    char        *resourceFolder = M_StringJoin(executableFolder, DIR_SEPARATOR_S".."
+                    DIR_SEPARATOR_S"share"DIR_SEPARATOR_S"doomretro", NULL);
+    DIR         *resourceDir = opendir(resourceFolder);
+
+    if (resourceDir)
+    {
+        closedir(resourceDir);
+        return resourceFolder;
+    }
+
 #if defined(__MACOSX__)
-    // On OSX, load resources from the Contents/Resources folder within the application bundle.
+    // On OSX, load resources from the Contents/Resources folder within the application bundle
+    // if ../share/doomretro is not available.
     NSURL       *resourceURL = [NSBundle mainBundle].resourceURL;
 
     return resourceURL.fileSystemRepresentation;
 #else
-    // On Windows and Linux, load resources from the same folder as the executable.
-    return M_GetExecutableFolder();
+    // And on Linux, fall back to the same folder as the executable.
+    return executableFolder;
+#endif
+
+#else
+    // On Windows, load resources from the same folder as the executable.
+    return executableFolder;
 #endif
 }
 
@@ -199,6 +266,28 @@ char *M_GetExecutableFolder(void)
         *pos = '\0';
 
     return folder;
+#elif defined(__linux__)
+    char        *exe = malloc(MAX_PATH);
+    ssize_t     len = readlink("/proc/self/exe", exe, MAX_PATH - 1);
+
+    if (len == -1)
+    {
+        free(exe);
+        return ".";
+    }
+    else
+    {
+        exe[len] = '\0';
+        return dirname(exe);
+    }
+#elif defined(__MACOSX__)
+    char        *exe = malloc(MAX_PATH);
+    ssize_t     len = MAX_PATH;
+
+    if (!_NSGetExecutablePath(exe, &len))
+        return dirname(exe);
+    else
+        return ".";
 #else
     return ".";
 #endif
@@ -222,37 +311,6 @@ dboolean M_WriteFile(char *name, void *source, int length)
         return false;
 
     return true;
-}
-
-//
-// M_ReadFile
-//
-int M_ReadFile(char *name, byte **buffer)
-{
-    FILE        *handle = fopen(name, "rb");
-    int         count;
-    int         length;
-    byte        *buf;
-
-    if (!handle)
-    {
-        I_Error("Couldn't read file %s", name);
-        return 0;
-    }
-
-    // find the size of the file by seeking to the end and
-    // reading the current position
-    length = M_FileLength(handle);
-
-    buf = Z_Malloc(length, PU_STATIC, NULL);
-    count = fread(buf, 1, length, handle);
-    fclose(handle);
-
-    if (count < length)
-        I_Error("Couldn't read file %s", name);
-
-    *buffer = buf;
-    return length;
 }
 
 // Return a newly-malloced string with all the strings given as arguments
@@ -321,10 +379,10 @@ char *M_TempFile(char *s)
     return M_StringJoin(tempdir, DIR_SEPARATOR_S, s, NULL);
 }
 
-dboolean M_StrToInt(const char *str, int *result)
+dboolean M_StrToInt(const char *str, unsigned int *result)
 {
     return (sscanf(str, " 0x%2x", result) == 1 || sscanf(str, " 0X%2x", result) == 1
-        || sscanf(str, " 0%3o", result) == 1 || sscanf(str, " %10d", result) == 1);
+        || sscanf(str, " 0%3o", result) == 1 || sscanf(str, " %10u", result) == 1);
 }
 
 //
@@ -515,9 +573,14 @@ char *titlecase(const char *str)
 
         newstr[0] = toupper(newstr[0]);
         for (i = 1; i < len; ++i)
-            if (!isalnum((unsigned char)newstr[i - 1]) && isalnum((unsigned char)newstr[i]))
+            if ((newstr[i - 1] == ' ' || ((i == 1 || newstr[i - 2] == ' ')
+                && !isalnum((unsigned char)newstr[i - 1]))) && isalnum((unsigned char)newstr[i]))
                 newstr[i] = toupper(newstr[i]);
     }
+
+    strreplace(newstr, " Of ", " of ");
+    strreplace(newstr, " Or ", " or ");
+    strreplace(newstr, " The ", " the ");
 
     return newstr;
 }
@@ -542,12 +605,12 @@ char *formatsize(const char *str)
     return newstr;
 }
 
-char *commify(int value)
+char *commify(int64_t value)
 {
     char        result[64];
 
-    M_snprintf(result, sizeof(result), "%i", value);
-    if (ABS(value) >= 1000)
+    M_snprintf(result, sizeof(result), "%lli", value);
+    if (value <= -1000 || value >= 1000)
     {
         char        *pt;
         int         n;
@@ -568,6 +631,25 @@ char *commify(int value)
         } while (1);
     }
     return strdup(result);
+}
+
+char *uncommify(const char *input)
+{
+    char        *p = malloc(strlen(input) + 1);
+
+    if (p)
+    {
+        char    *p2 = p;
+
+        while (*input != '\0')
+            if (*input != ',')
+                *p2++ = *input++;
+            else
+                ++input;
+        *p2 = '\0';
+    }
+
+    return p;
 }
 
 dboolean wildcard(char *input, char *pattern)
@@ -620,6 +702,41 @@ char *removespaces(const char *input)
     return p;
 }
 
+char *trimwhitespace(char *input)
+{
+    char *end;
+
+    while (isspace((unsigned char)*input))
+        input++;
+
+    if (!*input)
+        return input;
+
+    end = input + strlen(input) - 1;
+    while (end > input && isspace((unsigned char)*end))
+        end--;
+
+    *(end + 1) = 0;
+
+    return input;
+}
+
+char *removenewlines(const char *str)
+{
+    char        *newstr;
+    char        *p;
+
+    p = newstr = strdup(str);
+    while (*p != '\0')
+    {
+        if (*p == '\n')
+            *p = ' ';
+        ++p;
+    }
+
+    return newstr;
+}
+
 char *makevalidfilename(const char *input)
 {
     char        *newstr = strdup(input);
@@ -660,7 +777,7 @@ char *removeext(const char *file)
 
 dboolean isvowel(const char ch)
 {
-    return (!!strchr("aeiou", ch));
+    return !!strchr("aeiou", ch);
 }
 
 static const char       *sizes[] = { "MB", "KB", " bytes" };
@@ -684,7 +801,7 @@ char *convertsize(const int size)
                 M_snprintf(result, 20, "%.2f%s", (float)size / multiplier, sizes[i]);
             return result;
         }
-        strcpy(result, "0");
+        strcpy(result, "0 bytes");
     }
 
     return result;
@@ -705,4 +822,34 @@ char *striptrailingzero(float value, int precision)
     }
 
     return result;
+}
+
+void strreplace(char *target, const char *needle, const char *replacement)
+{
+    char        buffer[1024] = "";
+    char        *insert_point = &buffer[0];
+    const char  *tmp = target;
+    size_t      needle_len = strlen(needle);
+    size_t      repl_len = strlen(replacement);
+
+    while (1)
+    {
+        const char      *p = strstr(tmp, needle);
+
+        if (!p)
+        {
+            strcpy(insert_point, tmp);
+            break;
+        }
+
+        memcpy(insert_point, tmp, p - tmp);
+        insert_point += p - tmp;
+
+        memcpy(insert_point, replacement, repl_len);
+        insert_point += repl_len;
+
+        tmp = p + needle_len;
+    }
+
+    strcpy(target, buffer);
 }

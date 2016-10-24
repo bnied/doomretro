@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -42,18 +42,13 @@
 
 #include "c_console.h"
 #include "i_system.h"
-#include "i_video.h"
-#include "m_config.h"
 #include "m_misc.h"
-#include "m_random.h"
-#include "SDL.h"
-#include "SDL_mixer.h"
 #include "s_sound.h"
+#include "SDL_mixer.h"
 #include "version.h"
 #include "w_wad.h"
 #include "z_zone.h"
 
-#define NUM_CHANNELS            32
 #define MAX_SOUND_SLICE_TIME    28
 #define CACHESIZE               64 * 1024 * 1024
 
@@ -128,9 +123,7 @@ static void FreeAllocatedSound(allocated_sound_t *snd)
 // for success.
 static dboolean FindAndFreeSound(void)
 {
-    allocated_sound_t   *snd;
-
-    snd = allocated_sounds_tail;
+    allocated_sound_t   *snd = allocated_sounds_tail;
 
     while (snd)
     {
@@ -155,11 +148,9 @@ static void ReserveCacheSpace(size_t len)
     // Keep freeing sound effects that aren't currently being played,
     // until there is enough space for the new sound.
     while (allocated_sounds_size + len > CACHESIZE)
-    {
         // Free a sound. If there is nothing more to free, stop.
         if (!FindAndFreeSound())
             break;
-    }
 }
 
 // Allocate a block for a new sound effect.
@@ -240,16 +231,14 @@ static allocated_sound_t *GetAllocatedSoundBySfxInfoAndPitch(sfxinfo_t *sfxinfo,
 static allocated_sound_t *PitchShift(allocated_sound_t *insnd, int pitch)
 {
     allocated_sound_t   *outsnd;
-    Sint16              *inp, *outp;
-    Sint16              *srcbuf, *dstbuf;
-    Uint32              srclen, dstlen;
-
-    srcbuf = (Sint16 *)insnd->chunk.abuf;
-    srclen = insnd->chunk.alen;
+    Sint16              *outp;
+    Sint16              *srcbuf = (Sint16 *)insnd->chunk.abuf;
+    Uint32              srclen = insnd->chunk.alen;
+    Sint16              *dstbuf;
 
     // determine ratio pitch:NORM_PITCH and apply to srclen, then invert.
     // This is an approximation of vanilla behavior based on measurements
-    dstlen = (int)((1 + (1 - (float)pitch / NORM_PITCH)) * srclen);
+    Uint32              dstlen = (int)((1 + (1 - (float)pitch / NORM_PITCH)) * srclen);
 
     // ensure that the new buffer is an even length
     if (!(dstlen % 2))
@@ -265,7 +254,8 @@ static allocated_sound_t *PitchShift(allocated_sound_t *insnd, int pitch)
     // loop over output buffer. find corresponding input cell, copy over
     for (outp = dstbuf; outp < dstbuf + dstlen / 2; ++outp)
     {
-        inp = srcbuf + (int)((float)(outp - dstbuf) / dstlen * srclen);
+        Sint16  *inp = srcbuf + (int)((float)(outp - dstbuf) / dstlen * srclen);
+
         *outp = *inp;
     }
 
@@ -282,6 +272,8 @@ static void ReleaseSoundOnChannel(int channel)
     if (!snd)
         return;
 
+    Mix_HaltChannel(channel);
+
     channels_playing[channel] = NULL;
 
     UnlockAllocatedSound(snd);
@@ -293,8 +285,6 @@ static void ReleaseSoundOnChannel(int channel)
 
 static dboolean ConvertibleRatio(int freq1, int freq2)
 {
-    int ratio;
-
     if (freq1 > freq2)
         return ConvertibleRatio(freq2, freq1);
     else if (freq2 % freq1)
@@ -302,7 +292,7 @@ static dboolean ConvertibleRatio(int freq1, int freq2)
     else
     {
         // Check the ratio is a power of 2
-        ratio = freq2 / freq1;
+        int     ratio = freq2 / freq1;
 
         while (!(ratio & 1))
             ratio >>= 1;
@@ -316,18 +306,15 @@ static dboolean ConvertibleRatio(int freq1, int freq2)
 static dboolean ExpandSoundData(sfxinfo_t *sfxinfo, byte *data, int samplerate, int length)
 {
     SDL_AudioCVT        convertor;
-    allocated_sound_t   *snd;
     Mix_Chunk           *chunk;
-    uint32_t            expanded_length;
 
     // Calculate the length of the expanded version of the sample.
-    expanded_length = (uint32_t)(((uint64_t)length * mixer_freq) / samplerate);
-
     // Double up twice: 8 -> 16 bit and mono -> stereo
-    expanded_length *= 4;
+    uint32_t            expanded_length = (uint32_t)(((uint64_t)length * mixer_freq) / samplerate)
+                           * 4;
 
     // Allocate a chunk in which to expand the sound
-    snd = AllocateSound(sfxinfo, expanded_length);
+    allocated_sound_t   *snd = AllocateSound(sfxinfo, expanded_length);
 
     if (!snd)
         return false;
@@ -363,12 +350,8 @@ static dboolean ExpandSoundData(sfxinfo_t *sfxinfo, byte *data, int samplerate, 
 
         for (i = 0; i < expanded_length; ++i)
         {
-            Sint16      sample;
-            int         src;
-
-            src = (i * expand_ratio) >> 8;
-
-            sample = (data[src] | (data[src] << 8)) - 32768;
+            int         src = (i * expand_ratio) >> 8;
+            Sint16      sample = (data[src] | (data[src] << 8)) - 32768;
 
             // expand 8->16 bits, mono->stereo
             expanded[i * 2] = expanded[i * 2 + 1] = sample;
@@ -402,23 +385,17 @@ static dboolean ExpandSoundData(sfxinfo_t *sfxinfo, byte *data, int samplerate, 
 // Returns true if successful
 static dboolean CacheSFX(sfxinfo_t *sfxinfo)
 {
-    int                 lumpnum;
-    unsigned int        lumplen;
     int                 samplerate;
     unsigned int        length;
-    byte                *data;
 
     // need to load the sound
-    lumpnum = sfxinfo->lumpnum;
-    data = W_CacheLumpNum(lumpnum, PU_STATIC);
-    lumplen = W_LumpLength(lumpnum);
+    int                 lumpnum = sfxinfo->lumpnum;
+    byte                *data = W_CacheLumpNum(lumpnum, PU_STATIC);
+    unsigned int        lumplen = W_LumpLength(lumpnum);
 
     // Check the header, and ensure this is a valid sound
     if (lumplen < 8 || data[0] != 0x03 || data[1] != 0x00)
-    {
-        // Invalid sound
-        return false;
-    }
+        return false;   // Invalid sound
 
     // 16 bit sample rate field, 32 bit length field
     samplerate = ((data[3] << 8) | data[2]);
@@ -481,7 +458,7 @@ int I_GetSfxLumpNum(sfxinfo_t *sfx)
 
 void I_UpdateSoundParams(int handle, int vol, int sep)
 {
-    int         left, right;
+    int left, right;
 
     if (!sound_initialized || handle < 0 || handle >= NUM_CHANNELS)
         return;
@@ -560,8 +537,6 @@ void I_StopSound(int handle)
     if (!sound_initialized || handle < 0 || handle >= NUM_CHANNELS)
         return;
 
-    Mix_HaltChannel(handle);
-
     // Sound data is no longer needed; release the
     // sound data being used for this channel
     ReleaseSoundOnChannel(handle);
@@ -616,10 +591,8 @@ void I_ShutdownSound(void)
 // The result must be a power of two.
 static int GetSliceSize(void)
 {
-    int limit;
+    int limit = SAMPLERATE * MAX_SOUND_SLICE_TIME / 1000;
     int n;
-
-    limit = snd_samplerate * MAX_SOUND_SLICE_TIME / 1000;
 
     // Try all powers of two, not exceeding the limit.
     for (n = 0; ; ++n)
@@ -633,7 +606,8 @@ static int GetSliceSize(void)
 
 dboolean I_InitSound(void)
 {
-    int i;
+    int                 i;
+    const SDL_version   *linked = Mix_Linked_Version();
 
     // No sounds yet
     for (i = 0; i < NUM_CHANNELS; ++i)
@@ -642,24 +616,21 @@ dboolean I_InitSound(void)
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
         return false;
 
-    {
-        const SDL_version       *linked = Mix_Linked_Version();
+    if (linked->major != SDL_MIXER_MAJOR_VERSION || linked->minor != SDL_MIXER_MINOR_VERSION)
+        I_Error("The wrong version of sdl2_mixer.dll was found. "PACKAGE_NAME" requires "
+            "v%i.%i.%i, not v%i.%i.%i.", linked->major, linked->minor, linked->patch,
+            SDL_MIXER_MAJOR_VERSION, SDL_MIXER_MINOR_VERSION, SDL_MIXER_PATCHLEVEL);
 
-        if (linked->major != MIX_MAJOR_VERSION || linked->minor != MIX_MINOR_VERSION)
-            I_Error("The wrong version of SDL2_MIXER.DLL was found. "PACKAGE_NAME" requires "
-                "v%d.%d.%d, not v%d.%d.%d.", linked->major, linked->minor, linked->patch,
-                MIX_MAJOR_VERSION, MIX_MINOR_VERSION, MIX_PATCHLEVEL);
+    if (linked->patch != SDL_MIXER_PATCHLEVEL)
+        C_Warning("The wrong version of sdl2_mixer.dll was found. <i>"PACKAGE_NAME"</i> requires "
+            "v%i.%i.%i, not v%i.%i.%i.", linked->major, linked->minor, linked->patch,
+            SDL_MIXER_MAJOR_VERSION, SDL_MIXER_MINOR_VERSION, SDL_MIXER_PATCHLEVEL);
 
-        if (linked->patch != MIX_PATCHLEVEL)
-            C_Warning("The wrong version of SDL2_MIXER.DLL was found. "PACKAGE_NAME" requires "
-                "v%d.%d.%d, not v%d.%d.%d.", linked->major, linked->minor, linked->patch,
-                MIX_MAJOR_VERSION, MIX_MINOR_VERSION, MIX_PATCHLEVEL);
-    }
-
-    if (Mix_OpenAudio(snd_samplerate, AUDIO_S16SYS, 2, GetSliceSize()) < 0)
+    if (Mix_OpenAudio(SAMPLERATE, AUDIO_S16SYS, 2, GetSliceSize()) < 0)
         return false;
 
-    Mix_QuerySpec(&mixer_freq, &mixer_format, &mixer_channels);
+    if (!Mix_QuerySpec(&mixer_freq, &mixer_format, &mixer_channels))
+        return false;
 
     Mix_AllocateChannels(NUM_CHANNELS);
 

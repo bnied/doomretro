@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -44,13 +44,19 @@ typedef enum
     r_blood_none,
     r_blood_red,
     r_blood_all
-} r_blood_values_e;
+} r_blood_values_t;
 
 typedef enum
 {
     r_detail_low,
     r_detail_high
-} r_detail_values_e;
+} r_detail_values_t;
+
+typedef enum
+{
+    units_imperial,
+    units_metric
+} units_values_t;
 
 #define alwaysrun_default                       false
 
@@ -74,6 +80,10 @@ typedef enum
 #define am_cdwallcolor_default                  160
 #define am_cdwallcolor_max                      255
 
+#define am_crosshaircolor_min                   0
+#define am_crosshaircolor_default               4
+#define am_crosshaircolor_max                   255
+
 #define am_external_default                     false
 
 #define am_fdwallcolor_min                      0
@@ -89,8 +99,14 @@ typedef enum
 #define am_gridcolor_max                        255
 
 #define am_markcolor_min                        0
-#define am_markcolor_default                    100
+#define am_markcolor_default                    95
 #define am_markcolor_max                        255
+
+#define am_path_default                         false
+
+#define am_pathcolor_min                        0
+#define am_pathcolor_default                    95
+#define am_pathcolor_max                        255
 
 #define am_playercolor_min                      0
 #define am_playercolor_default                  4
@@ -114,15 +130,19 @@ typedef enum
 #define am_wallcolor_default                    176
 #define am_wallcolor_max                        255
 
-#define am_xhaircolor_min                       0
-#define am_xhaircolor_default                   4
-#define am_xhaircolor_max                       255
+#define ammo_min                                0
+#define ammo_default                            50
+#define ammo_max                                300
+
+#define armor_min                               0
+#define armor_default                           0
+#define armor_max                               200
 
 #define autoload_default                        true
 
 #define centerweapon_default                    true
 
-#define con_obituaries_default                  false
+#define con_obituaries_default                  true
 
 #define con_timestamps_default                  true
 
@@ -130,13 +150,13 @@ typedef enum
 #define episode_default                         0
 #define episode_max                             3
 
-#define facebackcolor_min                       0
-#define facebackcolor_default                   5
-#define facebackcolor_max                       255
-
 #define expansion_min                           0
 #define expansion_default                       0
 #define expansion_max                           1
+
+#define facebackcolor_min                       0
+#define facebackcolor_default                   5
+#define facebackcolor_max                       255
 
 #define gp_deadzone_left_min                    0.0f
 #define gp_deadzone_left_default                24.0f
@@ -147,12 +167,22 @@ typedef enum
 #define gp_deadzone_right_max                   100.0f
 
 #define gp_sensitivity_min                      0
-#define gp_sensitivity_default                  32
+#define gp_sensitivity_default                  64
 #define gp_sensitivity_max                      128
 
 #define gp_swapthumbsticks_default              false
 
-#define gp_vibrate_default                      true
+#define gp_vibrate_damage_min                   0
+#define gp_vibrate_damage_default               100
+#define gp_vibrate_damage_max                   200
+
+#define gp_vibrate_weapons_min                  0
+#define gp_vibrate_weapons_default              100
+#define gp_vibrate_weapons_max                  200
+
+#define health_min                              0
+#define health_default                          100
+#define health_max                              200
 
 #define iwadfolder_default                      "C:\\"
 
@@ -167,7 +197,7 @@ typedef enum
 #define m_novertical_default                    true
 
 #define m_sensitivity_min                       0
-#define m_sensitivity_default                   24
+#define m_sensitivity_default                   32
 #define m_sensitivity_max                       128
 
 #define m_threshold_min                         0
@@ -180,11 +210,11 @@ typedef enum
 
 #define playername_default                      "you"
 
-#define r_althud_default                        false
+#define r_althud_default                        true
 
 #define r_berserkintensity_min                  0
-#define r_berserkintensity_default              33
-#define r_berserkintensity_max                  100
+#define r_berserkintensity_default              2
+#define r_berserkintensity_max                  8
 
 #define r_blood_min                             r_blood_none
 #define r_blood_default                         r_blood_all
@@ -223,7 +253,7 @@ typedef enum
 #define r_floatbob_default                      true
 
 #define r_gamma_min                             gammalevels[0]
-#define r_gamma_default                         0.75
+#define r_gamma_default                         0.75f
 #define r_gamma_max                             gammalevels[GAMMALEVELS - 1]
 
 #define r_homindicator_default                  false
@@ -232,13 +262,13 @@ typedef enum
 
 #define r_liquid_bob_default                    true
 
-#define r_liquid_swirl_default                  true
-
 #define r_liquid_clipsprites_default            true
 
 #define r_liquid_current_default                true
 
 #define r_liquid_lowerview_default              true
+
+#define r_liquid_swirl_default                  true
 
 #define r_lowpixelsize_default                  "2x2"
 
@@ -254,7 +284,9 @@ typedef enum
 
 #define r_shadows_default                       true
 
-#define r_shakescreen_default                   true
+#define r_shakescreen_min                       0
+#define r_shakescreen_default                   100
+#define r_shakescreen_max                       100
 
 #define r_translucency_default                  true
 
@@ -288,22 +320,32 @@ typedef enum
 #define turbo_default                           100
 #define turbo_max                               400
 
+#define timelimit_min                           0
+#define timelimit_default                       0
+#define timelimit_max                           INT_MAX
+
+#define units_default                           units_imperial
+
+#define version_default                         PACKAGE_VERSIONSTRING
+
 #define vid_capfps_default                      false
 
 #define vid_display_min                         1
 #define vid_display_default                     1
 #define vid_display_max                         INT_MAX
 
-#if !defined(win32)
+#if !defined(WIN32)
 #define vid_driver_default                      ""
 #endif
 
 #define vid_fullscreen_default                  true
 
-#define vid_scaledriver_direct3d                "direct3d"
-#define vid_scaledriver_opengl                  "opengl"
-#define vid_scaledriver_software                "software"
-#define vid_scaledriver_default                 ""
+#define vid_motionblur_default                  false
+
+#define vid_scaleapi_direct3d                   "direct3d"
+#define vid_scaleapi_opengl                     "opengl"
+#define vid_scaleapi_software                   "software"
+#define vid_scaleapi_default                    ""
 
 #define vid_scalefilter_linear                  "linear"
 #define vid_scalefilter_nearest                 "nearest"
@@ -320,9 +362,14 @@ typedef enum
 #define vid_widescreen_default                  false
 
 #define vid_windowposition_centered             "centered"
+#define vid_windowposition_centred              "centred"
 #define vid_windowposition_default              vid_windowposition_centered
 
 #define vid_windowsize_default                  "768x480"
+
+#define weaponbob_min                           0
+#define weaponbob_default                       75
+#define weaponbob_max                           100
 
 #define GAMEPADALWAYSRUN_DEFAULT                0
 #define GAMEPADAUTOMAP_DEFAULT                  GAMEPAD_BACK
@@ -334,12 +381,20 @@ typedef enum
 #define GAMEPADAUTOMAPROTATEMODE_DEFAULT        0
 #define GAMEPADAUTOMAPZOOMIN_DEFAULT            GAMEPAD_RIGHT_SHOULDER
 #define GAMEPADAUTOMAPZOOMOUT_DEFAULT           GAMEPAD_LEFT_SHOULDER
+#define GAMEPADBACK_DEFAULT                     0
 #define GAMEPADFIRE_DEFAULT                     GAMEPAD_RIGHT_TRIGGER
+#define GAMEPADFORWARD_DEFAULT                  0
+#define GAMEPADLEFT_DEFAULT                     0
 #define GAMEPADMENU_DEFAULT                     GAMEPAD_START
 #define GAMEPADNEXTWEAPON_DEFAULT               GAMEPAD_B
 #define GAMEPADPREVWEAPON_DEFAULT               GAMEPAD_Y
+#define GAMEPADRIGHT_DEFAULT                    0
 #define GAMEPADRUN_DEFAULT                      GAMEPAD_LEFT_TRIGGER
+#define GAMEPADSTRAFE_DEFAULT                   0
+#define GAMEPADSTRAFELEFT_DEFAULT               0
+#define GAMEPADSTRAFERIGHT_DEFAULT              0
 #define GAMEPADUSE_DEFAULT                      GAMEPAD_A
+#define GAMEPADUSE2_DEFAULT                     GAMEPAD_RIGHT_THUMB
 #define GAMEPADWEAPON_DEFAULT                   0
 
 #define KEYALWAYSRUN_DEFAULT                    KEY_CAPSLOCK
@@ -352,16 +407,21 @@ typedef enum
 #define KEYAUTOMAPROTATEMODE_DEFAULT            'r'
 #define KEYAUTOMAPZOOMIN_DEFAULT                KEY_EQUALS
 #define KEYAUTOMAPZOOMOUT_DEFAULT               KEY_MINUS
-#define KEYCONSOLE_DEFAULT                      KEY_TILDE
+#define KEYCONSOLE_DEFAULT                      '`'
 #define KEYDOWN_DEFAULT                         KEY_DOWNARROW
 #define KEYDOWN2_DEFAULT                        's'
-#define KEYFIRE_DEFAULT                         KEY_RCTRL
+#define KEYFIRE_DEFAULT                         KEY_CTRL
 #define KEYLEFT_DEFAULT                         KEY_LEFTARROW
 #define KEYNEXTWEAPON_DEFAULT                   0
 #define KEYPREVWEAPON_DEFAULT                   0
 #define KEYRIGHT_DEFAULT                        KEY_RIGHTARROW
-#define KEYRUN_DEFAULT                          KEY_RSHIFT
-#define KEYSTRAFE_DEFAULT                       KEY_RALT
+#define KEYRUN_DEFAULT                          KEY_SHIFT
+#if defined(WIN32)
+#define KEYSCREENSHOT_DEFAULT                   KEY_PRINTSCREEN
+#else
+#define KEYSCREENSHOT_DEFAULT                   0
+#endif
+#define KEYSTRAFE_DEFAULT                       KEY_ALT
 #define KEYSTRAFELEFT_DEFAULT                   'a'
 #define KEYSTRAFELEFT2_DEFAULT                  ','
 #define KEYSTRAFERIGHT_DEFAULT                  'd'
@@ -403,7 +463,9 @@ typedef enum
     BOOLALIAS,
     DETAILALIAS,
     GAMMAALIAS,
-    BLOODALIAS
+    BLOODALIAS,
+    UNITSALIAS,
+    TIMELIMITALIAS
 } alias_type_t;
 
 typedef struct

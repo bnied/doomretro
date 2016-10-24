@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -53,6 +53,10 @@ dboolean EV_Teleport(line_t *line, int side, mobj_t *thing)
     // Don't teleport missiles.
     // Don't teleport if hit back of line, so you can get out of teleporter.
     if (side || (thing->flags & MF_MISSILE))
+        return false;
+
+    // [BH] Don't teleport corpses once kill ccmd used
+    if (thing->flags2 & MF2_MASSACRE)
         return false;
 
     // killough 1/31/98: improve performance by using
@@ -175,7 +179,7 @@ dboolean EV_SilentTeleport(line_t *line, int side, mobj_t *thing)
 
                 // Attempt to teleport, aborting if blocked
                 if (!P_TeleportMove(thing, m->x, m->y, m->z, false))    // killough 8/9/98
-                    return 0;
+                    return false;
 
                 // Rotate thing according to difference in angles
                 thing->angle += angle;
@@ -294,7 +298,7 @@ dboolean EV_SilentLineTeleport(line_t *line, int side, mobj_t *thing, dboolean r
 
             // Attempt to teleport, aborting if blocked
             if (!P_TeleportMove(thing, x, y, z, false)) // killough 8/9/98
-                return 0;
+                return false;
 
             // Adjust z position to be same height above ground as before.
             // Ground level at the exit is measured as the higher of the

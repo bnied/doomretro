@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -45,7 +45,7 @@
 
 // killough 4/19/98:
 // Convert LOS info to struct for reentrancy and efficiency of data locality
-typedef struct los_s
+typedef struct
 {
     fixed_t     sightzstart, t2x, t2y;  // eye z of looker
     divline_t   strace;                 // from t1 to t2
@@ -113,6 +113,7 @@ static dboolean P_CrossSubsector(int num)
     for (; count; seg++, count--)
     {
         line_t  *line = seg->linedef;
+        fixed_t frac;
 
         if (line->bbox[BOXLEFT] > los.bbox[BOXRIGHT]
             || line->bbox[BOXRIGHT] < los.bbox[BOXLEFT]
@@ -184,19 +185,17 @@ static dboolean P_CrossSubsector(int num)
         else
             return false;
 
-        {
-            // crosses a two sided line
-            fixed_t     frac = P_InterceptVector2(&los.strace, &divl);
+        // crosses a two sided line
+        frac = P_InterceptVector2(&los.strace, &divl);
 
-            if (front->floorheight != back->floorheight)
-                los.bottomslope = MAX(los.bottomslope, FixedDiv(openbottom - los.sightzstart, frac));
+        if (front->floorheight != back->floorheight)
+            los.bottomslope = MAX(los.bottomslope, FixedDiv(openbottom - los.sightzstart, frac));
 
-            if (front->ceilingheight != back->ceilingheight)
-                los.topslope = MIN(los.topslope, FixedDiv(opentop - los.sightzstart, frac));
+        if (front->ceilingheight != back->ceilingheight)
+            los.topslope = MIN(los.topslope, FixedDiv(opentop - los.sightzstart, frac));
 
-            if (los.topslope <= los.bottomslope)
-                return false;               // stop
-        }
+        if (los.topslope <= los.bottomslope)
+            return false;               // stop
     }
 
     // passed the subsector ok
@@ -213,7 +212,7 @@ static dboolean P_CrossBSPNode(int bspnum)
     while (!(bspnum & NF_SUBSECTOR))
     {
         const node_t    *bsp = nodes + bspnum;
-        int             side1 = (P_DivlineSide(los.strace.x, los.strace.y, (divline_t *)bsp) & 1);
+        int             side1 = P_DivlineSide(los.strace.x, los.strace.y, (divline_t *)bsp) & 1;
         int             side2 = P_DivlineSide(los.t2x, los.t2y, (divline_t *)bsp);
 
         if (side1 == side2)
@@ -224,7 +223,7 @@ static dboolean P_CrossBSPNode(int bspnum)
             else
                 bspnum = bsp->children[side1 ^ 1];      // cross the ending side
     }
-    return P_CrossSubsector((bspnum == -1 ? 0 : (bspnum & ~NF_SUBSECTOR)));
+    return P_CrossSubsector(bspnum == -1 ? 0 : (bspnum & ~NF_SUBSECTOR));
 }
 
 //
@@ -237,7 +236,7 @@ dboolean P_CheckSight(mobj_t *t1, mobj_t *t2)
 {
     const sector_t      *s1 = t1->subsector->sector;
     const sector_t      *s2 = t2->subsector->sector;
-    int                 pnum = (s1 - sectors) * numsectors + (s2 - sectors);
+    int                 pnum = (int)(s1 - sectors) * numsectors + (int)(s2 - sectors);
 
     // First check for trivial rejection.
     // Determine subsector entries in REJECT table.
@@ -265,7 +264,6 @@ dboolean P_CheckSight(mobj_t *t1, mobj_t *t2)
 
     // An unobstructed LOS is possible.
     // Now look from eyes of t1 to any part of t2.
-
     validcount++;
 
     los.sightzstart = t1->z + t1->height - (t1->height >> 2);

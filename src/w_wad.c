@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -39,7 +39,6 @@
 #include <ctype.h>
 
 #include "c_console.h"
-#include "doomdef.h"
 #include "doomstat.h"
 #include "i_swap.h"
 #include "i_system.h"
@@ -76,8 +75,8 @@ typedef struct
 //
 
 // Location of each lump on disk.
-lumpinfo_t      **lumpinfo;
-int             numlumps = 0;
+lumpinfo_t              **lumpinfo;
+int                     numlumps = 0;
 
 // Hash table for fast lookups
 static lumpindex_t      *lumphash;
@@ -221,9 +220,9 @@ wad_file_t *W_AddFile(char *filename, dboolean automatic)
         lumphash = NULL;
     }
 
-    C_Output("%s %s lump%s from %.4s file %s.", (automatic ? "Automatically added" : "Added"),
-        commify(numlumps - startlump), (numlumps - startlump == 1 ? "" : "s"),
-        header.identification, uppercase(filename));
+    C_Output("%s %s lump%s from %.4s file <b>%s</b>.", (automatic ? "Automatically added" :
+        "Added"), commify(numlumps - startlump), (numlumps - startlump == 1 ? "" : "s"),
+        header.identification, filename);
 
     return wad_file;
 }
@@ -519,16 +518,7 @@ void *W_CacheLumpNum(lumpindex_t lumpnum, int tag)
 
     lump = lumpinfo[lumpnum];
 
-    // Get the pointer to return. If the lump is in a memory-mapped
-    // file, we can just return a pointer to within the memory-mapped
-    // region. If the lump is in an ordinary file, we may already
-    // have it cached; otherwise, load it into memory.
-    if (lump->wad_file->mapped)
-    {
-        // Memory mapped file, return from the mmapped region.
-        result = lump->wad_file->mapped + lump->position;
-    }
-    else if (lump->cache)
+    if (lump->cache)
     {
         // Already cached, so just switch the zone tag.
         result = (byte *)lump->cache;
@@ -558,10 +548,6 @@ void *W_CacheLumpName(char *name, int tag)
 // without having to read from disk again, or alternatively, discarded
 // if we run out of memory.
 //
-// Back in Vanilla DOOM, this was just done using Z_ChangeTag
-// directly, but now that we have WAD mmap, things are a bit more
-// complicated...
-//
 void W_ReleaseLumpNum(lumpindex_t lumpnum)
 {
     lumpinfo_t  *lump;
@@ -571,8 +557,7 @@ void W_ReleaseLumpNum(lumpindex_t lumpnum)
 
     lump = lumpinfo[lumpnum];
 
-    if (!lump->wad_file->mapped)
-        Z_ChangeTag(lump->cache, PU_CACHE);
+    Z_ChangeTag(lump->cache, PU_CACHE);
 }
 
 void W_ReleaseLumpName(char *name)

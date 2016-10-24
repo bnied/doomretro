@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -39,7 +39,6 @@
 #if !defined(__R_MAIN_H__)
 #define __R_MAIN_H__
 
-#include "d_player.h"
 #include "r_data.h"
 
 //
@@ -124,7 +123,7 @@ void (*tlredwhite50colfunc)(void);
 void (*tlbluecolfunc)(void);
 void (*tlgreen33colfunc)(void);
 void (*tlred33colfunc)(void);
-void (*tlblue33colfunc)(void);
+void (*tlblue25colfunc)(void);
 void (*redtobluecolfunc)(void);
 void (*tlredtoblue33colfunc)(void);
 void (*skycolfunc)(void);
@@ -165,5 +164,6 @@ void R_Init(void);
 
 // Called by M_Responder.
 void R_SetViewSize(int blocks);
+void R_InitColumnFunctions(void);
 
 #endif

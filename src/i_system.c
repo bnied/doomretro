@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,11 +36,6 @@
 ========================================================================
 */
 
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
 #if defined(WIN32)
 #include <windows.h>
 
@@ -50,22 +45,13 @@ void I_ShutdownWindows32(void);
 #endif
 
 #include "c_console.h"
-#include "d_loop.h"
-#include "doomdef.h"
 #include "doomstat.h"
-#include "g_game.h"
 #include "i_gamepad.h"
 #include "i_timer.h"
-#include "i_video.h"
-#include "m_argv.h"
 #include "m_config.h"
 #include "m_misc.h"
 #include "s_sound.h"
-#include "SDL.h"
 #include "version.h"
-#include "w_merge.h"
-#include "w_wad.h"
-#include "z_zone.h"
 
 extern dboolean vid_widescreen;
 extern dboolean returntowidescreen;
@@ -75,8 +61,7 @@ typedef long(__stdcall *PRTLGETVERSION)(PRTL_OSVERSIONINFOEXW);
 typedef BOOL(WINAPI *PGETPRODUCTINFO)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 typedef BOOL(WINAPI *PISWOW64PROCESS)(HANDLE, PBOOL);
 
-#define PRODUCT_PROFESSIONAL    0x00000030
-#define PRODUCT_CORE            0x00000065
+#define PRODUCT_CORE    0x00000065
 
 void I_PrintWindowsVersion(void)
 {
@@ -91,13 +76,12 @@ void I_PrintWindowsVersion(void)
 
     if (pRtlGetVersion && pGetProductInfo)
     {
-        char      bits[10] = "";
-        char      *infoname;
-        char      *typename = "";
+        char            bits[10] = "";
+        char            *typename = "";
 
         if (pIsWow64Process)
         {
-            BOOL Wow64Process = FALSE;
+            BOOL        Wow64Process = FALSE;
 
             pIsWow64Process(GetCurrentProcess(), &Wow64Process);
             strcpy(bits, (Wow64Process ? " (64-bit)" : " (32-bit)"));
@@ -175,20 +159,10 @@ void I_PrintWindowsVersion(void)
                 typename = "Home";
         }
 
-        if (info.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS)
+        if (info.dwPlatformId == VER_PLATFORM_WIN32_NT)
         {
-            infoname = (info.dwMinorVersion < 10 ? "95" :
-                (info.dwMinorVersion < 90 ? "98" : "Me"));
+            char        *infoname = "NT";
 
-            C_Output("Running on Microsoft Windows %s%s%s%s%ws%s%s.",
-                infoname, (strlen(typename) ? " " : ""), (strlen(typename) ? typename : ""),
-                (wcslen(info.szCSDVersion) ? " (" : ""),
-                (wcslen(info.szCSDVersion) ? info.szCSDVersion : L""),
-                (wcslen(info.szCSDVersion) ? ")" : ""), bits);
-        }
-        else if (info.dwPlatformId == VER_PLATFORM_WIN32_NT)
-        {
-            infoname = "NT";
             if (info.dwMajorVersion == 5)
             {
                 if (info.dwMinorVersion == 0)
@@ -212,8 +186,8 @@ void I_PrintWindowsVersion(void)
             else if (info.dwMajorVersion == 10 && info.dwMinorVersion == 0)
                 infoname = "10";
 
-            C_Output("Running on Microsoft Windows %s%s%s%s%ws%s%s.",
-                infoname, (strlen(typename) ? " " : ""), (strlen(typename) ? typename : ""),
+            C_Output("Running on <i><b>Microsoft Windows %s%s%s%s%ws%s%s</b></i>.",
+                infoname, (*typename ? " " : ""), (*typename ? typename : ""),
                 (wcslen(info.szCSDVersion) ? " (" : ""),
                 (wcslen(info.szCSDVersion) ? info.szCSDVersion : L""),
                 (wcslen(info.szCSDVersion) ? ")" : ""), bits);
@@ -221,6 +195,14 @@ void I_PrintWindowsVersion(void)
     }
 }
 #endif
+
+void I_PrintSystemInfo(void)
+{
+    int cores = SDL_GetCPUCount();
+
+    C_Output("There %s %i logical core%s and %sMB of system RAM.", (cores > 1 ? "are" : "is"),
+        cores, (cores > 1 ? "s" : ""), commify(SDL_GetSystemRAM()));
+}
 
 //
 // I_Quit

@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -120,18 +120,18 @@ void *Z_Realloc(void *ptr, size_t size)
     void        *newp = realloc(ptr, size);
 
     if (!newp && size)
-        I_Error("Z_Realloc: Failure trying to reallocate %i bytes", size);
+        I_Error("Z_Realloc: Failure trying to reallocate %lu bytes", (unsigned long)size);
     else
         ptr = newp;
 
     return ptr;
 }
 
-void Z_Free(void *p)
+void Z_Free(void *ptr)
 {
-    memblock_t  *block = (memblock_t *)((char *)p - HEADER_SIZE);
+    memblock_t  *block = (memblock_t *)((char *)ptr - HEADER_SIZE);
 
-    if (!p)
+    if (!ptr)
         return;
 
     if (block->user)                                    // Nullify user if one exists
@@ -208,14 +208,4 @@ void Z_ChangeTag(void *ptr, int32_t tag)
     }
 
     block->tag = tag;
-}
-
-void Z_ChangeUser(void *ptr, void **user)
-{
-    memblock_t  *block;
-
-    block = (memblock_t *)((byte *)ptr - sizeof(memblock_t));
-
-    block->user = user;
-    *user = ptr;
 }

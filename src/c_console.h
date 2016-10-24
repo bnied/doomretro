@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -46,9 +46,11 @@
 #define CONSOLEFONTEND          '~'
 #define CONSOLEFONTSIZE         (CONSOLEFONTEND - CONSOLEFONTSTART + 1)
 
+#define NOBOLDCOLOR             -1
 #define NOBACKGROUNDCOLOR       -1
 
-#define CONSOLEHEIGHT           (SCREENHEIGHT - SBARHEIGHT) / 2
+#define CONSOLEHEIGHT           (gamestate != GS_TITLESCREEN ? (SCREENHEIGHT - SBARHEIGHT) / 2 : \
+                                SCREENHEIGHT - 5)
 
 #define CONSOLETOP              0
 
@@ -109,6 +111,7 @@ void C_Warning(char *string, ...);
 void C_PlayerMessage(char *string, ...);
 void C_AddConsoleDivider(void);
 void C_Init(void);
+void C_ShowConsole(void);
 void C_HideConsole(void);
 void C_HideConsoleFast(void);
 void C_Drawer(void);

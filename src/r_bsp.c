@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -309,7 +309,8 @@ sector_t *R_FakeFlat(sector_t *sec, sector_t *tempsec, int *floorlightlevel,
     {
         const sector_t  *s = &sectors[sec->heightsec];
         int             heightsec = viewplayer->mo->subsector->sector->heightsec;
-        int             underwater = (heightsec != -1 && viewz <= sectors[heightsec].interpfloorheight);
+        int             underwater = (heightsec != -1
+                            && viewz <= sectors[heightsec].interpfloorheight);
 
         // Replace sector being drawn, with a copy to be hacked
         *tempsec = *sec;
@@ -328,6 +329,7 @@ sector_t *R_FakeFlat(sector_t *sec, sector_t *tempsec, int *floorlightlevel,
             tempsec->floor_yoffs = s->floor_yoffs;
 
             if (underwater)
+            {
                 if (s->ceilingpic == skyflatnum)
                 {
                     tempsec->interpfloorheight = tempsec->interpceilingheight + 1;
@@ -341,6 +343,7 @@ sector_t *R_FakeFlat(sector_t *sec, sector_t *tempsec, int *floorlightlevel,
                     tempsec->ceiling_xoffs = s->ceiling_xoffs;
                     tempsec->ceiling_yoffs = s->ceiling_yoffs;
                 }
+            }
 
             tempsec->lightlevel = s->lightlevel;
 
@@ -651,7 +654,7 @@ static void R_Subsector(int num)
         && sectors[frontsector->heightsec].floorpic == skyflatnum) ?
         R_FindPlane(frontsector->interpceilingheight,           // killough 3/8/98
             (frontsector->ceilingpic == skyflatnum              // killough 10/98
-            && (frontsector->sky & PL_SKYFLAT) ? frontsector->sky : frontsector->ceilingpic),
+                && (frontsector->sky & PL_SKYFLAT) ? frontsector->sky : frontsector->ceilingpic),
             ceilinglightlevel,                                  // killough 4/11/98
             frontsector->ceiling_xoffs,                         // killough 3/7/98
             frontsector->ceiling_yoffs) : NULL);
@@ -663,7 +666,7 @@ static void R_Subsector(int num)
     // 10/98 killough:
     //
     // NOTE: TeamTNT fixed this bug incorrectly, messing up sprite lighting!!!
-    // That is part of the 242 effect!!!  If you simply pass sub->sector to
+    // That is part of the 242 effect!!! If you simply pass sub->sector to
     // the old code you will not get correct lighting for underwater sprites!!!
     // Either you must pass the fake sector and handle validcount here, on the
     // real sector, or you must account for the lighting in some other way,
@@ -671,14 +674,11 @@ static void R_Subsector(int num)
     if (sub->sector->validcount != validcount)
     {
         sub->sector->validcount = validcount;
-        R_AddSprites(sub->sector, (floorlightlevel + ceilinglightlevel) / 2);
+        R_AddSprites(sub->sector, floorlightlevel);
     }
 
     while (count--)
-    {
         R_AddLine(line++);
-        curline = NULL;
-    }
 }
 
 //

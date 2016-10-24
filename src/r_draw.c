@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -37,12 +37,9 @@
 */
 
 #include "c_console.h"
-#include "doomstat.h"
-#include "m_random.h"
 #include "r_local.h"
 #include "st_stuff.h"
 #include "v_video.h"
-#include "w_wad.h"
 #include "z_zone.h"
 
 //
@@ -61,8 +58,6 @@ int     viewheight2;
 int     viewwindowx;
 int     viewwindowy;
 int     fuzztable[SCREENWIDTH * SCREENHEIGHT];
-
-extern int      r_screensize;
 
 // Color tables for different players,
 //  translate a limited part to another
@@ -201,38 +196,41 @@ void R_DrawShadowColumn(void)
 {
     int32_t     count = dc_yh - dc_yl + 1;
     byte        *dest = R_ADDRESS(0, dc_x, dc_yl);
+    byte        *body = tinttab40;
+    byte        *edge = tinttab25;
 
     if (--count)
     {
-        *dest = tinttab25[*dest];
+        *dest = edge[*dest];
         dest += SCREENWIDTH;
     }
     while (--count > 0)
     {
-        *dest = tinttab40[*dest];
+        *dest = body[*dest];
         dest += SCREENWIDTH;
     }
-    *dest = tinttab25[*dest];
+    *dest = edge[*dest];
 }
 
-void R_DrawSpectreShadowColumn(void)
+void R_DrawFuzzyShadowColumn(void)
 {
     int32_t     count = dc_yh - dc_yl + 1;
     byte        *dest = R_ADDRESS(0, dc_x, dc_yl);
+    byte        *translucency = tinttab25;
 
     if (--count)
     {
         if (!(rand() % 4) && !consoleactive)
-            *dest = tinttab25[*dest];
+            *dest = translucency[*dest];
         dest += SCREENWIDTH;
     }
     while (--count > 0)
     {
-        *dest = tinttab25[*dest];
+        *dest = translucency[*dest];
         dest += SCREENWIDTH;
     }
     if (!(rand() % 4) && !consoleactive)
-        *dest = tinttab25[*dest];
+        *dest = translucency[*dest];
 }
 
 void R_DrawSolidShadowColumn(void)
@@ -278,246 +276,230 @@ void R_DrawSolidBloodSplatColumn(void)
 
 void R_DrawWallColumn(void)
 {
-    int32_t     count = dc_yh - dc_yl + 1;
+    int32_t             count = dc_yh - dc_yl + 1;
+    byte                *dest = R_ADDRESS(0, dc_x, dc_yl);
+    byte                *top = dest;
+    const fixed_t       fracstep = dc_iscale;
+    fixed_t             frac = dc_texturemid + (dc_yl - centery) * fracstep;
+    const byte          *source = dc_source;
+    const lighttable_t  *colormap = dc_colormap;
+    const fixed_t       texheight = dc_texheight;
+    fixed_t             heightmask = texheight - 1;
 
-    if (count <= 0)
-        return;
+    // [SL] Properly tile textures whose heights are not a power-of-2,
+    // avoiding a tutti-frutti effect. From Eternity Engine.
+    if (texheight & heightmask)
+    {
+        heightmask++;
+        heightmask <<= FRACBITS;
+
+        if (frac < 0)
+            while ((frac += heightmask) < 0);
+        else
+            while (frac >= heightmask)
+                frac -= heightmask;
+
+        while (count--)
+        {
+            *dest = colormap[source[frac >> FRACBITS]];
+            dest += SCREENWIDTH;
+            if ((frac += fracstep) >= heightmask)
+                frac -= heightmask;
+        }
+    }
     else
     {
-        byte                    *dest = R_ADDRESS(0, dc_x, dc_yl);
-        byte                    *top = dest;
-        const fixed_t           fracstep = dc_iscale;
-        fixed_t                 frac = dc_texturemid + (dc_yl - centery) * fracstep;
-        const byte              *source = dc_source;
-        const lighttable_t      *colormap = dc_colormap;
-        const fixed_t           texheight = dc_texheight;
-        fixed_t                 heightmask = texheight - 1;
-
-        // [SL] Properly tile textures whose heights are not a power-of-2,
-        // avoiding a tutti-frutti effect. From Eternity Engine.
-        if (texheight & heightmask)
+        // texture height is a power-of-2
+        // do some loop unrolling
+        while (count >= 8)
         {
-            heightmask++;
-            heightmask <<= FRACBITS;
-
-            if (frac < 0)
-                while ((frac += heightmask) <  0);
-            else
-                while (frac >= heightmask)
-                    frac -= heightmask;
-
-            while (count--)
-            {
-                *dest = colormap[source[frac >> FRACBITS]];
-                dest += SCREENWIDTH;
-                if ((frac += fracstep) >= heightmask)
-                    frac -= heightmask;
-            }
-        }
-        else
-        {
-            // texture height is a power-of-2
-            // do some loop unrolling
-            while (count >= 8)
-            {
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                count -= 8;
-            }
-
-            if (count & 1)
-            {
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-            }
-
-            if (count & 2)
-            {
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-            }
-
-            if (count & 4)
-            {
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
-                dest += SCREENWIDTH;
-                frac += fracstep;
-            }
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            count -= 8;
         }
 
-        if (dc_bottomsparkle && !(((frac - fracstep) >> FRACBITS) & 2))
-            *(dest - SCREENWIDTH) = *(dest - SCREENWIDTH * 2);
+        if (count & 1)
+        {
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+        }
 
-        if (dc_topsparkle)
-            *top = *(top + SCREENWIDTH);
+        if (count & 2)
+        {
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+        }
+
+        if (count & 4)
+        {
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            *dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+        }
     }
+
+    if (dc_bottomsparkle && !(((frac - fracstep) >> FRACBITS) & 2))
+        *(dest - SCREENWIDTH) = *(dest - SCREENWIDTH * 2);
+
+    if (dc_topsparkle)
+        *top = *(top + SCREENWIDTH);
 }
 
 void R_DrawFullbrightWallColumn(void)
 {
-    int32_t     count = dc_yh - dc_yl + 1;
+    int32_t             count = dc_yh - dc_yl + 1;
+    byte                *dest = R_ADDRESS(0, dc_x, dc_yl);
+    byte                *top = dest;
+    const fixed_t       fracstep = dc_iscale;
+    fixed_t             frac = dc_texturemid + (dc_yl - centery) * fracstep;
+    const byte          *source = dc_source;
+    const byte          *colormask = dc_colormask;
+    const lighttable_t  *colormap = dc_colormap;
+    const fixed_t       texheight = dc_texheight;
+    fixed_t             heightmask = texheight - 1;
+    byte                dot;
 
-    if (count <= 0)
-        return;
+    // [SL] Properly tile textures whose heights are not a power-of-2,
+    // avoiding a tutti-frutti effect. From Eternity Engine.
+    if (texheight & heightmask)
+    {
+        heightmask++;
+        heightmask <<= FRACBITS;
+
+        if (frac < 0)
+            while ((frac += heightmask) < 0);
+        else
+            while (frac >= heightmask)
+                frac -= heightmask;
+
+        while (count--)
+        {
+            dot = source[frac >> FRACBITS];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            if ((frac += fracstep) >= heightmask)
+                frac -= heightmask;
+        }
+    }
     else
     {
-        byte                    *dest = R_ADDRESS(0, dc_x, dc_yl);
-        byte                    *top = dest;
-        const fixed_t           fracstep = dc_iscale;
-        fixed_t                 frac = dc_texturemid + (dc_yl - centery) * fracstep;
-        const byte              *source = dc_source;
-        const byte              *colormask = dc_colormask;
-        const lighttable_t      *colormap = dc_colormap;
-        const fixed_t           texheight = dc_texheight;
-        fixed_t                 heightmask = texheight - 1;
-        byte                    dot;
-
-        // [SL] Properly tile textures whose heights are not a power-of-2,
-        // avoiding a tutti-frutti effect. From Eternity Engine.
-        if (texheight & heightmask)
+        // texture height is a power-of-2
+        // do some loop unrolling
+        while (count >= 8)
         {
-            heightmask++;
-            heightmask <<= FRACBITS;
-
-            if (frac < 0)
-                while ((frac += heightmask) <  0);
-            else
-                while (frac >= heightmask)
-                    frac -= heightmask;
-
-            while (count--)
-            {
-                dot = source[frac >> FRACBITS];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                if ((frac += fracstep) >= heightmask)
-                    frac -= heightmask;
-            }
-        }
-        else
-        {
-            // texture height is a power-of-2
-            // do some loop unrolling
-            while (count >= 8)
-            {
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                count -= 8;
-            }
-
-            if (count & 1)
-            {
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-            }
-
-            if (count & 2)
-            {
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-            }
-
-            if (count & 4)
-            {
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-                dot = source[(frac >> FRACBITS) & heightmask];
-                *dest = (colormask[dot] ? dot : colormap[dot]);
-                dest += SCREENWIDTH;
-                frac += fracstep;
-            }
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            count -= 8;
         }
 
-        if (dc_bottomsparkle && !(((frac - fracstep) >> FRACBITS) & 2))
-            *(dest - SCREENWIDTH) = *(dest - SCREENWIDTH * 2);
+        if (count & 1)
+        {
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+        }
 
-        if (dc_topsparkle)
-            *top = *(top + SCREENWIDTH);
+        if (count & 2)
+        {
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+        }
+
+        if (count & 4)
+        {
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+            dest += SCREENWIDTH;
+            frac += fracstep;
+            dot = source[(frac >> FRACBITS) & heightmask];
+            *dest = (colormask[dot] ? dot : colormap[dot]);
+        }
     }
+
+    if (dc_bottomsparkle && !(((frac - fracstep) >> FRACBITS) & 2))
+        *(dest - SCREENWIDTH) = *(dest - SCREENWIDTH * 2);
+
+    if (dc_topsparkle)
+        *top = *(top + SCREENWIDTH);
 }
 
 void R_DrawPlayerSpriteColumn(void)
@@ -565,17 +547,18 @@ void R_DrawTranslucentSuperShotgunColumn(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttabredwhite1;
 
     while (--count)
     {
         byte    dot = source[frac >> FRACBITS];
 
         if (dot != 71)
-            *dest = colormap[tinttabredwhite1[(*dest << 8) + dot]];
+            *dest = colormap[translucency[(*dest << 8) + dot]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = colormap[tinttabredwhite1[(*dest << 8) + source[frac >> FRACBITS]]];
+    *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
 }
 
 void R_DrawSkyColumn(void)
@@ -602,7 +585,7 @@ void R_DrawSkyColumn(void)
             heightmask <<= FRACBITS;
 
             if (frac < 0)
-                while ((frac += heightmask) <  0);
+                while ((frac += heightmask) < 0);
             else
                 while (frac >= heightmask)
                     frac -= heightmask;
@@ -729,14 +712,15 @@ void R_DrawTranslucentRedToBlue33Column(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttab33;
 
     while (--count)
     {
-        *dest = tinttab33[(*dest << 8) + colormap[redtoblue[source[frac >> FRACBITS]]]];
+        *dest = translucency[(*dest << 8) + colormap[redtoblue[source[frac >> FRACBITS]]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = tinttab33[(*dest << 8) + colormap[redtoblue[source[frac >> FRACBITS]]]];
+    *dest = translucency[(*dest << 8) + colormap[redtoblue[source[frac >> FRACBITS]]]];
 }
 
 void R_DrawRedToGreenColumn(void)
@@ -765,14 +749,15 @@ void R_DrawTranslucentRedToGreen33Column(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttab33;
 
     while (--count)
     {
-        *dest = tinttab33[(*dest << 8) + colormap[redtogreen[source[frac >> FRACBITS]]]];
+        *dest = translucency[(*dest << 8) + colormap[redtogreen[source[frac >> FRACBITS]]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = tinttab33[(*dest << 8) + colormap[redtogreen[source[frac >> FRACBITS]]]];
+    *dest = translucency[(*dest << 8) + colormap[redtogreen[source[frac >> FRACBITS]]]];
 }
 
 void R_DrawTranslucentColumn(void)
@@ -783,14 +768,15 @@ void R_DrawTranslucentColumn(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttab;
 
     while (--count)
     {
-        *dest = tinttab[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+        *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = tinttab[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+    *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
 }
 
 void R_DrawTranslucent50Column(void)
@@ -801,14 +787,15 @@ void R_DrawTranslucent50Column(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tranmap;
 
     while (--count)
     {
-        *dest = tranmap[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+        *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = tranmap[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+    *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
 }
 
 void R_DrawTranslucent33Column(void)
@@ -819,14 +806,15 @@ void R_DrawTranslucent33Column(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttab33;
 
     while (--count)
     {
-        *dest = tinttab33[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+        *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = tinttab33[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+    *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
 }
 
 void R_DrawMegaSphereColumn(void)
@@ -837,14 +825,15 @@ void R_DrawMegaSphereColumn(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttab33;
 
     while (--count)
     {
-        *dest = tinttab33[(*dest << 8) + colormap[megasphere[source[frac >> FRACBITS]]]];
+        *dest = translucency[(*dest << 8) + colormap[megasphere[source[frac >> FRACBITS]]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = tinttab33[(*dest << 8) + colormap[megasphere[source[frac >> FRACBITS]]]];
+    *dest = translucency[(*dest << 8) + colormap[megasphere[source[frac >> FRACBITS]]]];
 }
 
 void R_DrawSolidMegaSphereColumn(void)
@@ -873,14 +862,15 @@ void R_DrawTranslucentRedColumn(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttabred;
 
     while (--count)
     {
-        *dest = tinttabred[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+        *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = tinttabred[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+    *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
 }
 
 void R_DrawTranslucentRedWhiteColumn1(void)
@@ -891,14 +881,15 @@ void R_DrawTranslucentRedWhiteColumn1(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttabredwhite1;
 
     while (--count)
     {
-        *dest = colormap[tinttabredwhite1[(*dest << 8) + source[frac >> FRACBITS]]];
+        *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = colormap[tinttabredwhite1[(*dest << 8) + source[frac >> FRACBITS]]];
+    *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
 }
 
 void R_DrawTranslucentRedWhiteColumn2(void)
@@ -909,14 +900,15 @@ void R_DrawTranslucentRedWhiteColumn2(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttabredwhite2;
 
     while (--count)
     {
-        *dest = colormap[tinttabredwhite2[(*dest << 8) + source[frac >> FRACBITS]]];
+        *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = colormap[tinttabredwhite2[(*dest << 8) + source[frac >> FRACBITS]]];
+    *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
 }
 
 void R_DrawTranslucentRedWhite50Column(void)
@@ -927,14 +919,15 @@ void R_DrawTranslucentRedWhite50Column(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttabredwhite50;
 
     while (--count)
     {
-        *dest = colormap[tinttabredwhite50[(*dest << 8) + source[frac >> FRACBITS]]];
+        *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = colormap[tinttabredwhite50[(*dest << 8) + source[frac >> FRACBITS]]];
+    *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
 }
 
 void R_DrawTranslucentGreenColumn(void)
@@ -945,14 +938,15 @@ void R_DrawTranslucentGreenColumn(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttabgreen;
 
     while (--count)
     {
-        *dest = tinttabgreen[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+        *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = tinttabgreen[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+    *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
 }
 
 void R_DrawTranslucentBlueColumn(void)
@@ -963,14 +957,15 @@ void R_DrawTranslucentBlueColumn(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttabblue;
 
     while (--count)
     {
-        *dest = tinttabblue[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+        *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = tinttabblue[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
+    *dest = translucency[(*dest << 8) + colormap[source[frac >> FRACBITS]]];
 }
 
 void R_DrawTranslucentRed33Column(void)
@@ -981,14 +976,15 @@ void R_DrawTranslucentRed33Column(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttabred33;
 
     while (--count)
     {
-        *dest = colormap[tinttabred33[(*dest << 8) + source[frac >> FRACBITS]]];
+        *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = colormap[tinttabred33[(*dest << 8) + source[frac >> FRACBITS]]];
+    *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
 }
 
 void R_DrawTranslucentGreen33Column(void)
@@ -999,17 +995,18 @@ void R_DrawTranslucentGreen33Column(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttabgreen33;
 
     while (--count)
     {
-        *dest = colormap[tinttabgreen33[(*dest << 8) + source[frac >> FRACBITS]]];
+        *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = colormap[tinttabgreen33[(*dest << 8) + source[frac >> FRACBITS]]];
+    *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
 }
 
-void R_DrawTranslucentBlue33Column(void)
+void R_DrawTranslucentBlue25Column(void)
 {
     int32_t             count = dc_yh - dc_yl + 1;
     byte                *dest = R_ADDRESS(0, dc_x, dc_yl);
@@ -1017,14 +1014,15 @@ void R_DrawTranslucentBlue33Column(void)
     const fixed_t       fracstep = dc_iscale;
     const byte          *source = dc_source;
     const lighttable_t  *colormap = dc_colormap;
+    byte                *translucency = tinttabblue25;
 
     while (--count)
     {
-        *dest = colormap[tinttabblue33[(*dest << 8) + source[frac >> FRACBITS]]];
+        *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
         dest += SCREENWIDTH;
         frac += fracstep;
     }
-    *dest = colormap[tinttabblue33[(*dest << 8) + source[frac >> FRACBITS]]];
+    *dest = colormap[translucency[(*dest << 8) + source[frac >> FRACBITS]]];
 }
 
 //

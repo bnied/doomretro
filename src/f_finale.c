@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -41,16 +41,13 @@
 #include "c_console.h"
 #include "d_deh.h"
 #include "doomstat.h"
-#include "dstrings.h"
 #include "hu_stuff.h"
 #include "i_gamepad.h"
 #include "i_swap.h"
-#include "i_system.h"
 #include "m_misc.h"
 #include "m_random.h"
 #include "p_local.h"
 #include "s_sound.h"
-#include "SDL.h"
 #include "v_data.h"
 #include "v_video.h"
 #include "w_wad.h"
@@ -75,17 +72,18 @@ static int              finalecount;
 static char     *finaletext;
 static char     *finaleflat;
 
-void F_StartCast(void);
-void F_CastTicker(void);
-dboolean F_CastResponder(event_t *ev);
-void F_CastDrawer(void);
+static void F_StartCast(void);
+static void F_CastTicker(void);
+static dboolean F_CastResponder(event_t *ev);
 
 void WI_checkForAccelerate(void);    // killough 3/28/98: used to
 void A_RandomJump(mobj_t *actor, player_t *player, pspdef_t *psp);
-extern int acceleratestage;          // accelerate intermission screens
-static int midstage;                 // whether we're in "mid-stage"
 
+static int      midstage;            // whether we're in "mid-stage"
+
+extern int      acceleratestage;     // accelerate intermission screens
 extern dboolean r_shadows;
+extern dboolean r_translucency;
 
 //
 // F_StartFinale
@@ -118,14 +116,17 @@ void F_StartFinale(void)
                     finaleflat = bgflatE1;
                     finaletext = s_E1TEXT;
                     break;
+
                 case 2:
                     finaleflat = bgflatE2;
                     finaletext = s_E2TEXT;
                     break;
+
                 case 3:
                     finaleflat = bgflatE3;
                     finaletext = s_E3TEXT;
                     break;
+
                 case 4:
                     finaleflat = bgflatE4;
                     finaletext = s_E4TEXT;
@@ -148,6 +149,7 @@ void F_StartFinale(void)
                     finaletext = (gamemission == pack_tnt ? s_T1TEXT :
                         (gamemission == pack_plut ? s_P1TEXT : s_C1TEXT));
                     break;
+
                 case 8:
                     if (gamemission == pack_nerve)
                     {
@@ -155,31 +157,37 @@ void F_StartFinale(void)
                         finaletext = s_N1TEXT;
                     }
                     break;
+
                 case 11:
                     finaleflat = bgflat11;
                     finaletext = (gamemission == pack_tnt ? s_T2TEXT :
                         (gamemission == pack_plut ? s_P2TEXT : s_C2TEXT));
                     break;
+
                 case 20:
                     finaleflat = bgflat20;
                     finaletext = (gamemission == pack_tnt ? s_T3TEXT :
                         (gamemission == pack_plut ? s_P3TEXT : s_C3TEXT));
                     break;
+
                 case 30:
                     finaleflat = bgflat30;
                     finaletext = (gamemission == pack_tnt ? s_T4TEXT :
                         (gamemission == pack_plut ? s_P4TEXT : s_C4TEXT));
                     break;
+
                 case 15:
                     finaleflat = bgflat15;
                     finaletext = (gamemission == pack_tnt ? s_T5TEXT :
                         (gamemission == pack_plut ? s_P5TEXT : s_C5TEXT));
                     break;
+
                 case 31:
                     finaleflat = bgflat31;
                     finaletext = (gamemission == pack_tnt ? s_T6TEXT :
                         (gamemission == pack_plut ? s_P6TEXT : s_C6TEXT));
                     break;
+
                 default:
                     // Ouch.
                     break;
@@ -281,13 +289,13 @@ extern patch_t *hu_font[HU_FONTSIZE];
 
 void M_DrawSmallChar(int x, int y, int i, dboolean shadow);
 
-void F_TextWrite(void)
+static void F_TextWrite(void)
 {
     // draw some of the text onto the screen
     byte        *src;
     byte        *dest;
     int         x, y, w;
-    int         count = FixedDiv(((finalecount - 10) * FRACUNIT), TextSpeed()) >> FRACBITS;
+    int         count = FixedDiv((finalecount - 10) * FRACUNIT, TextSpeed()) >> FRACBITS;
     const char  *ch = finaletext;
     int         cx = 12;
     int         cy = 10;
@@ -431,7 +439,7 @@ extern char     *playername;
 //
 // F_StartCast
 //
-void F_StartCast(void)
+static void F_StartCast(void)
 {
     firstevent = true;
     wipegamestate = GS_NONE;    // force a screen wipe
@@ -453,7 +461,7 @@ void F_StartCast(void)
 //
 // F_CastTicker
 //
-void F_CastTicker(void)
+static void F_CastTicker(void)
 {
     if (--casttics > 0)
         return;                         // not time to change state yet
@@ -569,8 +577,7 @@ stopattack:
 //
 // F_CastResponder
 //
-
-dboolean F_CastResponder(event_t *ev)
+static dboolean F_CastResponder(event_t *ev)
 {
     mobjtype_t  type;
 
@@ -588,8 +595,8 @@ dboolean F_CastResponder(event_t *ev)
     if (menuactive || paused || consoleactive)
         return false;
 
-    if (ev->type == ev_keydown && ev->data1 != key_use && ev->data1 != key_use2
-        && ev->data1 != key_fire && ev->data1 != KEY_LEFTARROW && ev->data1 != KEY_RIGHTARROW
+    if (ev->type == ev_keydown && ev->data1 != keyboarduse && ev->data1 != keyboarduse2
+        && ev->data1 != keyboardfire && ev->data1 != KEY_LEFTARROW && ev->data1 != KEY_RIGHTARROW
         && ev->data1 != KEY_ENTER)
         return false;
 
@@ -614,7 +621,7 @@ dboolean F_CastResponder(event_t *ev)
         }
         else if (ev->data1 == KEY_RIGHTARROW)
         {
-            castrot = (!castrot ? 014 : castrot - 2);
+            castrot = (!castrot ? 14 : castrot - 2);
             return true;
         }
     }
@@ -631,10 +638,8 @@ dboolean F_CastResponder(event_t *ev)
     casttics = caststate->tics;
     if (casttics == -1 && caststate->action == A_RandomJump)
     {
-        if (M_Random() < caststate->misc2)
-            caststate = &states [caststate->misc1];
-        else
-            caststate = &states [caststate->nextstate];
+        caststate = &states[(M_Random() < caststate->misc2 ? caststate->misc1 :
+            caststate->nextstate)];
         casttics = caststate->tics;
     }
     castrot = 0;
@@ -646,17 +651,13 @@ dboolean F_CastResponder(event_t *ev)
     return true;
 }
 
-void F_CastPrint(char *text)
+static void F_CastPrint(char *text)
 {
-    const char  *ch;
+    const char  *ch = text;
     int         c;
     int         cx;
     int         w;
-    int         width;
-
-    // find width
-    ch = text;
-    width = 0;
+    int         width = 0;
 
     while (ch)
     {
@@ -698,9 +699,7 @@ void F_CastPrint(char *text)
 //
 // F_CastDrawer
 //
-extern dboolean r_translucency;
-
-void F_CastDrawer(void)
+static void F_CastDrawer(void)
 {
     spritedef_t         *sprdef;
     spriteframe_t       *sprframe;
@@ -786,13 +785,13 @@ void F_CastDrawer(void)
 //
 // F_DrawPatchCol
 //
-void F_DrawPatchCol(int x, patch_t *patch, int col, fixed_t fracstep)
+static void F_DrawPatchCol(int x, patch_t *patch, int col, fixed_t fracstep)
 {
     column_t    *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
     byte        *desttop = screens[0] + x;
 
     // step through the posts in a column
-    while (column->topdelta != 0xff)
+    while (column->topdelta != 0xFF)
     {
         int     count = (column->length << FRACBITS) / fracstep;
         fixed_t frac = 0;
@@ -812,7 +811,7 @@ void F_DrawPatchCol(int x, patch_t *patch, int col, fixed_t fracstep)
 //
 // F_BunnyScroll
 //
-void F_BunnyScroll(void)
+static void F_BunnyScroll(void)
 {
     int                 scrolled;
     int                 x;
@@ -880,12 +879,15 @@ static void F_ArtScreenDrawer(void)
             case 1:
                 lumpname = (gamemode == retail ? "CREDIT" : "HELP2");
                 break;
+
             case 2:
                 lumpname = "VICTORY2";
                 break;
+
             case 4:
                 lumpname = "ENDPIC";
                 break;
+
             default:
                 return;
         }
@@ -904,9 +906,11 @@ void F_Drawer(void)
         case F_STAGE_CAST:
             F_CastDrawer();
             break;
+
         case F_STAGE_TEXT:
             F_TextWrite();
             break;
+
         case F_STAGE_ARTSCREEN:
             F_ArtScreenDrawer();
             break;

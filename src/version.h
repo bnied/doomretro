@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -39,25 +39,21 @@
 #if !defined(__VERSION_H__)
 #define __VERSION_H__
 
-#define PACKAGE_VERSION                 2,1,0,0
-#define PACKAGE_VERSIONSTRING           "2.1.0"
-#if defined (_DEBUG)
-#define PACKAGE_BRANDINGSTRING          "DOOM Retro v2.1 (Debug Build)"
-#else
-#define PACKAGE_BRANDINGSTRING          "DOOM Retro v2.1"
-#endif
-#define PACKAGE_NAMEANDVERSIONSTRING    "DOOM Retro v2.1"
-#define PACKAGE_SAVEGAMEVERSIONSTRING   "DOOM Retro v2.1"
+#define PACKAGE_VERSION                 2,3,3,0
+#define PACKAGE_VERSIONSTRING           "2.3.3"
+#define PACKAGE_NAMEANDVERSIONSTRING    "DOOM Retro v2.3.3"
+#define PACKAGE_SAVEGAMEVERSIONSTRING   "DOOM Retro v2.3"
 
 #define PACKAGE                         "doomretro"
 #define PACKAGE_CONFIG                  "doomretro.cfg"
-#define PACKAGE_COPYRIGHT               "© 2013-2016 Brad Harding. All rights reserved."
+#define PACKAGE_COPYRIGHT               "\xA9 2013-2016 Brad Harding. All rights reserved."
 #define PACKAGE_EMAIL                   "brad@doomretro.com"
 #define PACKAGE_ICON_PATH               "..\\res\\doomretro.ico"
 #define PACKAGE_MUTEX                   "DOOMRETRO-CC4F1071-8B24-4E91-A207-D792F39636CD"
 #define PACKAGE_NAME                    "DOOM Retro"
-#define PACKAGE_SAVE                    "doomretro%d.save"
+#define PACKAGE_SAVE                    "doomretro%i.save"
 #define PACKAGE_WAD                     "doomretro.wad"
-#define PACKAGE_WIKI_URL                "http://wiki.doomretro.com/Starting-a-Game"
+#define PACKAGE_WIKI_START_URL          "http://start.doomretro.com/"
+#define PACKAGE_WIKI_HELP_URL           "http://help.doomretro.com/"
 
 #endif

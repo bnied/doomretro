@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -36,28 +36,17 @@
 ========================================================================
 */
 
-#define _USE_MATH_DEFINES
-
-#include <math.h>
-
-#if defined(WIN32)
-#include <Windows.h>
-#include <Xinput.h>
-#endif
-
 #include "am_map.h"
 #include "c_console.h"
 #include "d_deh.h"
 #include "doomstat.h"
-#include "dstrings.h"
 #include "hu_stuff.h"
+#include "i_colors.h"
 #include "i_gamepad.h"
-#include "i_video.h"
+#include "i_timer.h"
 #include "m_bbox.h"
-#include "m_config.h"
 #include "m_misc.h"
 #include "p_local.h"
-#include "SDL.h"
 #include "st_stuff.h"
 #include "v_video.h"
 #include "z_zone.h"
@@ -70,19 +59,18 @@ int     am_allmapfdwallcolor = am_allmapfdwallcolor_default;
 int     am_allmapwallcolor = am_allmapwallcolor_default;
 int     am_backcolor = am_backcolor_default;
 int     am_cdwallcolor = am_cdwallcolor_default;
+int     am_crosshaircolor = am_crosshaircolor_default;
 int     am_fdwallcolor = am_fdwallcolor_default;
 int     am_gridcolor = am_gridcolor_default;
 int     am_markcolor = am_markcolor_default;
+int     am_pathcolor = am_pathcolor_default;
 int     am_playercolor = am_playercolor_default;
 int     am_teleportercolor = am_teleportercolor_default;
 int     am_thingcolor = am_thingcolor_default;
 int     am_tswallcolor = am_tswallcolor_default;
 int     am_wallcolor = am_wallcolor_default;
-int     am_xhaircolor = am_xhaircolor_default;
 
 // Automap color priorities
-#define PLAYERPRIORITY          12
-#define THINGPRIORITY           11
 #define WALLPRIORITY            10
 #define ALLMAPWALLPRIORITY      9
 #define MASKPRIORITY            8
@@ -97,8 +85,12 @@ int     am_xhaircolor = am_xhaircolor_default;
 byte    *priorities;
 byte    *mask;
 
-byte    *playercolor;
-byte    *thingcolor;
+byte    playercolor;
+byte    thingcolor;
+byte    pathcolor;
+byte    markcolor;
+byte    backcolor;
+
 byte    *wallcolor;
 byte    *allmapwallcolor;
 byte    *maskcolor;
@@ -109,27 +101,28 @@ byte    *cdwallcolor;
 byte    *allmapcdwallcolor;
 byte    *tswallcolor;
 byte    *gridcolor;
+byte    *crosshaircolor;
 
-#define AM_PANDOWNKEY           key_down
-#define AM_PANDOWNKEY2          key_down2
-#define AM_PANUPKEY             key_up
-#define AM_PANUPKEY2            key_up2
-#define AM_PANRIGHTKEY          key_right
-#define AM_PANRIGHTKEY2         key_straferight
-#define AM_PANRIGHTKEY3         key_straferight2
-#define AM_PANLEFTKEY           key_left
-#define AM_PANLEFTKEY2          key_strafeleft
-#define AM_PANLEFTKEY3          key_strafeleft2
-#define AM_ZOOMINKEY            key_automap_zoomin
-#define AM_ZOOMOUTKEY           key_automap_zoomout
-#define AM_STARTKEY             key_automap
-#define AM_ENDKEY               key_automap
-#define AM_GOBIGKEY             key_automap_maxzoom
-#define AM_FOLLOWKEY            key_automap_followmode
-#define AM_GRIDKEY              key_automap_grid
-#define AM_MARKKEY              key_automap_mark
-#define AM_CLEARMARKKEY         key_automap_clearmark
-#define AM_ROTATEKEY            key_automap_rotatemode
+#define AM_PANDOWNKEY           keyboardback
+#define AM_PANDOWNKEY2          keyboardback2
+#define AM_PANUPKEY             keyboardforward
+#define AM_PANUPKEY2            keyboardforward2
+#define AM_PANRIGHTKEY          keyboardright
+#define AM_PANRIGHTKEY2         keyboardstraferight
+#define AM_PANRIGHTKEY3         keyboardstraferight2
+#define AM_PANLEFTKEY           keyboardleft
+#define AM_PANLEFTKEY2          keyboardstrafeleft
+#define AM_PANLEFTKEY3          keyboardstrafeleft2
+#define AM_ZOOMINKEY            keyboardautomapzoomin
+#define AM_ZOOMOUTKEY           keyboardautomapzoomout
+#define AM_STARTKEY             keyboardautomap
+#define AM_ENDKEY               keyboardautomap
+#define AM_GOBIGKEY             keyboardautomapmaxzoom
+#define AM_FOLLOWKEY            keyboardautomapfollowmode
+#define AM_GRIDKEY              keyboardautomapgrid
+#define AM_MARKKEY              keyboardautomapmark
+#define AM_CLEARMARKKEY         keyboardautomapclearmark
+#define AM_ROTATEKEY            keyboardautomaprotatemode
 
 // scale on entry
 // [BH] changed to initial zoom level of E1M1: Hangar so each map zoom level is consistent
@@ -157,7 +150,8 @@ byte    *gridcolor;
 
 typedef struct
 {
-    mpoint_t    a, b;
+    mpoint_t    a;
+    mpoint_t    b;
 } mline_t;
 
 //
@@ -260,9 +254,14 @@ mpoint_t                *markpoints = NULL;     // where the points are
 int                     markpointnum = 0;       // next point to be assigned
 int                     markpointnum_max = 0;
 
+mpoint_t                *pathpoints = NULL;
+int                     pathpointnum = 0;
+int                     pathpointnum_max = 0;
+
 dboolean                am_external = am_external_default;
 dboolean                am_followmode = am_followmode_default;
 dboolean                am_grid = am_grid_default;
+dboolean                am_path = am_path_default;
 dboolean                am_rotatemode = am_rotatemode_default;
 
 static dboolean         stopped = true;
@@ -273,7 +272,7 @@ static dboolean         movement;
 int                     keydown;
 int                     direction;
 
-am_frame_t              am_frame;
+static am_frame_t       am_frame;
 
 static void AM_rotate(fixed_t *x, fixed_t *y, angle_t angle);
 
@@ -301,6 +300,7 @@ static void AM_restoreScaleAndLoc(void)
 {
     m_w = old_m_w;
     m_h = old_m_h;
+
     if (am_followmode)
     {
         m_x = (plr->mo->x >> FRACTOMAPBITS) - m_w / 2;
@@ -371,67 +371,66 @@ static void AM_changeWindowLoc(void)
         fixed_t w = m_w / 2;
         fixed_t h = m_h / 2;
 
-        m_x += incx;
-        m_y += incy;
-        m_x = BETWEEN(min_x, m_x + w, max_x) - w;
-        m_y = BETWEEN(min_y, m_y + h, max_y) - h;
+        m_x = BETWEEN(min_x, m_x + w + incx, max_x) - w;
+        m_y = BETWEEN(min_y, m_y + h + incy, max_y) - h;
     }
 
     m_x2 = m_x + m_w;
     m_y2 = m_y + m_h;
 }
 
-void AM_SetColors(void)
+void AM_setColors(void)
 {
     byte        *priority = Z_Calloc(1, 256, PU_STATIC, NULL);
     int         x, y;
 
-    *(priority + am_playercolor) = PLAYERPRIORITY;
-    *(priority + am_thingcolor) = THINGPRIORITY;
-    *(priority + am_wallcolor) = WALLPRIORITY;
-    *(priority + am_allmapwallcolor) = ALLMAPWALLPRIORITY;
-    *(priority + am_cdwallcolor) = CDWALLPRIORITY;
-    *(priority + am_allmapcdwallcolor) = ALLMAPCDWALLPRIORITY;
-    *(priority + am_fdwallcolor) = FDWALLPRIORITY;
-    *(priority + am_allmapfdwallcolor) = ALLMAPFDWALLPRIORITY;
-    *(priority + am_teleportercolor) = TELEPORTERPRIORITY;
-    *(priority + am_tswallcolor) = TSWALLPRIORITY;
-    *(priority + am_gridcolor) = GRIDPRIORITY;
+    *(priority + nearestcolors[am_wallcolor]) = WALLPRIORITY;
+    *(priority + nearestcolors[am_allmapwallcolor]) = ALLMAPWALLPRIORITY;
+    *(priority + nearestcolors[am_cdwallcolor]) = CDWALLPRIORITY;
+    *(priority + nearestcolors[am_allmapcdwallcolor]) = ALLMAPCDWALLPRIORITY;
+    *(priority + nearestcolors[am_fdwallcolor]) = FDWALLPRIORITY;
+    *(priority + nearestcolors[am_allmapfdwallcolor]) = ALLMAPFDWALLPRIORITY;
+    *(priority + nearestcolors[am_teleportercolor]) = TELEPORTERPRIORITY;
+    *(priority + nearestcolors[am_tswallcolor]) = TSWALLPRIORITY;
+    *(priority + nearestcolors[am_gridcolor]) = GRIDPRIORITY;
 
-    *(priority + MASKCOLOR) = MASKPRIORITY;
+    *(priority + nearestcolors[MASKCOLOR]) = MASKPRIORITY;
 
-    *(mask + MASKCOLOR) = am_backcolor;
+    playercolor = nearestcolors[am_playercolor];
+    thingcolor = nearestcolors[am_thingcolor];
+    pathcolor = nearestcolors[am_pathcolor];
+    markcolor = nearestcolors[am_markcolor];
+    backcolor = nearestcolors[am_backcolor];
+    crosshaircolor = tinttab60 + (nearestcolors[am_crosshaircolor] << 8);
+
+    for (x = 0; x < 256; ++x)
+        *(mask + x) = x;
+
+    *(mask + nearestcolors[MASKCOLOR]) = backcolor;
 
     for (x = 0; x < 256; ++x)
         for (y = 0; y < 256; ++y)
             *(priorities + (x << 8) + y) = (*(priority + x) > *(priority + y) ? x : y);
 
-    playercolor = priorities + (am_playercolor << 8);
-    thingcolor = priorities + (am_thingcolor << 8);
-    wallcolor = priorities + (am_wallcolor << 8);
-    allmapwallcolor = priorities + (am_allmapwallcolor << 8);
-    cdwallcolor = priorities + (am_cdwallcolor << 8);
-    allmapcdwallcolor = priorities + (am_allmapcdwallcolor << 8);
-    fdwallcolor = priorities + (am_fdwallcolor << 8);
-    allmapfdwallcolor = priorities + (am_allmapfdwallcolor << 8);
-    teleportercolor = priorities + (am_teleportercolor << 8);
-    tswallcolor = priorities + (am_tswallcolor << 8);
-    gridcolor = priorities + (am_gridcolor << 8);
+    wallcolor = priorities + (nearestcolors[am_wallcolor] << 8);
+    allmapwallcolor = priorities + (nearestcolors[am_allmapwallcolor] << 8);
+    cdwallcolor = priorities + (nearestcolors[am_cdwallcolor] << 8);
+    allmapcdwallcolor = priorities + (nearestcolors[am_allmapcdwallcolor] << 8);
+    fdwallcolor = priorities + (nearestcolors[am_fdwallcolor] << 8);
+    allmapfdwallcolor = priorities + (nearestcolors[am_allmapfdwallcolor] << 8);
+    teleportercolor = priorities + (nearestcolors[am_teleportercolor] << 8);
+    tswallcolor = priorities + (nearestcolors[am_tswallcolor] << 8);
+    gridcolor = priorities + (nearestcolors[am_gridcolor] << 8);
 
-    maskcolor = priorities + (MASKCOLOR << 8);
+    maskcolor = priorities + (nearestcolors[MASKCOLOR] << 8);
 }
 
 void AM_Init(void)
 {
-    int x;
-
     mask = Z_Malloc(256, PU_STATIC, NULL);
-    for (x = 0; x < 256; ++x)
-        *(mask + x) = x;
-
     priorities = Z_Malloc(256 * 256, PU_STATIC, NULL);
 
-    AM_SetColors();
+    AM_setColors();
 }
 
 static void AM_initVariables(dboolean mainwindow)
@@ -467,7 +466,7 @@ static void AM_initVariables(dboolean mainwindow)
 //
 static void AM_LevelInit(void)
 {
-    am_followmode = true;
+    am_followmode = am_followmode_default;
     bigstate = false;
 
     AM_findMinMaxBoundaries();
@@ -534,8 +533,8 @@ static void AM_maxOutWindowScale(void)
     AM_activateNewScale();
 }
 
-SDL_Keymod      modstate;
-dboolean        speedtoggle;
+static SDL_Keymod       modstate;
+static dboolean         speedtoggle;
 
 static dboolean AM_getSpeedToggle(void)
 {
@@ -576,9 +575,12 @@ static void AM_toggleFollowMode(void)
 {
     am_followmode = !am_followmode;
     if (am_followmode)
-        m_paninc.x = m_paninc.y = 0;
+    {
+        m_paninc.x = 0;
+        m_paninc.y = 0;
+    }
     C_StrCVAROutput(stringize(am_followmode), (am_followmode ? "on" : "off"));
-    HU_PlayerMessage((am_followmode ? s_AMSTR_FOLLOWON : s_AMSTR_FOLLOWOFF), false);
+    HU_PlayerMessage((am_followmode ? s_AMSTR_FOLLOWON : s_AMSTR_FOLLOWOFF), false, true);
     message_dontfuckwithme = true;
     message_clearable = true;
 }
@@ -587,7 +589,7 @@ static void AM_toggleGrid(void)
 {
     am_grid = !am_grid;
     C_StrCVAROutput(stringize(am_grid), (am_grid ? "on" : "off"));
-    HU_PlayerMessage((am_grid ? s_AMSTR_GRIDON : s_AMSTR_GRIDOFF), false);
+    HU_PlayerMessage((am_grid ? s_AMSTR_GRIDON : s_AMSTR_GRIDOFF), false, true);
     message_dontfuckwithme = true;
     message_clearable = true;
     M_SaveCVARs();
@@ -616,12 +618,12 @@ static void AM_addMark(void)
     markpoints[markpointnum].x = x;
     markpoints[markpointnum].y = y;
     M_snprintf(message, sizeof(message), s_AMSTR_MARKEDSPOT, ++markpointnum);
-    HU_PlayerMessage(message, false);
+    HU_PlayerMessage(message, false, true);
     message_dontfuckwithme = true;
     message_clearable = true;
 }
 
-int     markpress = 0;
+static int      markpress;
 
 static void AM_clearMarks(void)
 {
@@ -630,8 +632,9 @@ static void AM_clearMarks(void)
         if (++markpress == 5)
         {
             // clear all marks
-            HU_PlayerMessage(s_AMSTR_MARKSCLEARED, false);
+            HU_PlayerMessage(s_AMSTR_MARKSCLEARED, false, true);
             message_dontfuckwithme = true;
+            message_clearable = true;
             markpointnum = 0;
         }
         else if (markpress == 1)
@@ -640,18 +643,40 @@ static void AM_clearMarks(void)
 
             // clear one mark
             M_snprintf(message, sizeof(message), s_AMSTR_MARKCLEARED, markpointnum--);
-            HU_PlayerMessage(message, false);
+            HU_PlayerMessage(message, false, true);
             message_dontfuckwithme = true;
             message_clearable = true;
         }
     }
 }
 
+void AM_addToPath(void)
+{
+    int x = players[0].mo->x >> FRACTOMAPBITS;
+    int y = players[0].mo->y >> FRACTOMAPBITS;
+
+    if (pathpointnum)
+        if (ABS(pathpoints[pathpointnum - 1].x - x) < FRACUNIT
+            && ABS(pathpoints[pathpointnum - 1].y - y) < FRACUNIT)
+            return;
+
+    if (pathpointnum >= pathpointnum_max)
+    {
+        pathpointnum_max = (pathpointnum_max ? pathpointnum_max << 1 : 16);
+        pathpoints = Z_Realloc(pathpoints, pathpointnum_max * sizeof(*pathpoints));
+    }
+
+    pathpoints[pathpointnum].x = x;
+    pathpoints[pathpointnum].y = y;
+
+    ++pathpointnum;
+}
+
 static void AM_toggleRotateMode(void)
 {
     am_rotatemode = !am_rotatemode;
     C_StrCVAROutput(stringize(am_rotatemode), (am_rotatemode ? "on" : "off"));
-    HU_PlayerMessage((am_rotatemode ? s_AMSTR_ROTATEON : s_AMSTR_ROTATEOFF), false);
+    HU_PlayerMessage((am_rotatemode ? s_AMSTR_ROTATEON : s_AMSTR_ROTATEOFF), false, true);
     message_dontfuckwithme = true;
     message_clearable = true;
     M_SaveCVARs();
@@ -662,7 +687,7 @@ static void AM_toggleRotateMode(void)
 //
 dboolean AM_Responder(event_t *ev)
 {
-    int                 rc = false;
+    int rc = false;
 
     direction = 0;
     modstate = SDL_GetModState();
@@ -674,7 +699,7 @@ dboolean AM_Responder(event_t *ev)
         if (!(gamepadbuttons & gamepadautomap))
             backbuttondown = false;
 
-        if (!automapactive)
+        if (!automapactive && !mapwindow)
         {
             if ((ev->type == ev_keydown
                  && ev->data1 == AM_STARTKEY
@@ -779,7 +804,8 @@ dboolean AM_Responder(event_t *ev)
                 }
 
                 // leave automap
-                else if (key == AM_ENDKEY && !(modstate & KMOD_ALT) && keydown != AM_ENDKEY)
+                else if (key == AM_ENDKEY && !(modstate & KMOD_ALT) && keydown != AM_ENDKEY
+                    && !mapwindow)
                 {
                     keydown = key;
                     viewactive = true;
@@ -797,7 +823,7 @@ dboolean AM_Responder(event_t *ev)
                 }
 
                 // toggle follow mode
-                else if (key == AM_FOLLOWKEY)
+                else if (key == AM_FOLLOWKEY && !mapwindow)
                 {
                     if (keydown != AM_FOLLOWKEY)
                     {
@@ -817,7 +843,7 @@ dboolean AM_Responder(event_t *ev)
                 }
 
                 // mark spot
-                else if (key == AM_MARKKEY && plr->health)
+                else if (key == AM_MARKKEY)
                 {
                     if (keydown != AM_MARKKEY)
                     {
@@ -949,10 +975,11 @@ dboolean AM_Responder(event_t *ev)
                     ftom_zoommul = M_ZOOMIN + 2000;
                 }
             }
-            else if (ev->type == ev_gamepad)
+            else if (ev->type == ev_gamepad && gamepadwait < I_GetTime())
             {
                 if ((gamepadbuttons & gamepadautomap) && !backbuttondown)
                 {
+                    gamepadwait = I_GetTime() + 8;
                     viewactive = true;
                     backbuttondown = true;
                     AM_Stop();
@@ -976,27 +1003,45 @@ dboolean AM_Responder(event_t *ev)
 
                 // toggle maximum zoom
                 else if ((gamepadbuttons & gamepadautomapmaxzoom) && !idclev && !idmus)
+                {
                     AM_toggleMaxZoom();
+                    gamepadwait = I_GetTime() + 12;
+                }
 
                 // toggle follow mode
                 else if (gamepadbuttons & gamepadautomapfollowmode)
+                {
                     AM_toggleFollowMode();
+                    gamepadwait = I_GetTime() + 12;
+                }
 
                 // toggle grid
                 else if (gamepadbuttons & gamepadautomapgrid)
+                {
                     AM_toggleGrid();
+                    gamepadwait = I_GetTime() + 12;
+                }
 
                 // mark spot
-                else if ((gamepadbuttons & gamepadautomapmark) && plr->health)
+                else if ((gamepadbuttons & gamepadautomapmark))
+                {
                     AM_addMark();
+                    gamepadwait = I_GetTime() + 12;
+                }
 
                 // clear mark(s)
                 else if (gamepadbuttons & gamepadautomapclearmark)
+                {
                     AM_clearMarks();
+                    gamepadwait = I_GetTime() + 12;
+                }
 
                 // toggle rotate mode
                 else if (gamepadbuttons & gamepadautomaprotatemode)
+                {
                     AM_toggleRotateMode();
+                    gamepadwait = I_GetTime() + 12;
+                }
 
                 if (!am_followmode)
                 {
@@ -1148,7 +1193,7 @@ void AM_Ticker(void)
 //
 void AM_clearFB(void)
 {
-    memset(mapscreen, am_backcolor, maparea);
+    memset(mapscreen, backcolor, maparea);
 }
 
 //
@@ -1206,13 +1251,19 @@ static __inline void PUTDOT(unsigned int x, unsigned int y, byte *color)
         _PUTDOT(mapscreen + y + x, color);
 }
 
+static __inline void PUTDOT2(unsigned int x, unsigned int y, byte color)
+{
+    if (x < mapwidth && y < maparea)
+        *(mapscreen + y + x) = color;
+}
+
 static __inline void PUTBIGDOT(unsigned int x, unsigned int y, byte *color)
 {
     if (x < mapwidth)
     {
-        byte    *dot = mapscreen + y + x;
-        dboolean attop = (y < maparea);
-        dboolean atbottom = (y < mapbottom);
+        byte            *dot = mapscreen + y + x;
+        dboolean        attop = (y < maparea);
+        dboolean        atbottom = (y < mapbottom);
 
         if (attop)
             _PUTDOT(dot, color);
@@ -1243,8 +1294,8 @@ static __inline void PUTTRANSDOT(unsigned int x, unsigned int y, byte *color)
     {
         byte    *dot = mapscreen + y + x;
 
-        if (*dot != *(tinttab60 + am_playercolor))
-            *dot = *(tinttab60 + (*dot << 8) + am_playercolor);
+        if (*dot != *(tinttab60 + playercolor))
+            *dot = *(tinttab60 + (*dot << 8) + playercolor);
     }
 }
 
@@ -1336,6 +1387,90 @@ static void AM_drawFline(int x0, int y0, int x1, int y1, byte *color,
     }
 }
 
+static void AM_drawFline2(int x0, int y0, int x1, int y1, byte color)
+{
+    int dx = x1 - x0;
+    int dy = y1 - y0;
+
+    if (!dy)
+    {
+        if (dx)
+        {
+            // horizontal line
+            int     sx = SIGN(dx);
+
+            x0 = BETWEEN(-1, x0, mapwidth - 1);
+            x1 = BETWEEN(-1, x1, mapwidth - 1);
+
+            y0 *= mapwidth;
+
+            PUTDOT2(x0, y0, color);
+            while (x0 != x1)
+                PUTDOT2(x0 += sx, y0, color);
+        }
+    }
+    else if (!dx)
+    {
+        // vertical line
+        int     sy = SIGN(dy) * mapwidth;
+
+        y0 = BETWEEN(-(signed int)mapwidth, y0 * mapwidth, mapbottom);
+        y1 = BETWEEN(-(signed int)mapwidth, y1 * mapwidth, mapbottom);
+
+        PUTDOT2(x0, y0, color);
+        while (y0 != y1)
+            PUTDOT2(x0, y0 += sy, color);
+    }
+    else
+    {
+        int     sx = SIGN(dx);
+        int     sy = SIGN(dy) * mapwidth;
+
+        dx = ABS(dx);
+        dy = ABS(dy);
+        y0 *= mapwidth;
+        PUTDOT2(x0, y0, color);
+        if (dx == dy)
+        {
+            // diagonal line
+            while (x0 != x1)
+                PUTDOT2(x0 += sx, y0 += sy, color);
+        }
+        else
+        {
+            if (dx > dy)
+            {
+                // x-major line
+                int     error = (dy <<= 1) - dx;
+
+                dx <<= 1;
+                while (x0 != x1)
+                {
+                    int mask = ~(error >> 31);
+
+                    PUTDOT2(x0 += sx, y0 += (sy & mask), color);
+                    error += dy - (dx & mask);
+                }
+            }
+            else
+            {
+                // y-major line
+                int     error = (dx <<= 1) - dy;
+
+                dy <<= 1;
+                y1 *= mapwidth;
+                while (y0 != y1)
+                {
+                    int mask = ~(error >> 31);
+
+                    PUTDOT2(x0 += (sx & mask), y0 += sy, color);
+                    error += dx - (dy & mask);
+                }
+            }
+        }
+    }
+}
+
 //
 // Clip lines, draw visible parts of lines.
 //
@@ -1343,6 +1478,12 @@ static void AM_drawMline(int x0, int y0, int x1, int y1, byte *color)
 {
     if (AM_clipMline(&x0, &y0, &x1, &y1))
         AM_drawFline(x0, y0, x1, y1, color, PUTDOT);
+}
+
+static void AM_drawMline2(int x0, int y0, int x1, int y1, byte color)
+{
+    if (AM_clipMline(&x0, &y0, &x1, &y1))
+        AM_drawFline2(x0, y0, x1, y1, color);
 }
 
 static void AM_drawBigMline(int x0, int y0, int x1, int y1, byte *color)
@@ -1420,7 +1561,7 @@ static void AM_drawGrid(void)
 static void AM_drawWalls(void)
 {
     dboolean    allmap = plr->powers[pw_allmap];
-    dboolean    cheating = (plr->cheats & (CF_ALLMAP | CF_ALLMAP_THINGS));
+    dboolean    cheating = plr->cheats & (CF_ALLMAP | CF_ALLMAP_THINGS);
     int         i = 0;
 
     while (i < numlines)
@@ -1482,8 +1623,8 @@ static void AM_drawWalls(void)
                     }
                 }
                 if (!backsector || (secret && !cheating))
-                    AM_drawBigMline(l.a.x, l.a.y, l.b.x, l.b.y, (mapped || cheating ? wallcolor :
-                        (allmap ? allmapwallcolor : maskcolor)));
+                    AM_drawBigMline(l.a.x, l.a.y, l.b.x, l.b.y,
+                        (mapped || cheating ? wallcolor : (allmap ? allmapwallcolor : maskcolor)));
                 else if (backsector->floorheight != frontsector->floorheight)
                 {
                     if (mapped || cheating)
@@ -1517,7 +1658,7 @@ static void AM_drawWalls(void)
 }
 
 static void AM_drawLineCharacter(mline_t *lineguy, int lineguylines, fixed_t scale, angle_t angle,
-    byte *color, fixed_t x, fixed_t y)
+    byte color, fixed_t x, fixed_t y)
 {
     int i;
 
@@ -1548,7 +1689,7 @@ static void AM_drawLineCharacter(mline_t *lineguy, int lineguylines, fixed_t sca
             AM_rotate(&x1, &y1, angle);
             AM_rotate(&x2, &y2, angle);
         }
-        AM_drawMline(x + x1, y + y1, x + x2, y + y2, color);
+        AM_drawMline2(x + x1, y + y1, x + x2, y + y2, color);
     }
 }
 
@@ -1748,9 +1889,9 @@ static void AM_drawMarks(void)
                         byte    *dest = mapscreen + fy * mapwidth + fx;
 
                         if (src == '2')
-                            *dest = am_markcolor;
-                        else if (src == '1' && *dest != am_markcolor && *dest != am_gridcolor)
-                            *dest = *(*dest + tinttab80);
+                            *dest = markcolor;
+                        else if (src == '1')
+                            *dest = *(*dest + tinttab66);
                     }
                 }
             }
@@ -1761,7 +1902,41 @@ static void AM_drawMarks(void)
     }
 }
 
-static __inline void AM_DrawScaledPixel(int x, int y, byte *color)
+void AM_drawPath(void)
+{
+    if (pathpointnum >= 1)
+    {
+        int i;
+
+        if (am_rotatemode)
+            for (i = 1; i < pathpointnum; ++i)
+            {
+                mpoint_t    start;
+                mpoint_t    end;
+
+                start.x = pathpoints[i - 1].x;
+                start.y = pathpoints[i - 1].y;
+                end.x = pathpoints[i].x;
+                end.y = pathpoints[i].y;
+
+                if (ABS(start.x - end.x) > FRACUNIT * 4 || ABS(start.y - end.y) > FRACUNIT * 4)
+                    continue;
+
+                AM_rotatePoint(&start);
+                AM_rotatePoint(&end);
+
+                AM_drawMline2(start.x, start.y, end.x, end.y, pathcolor);
+            }
+        else
+            for (i = 1; i < pathpointnum; ++i)
+                if (ABS(pathpoints[i - 1].x - pathpoints[i].x) <= FRACUNIT * 4
+                    && ABS(pathpoints[i - 1].y - pathpoints[i].y) <= FRACUNIT * 4)
+                    AM_drawMline2(pathpoints[i - 1].x, pathpoints[i - 1].y, pathpoints[i].x,
+                        pathpoints[i].y, pathcolor);
+    }
+}
+
+static __inline void AM_drawScaledPixel(int x, int y, byte *color)
 {
     byte        *dest = mapscreen + (y * 2 - 1) * mapwidth + x * 2 - 1;
 
@@ -1779,41 +1954,39 @@ static __inline void AM_DrawScaledPixel(int x, int y, byte *color)
 
 static void AM_drawCrosshair(void)
 {
-    byte        *color = tinttab60 + (am_xhaircolor << 8);
-
-    AM_DrawScaledPixel(CENTERX - 2, CENTERY, color);
-    AM_DrawScaledPixel(CENTERX - 1, CENTERY, color);
-    AM_DrawScaledPixel(CENTERX, CENTERY, color);
-    AM_DrawScaledPixel(CENTERX + 1, CENTERY, color);
-    AM_DrawScaledPixel(CENTERX + 2, CENTERY, color);
-    AM_DrawScaledPixel(CENTERX, CENTERY - 2, color);
-    AM_DrawScaledPixel(CENTERX, CENTERY - 1, color);
-    AM_DrawScaledPixel(CENTERX, CENTERY + 1, color);
-    AM_DrawScaledPixel(CENTERX, CENTERY + 2, color);
+    AM_drawScaledPixel(CENTERX - 2, CENTERY, crosshaircolor);
+    AM_drawScaledPixel(CENTERX - 1, CENTERY, crosshaircolor);
+    AM_drawScaledPixel(CENTERX, CENTERY, crosshaircolor);
+    AM_drawScaledPixel(CENTERX + 1, CENTERY, crosshaircolor);
+    AM_drawScaledPixel(CENTERX + 2, CENTERY, crosshaircolor);
+    AM_drawScaledPixel(CENTERX, CENTERY - 2, crosshaircolor);
+    AM_drawScaledPixel(CENTERX, CENTERY - 1, crosshaircolor);
+    AM_drawScaledPixel(CENTERX, CENTERY + 1, crosshaircolor);
+    AM_drawScaledPixel(CENTERX, CENTERY + 2, crosshaircolor);
 }
 
 static void AM_setFrameVariables(void)
 {
+    fixed_t     x = m_x + m_w / 2;
+    fixed_t     y = m_y + m_h / 2;
+
+    am_frame.centerx = x;
+    am_frame.centery = y;
+
     if (am_rotatemode)
     {
         int     angle = (ANG90 - plr->mo->angle) >> ANGLETOFINESHIFT;
-        float   dx, dy;
-        fixed_t r;
+        float   dx = (float)(m_x2 - x);
+        float   dy = (float)(m_y2 - y);
+        fixed_t r = (fixed_t)sqrt(dx * dx + dy * dy);
 
         am_frame.sin = finesine[angle];
         am_frame.cos = finecosine[angle];
 
-        am_frame.centerx = m_x + m_w / 2;
-        am_frame.centery = m_y + m_h / 2;
-
-        dx = (float)(m_x2 - am_frame.centerx);
-        dy = (float)(m_y2 - am_frame.centery);
-        r = (fixed_t)sqrt(dx * dx + dy * dy);
-
-        am_frame.bbox[BOXLEFT] = am_frame.centerx - r;
-        am_frame.bbox[BOXRIGHT] = am_frame.centerx + r;
-        am_frame.bbox[BOXBOTTOM] = am_frame.centery - r;
-        am_frame.bbox[BOXTOP] = am_frame.centery + r;
+        am_frame.bbox[BOXLEFT] = x - r;
+        am_frame.bbox[BOXRIGHT] = x + r;
+        am_frame.bbox[BOXBOTTOM] = y - r;
+        am_frame.bbox[BOXTOP] = y + r;
     }
     else
     {
@@ -1831,6 +2004,8 @@ void AM_Drawer(void)
     AM_drawWalls();
     if (am_grid)
         AM_drawGrid();
+    if (am_path)
+        AM_drawPath();
     if (plr->cheats & CF_ALLMAP_THINGS)
         AM_drawThings();
     if (markpointnum)

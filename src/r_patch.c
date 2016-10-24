@@ -10,7 +10,7 @@
   Copyright © 2013-2016 Brad Harding.
 
   DOOM Retro is a fork of Chocolate DOOM.
-  For a list of credits, see the accompanying AUTHORS file.
+  For a list of credits, see <http://credits.doomretro.com>.
 
   This file is part of DOOM Retro.
 
@@ -25,7 +25,7 @@
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with DOOM Retro. If not, see <http://www.gnu.org/licenses/>.
+  along with DOOM Retro. If not, see <https://www.gnu.org/licenses/>.
 
   DOOM is a registered trademark of id Software LLC, a ZeniMax Media
   company, in the US and/or other countries and is used without
@@ -69,7 +69,6 @@
 #include "i_swap.h"
 #include "i_system.h"
 #include "r_main.h"
-#include "r_patch.h"
 #include "w_wad.h"
 #include "z_zone.h"
 
@@ -141,21 +140,21 @@ static int getPatchIsNotTileable(const patch_t *patch)
     return hasAHole;
 }
 
-static int getIsSolidAtSpot(const column_t *column, int spot)
+static dboolean getIsSolidAtSpot(const column_t *column, int spot)
 {
     if (!column)
-        return 0;
+        return false;
 
     while (column->topdelta != 0xFF)
     {
         if (spot < column->topdelta)
-            return 0;
+            return false;
         if (spot >= column->topdelta && spot <= column->topdelta + column->length)
-            return 1;
+            return true;
         column = (const column_t *)((const byte *)column + 3 + column->length + 1);
     }
 
-    return 0;
+    return false;
 }
 
 // Checks if the lump can be a Doom patch
@@ -164,7 +163,7 @@ static dboolean CheckIfPatch(int lump)
     int                 size;
     int                 width, height;
     const patch_t       *patch;
-    dboolean             result;
+    dboolean            result;
 
     size = W_LumpLength(lump);
 
@@ -202,203 +201,6 @@ static dboolean CheckIfPatch(int lump)
 
     W_ReleaseLumpNum(lump);
     return result;
-}
-
-static void createPatch(int id)
-{
-    rpatch_t            *patch;
-    const int           patchNum = id;
-    const patch_t       *oldPatch;
-    const column_t      *oldColumn;
-    int                 x, y;
-    int                 pixelDataSize;
-    int                 columnsDataSize;
-    int                 postsDataSize;
-    int                 dataSize;
-    int                 *numPostsInColumn;
-    int                 numPostsTotal;
-    const unsigned char *oldColumnPixelData;
-    int                 numPostsUsedSoFar;
-
-    if (!CheckIfPatch(patchNum))
-        I_Error("createPatch: Unknown patch format %s.",
-            (patchNum < numlumps ? lumpinfo[patchNum]->name : NULL));
-
-    oldPatch = (const patch_t*)W_CacheLumpNum(patchNum, PU_STATIC);
-
-    patch = &patches[id];
-    patch->width = SHORT(oldPatch->width);
-    patch->widthmask = 0;
-    patch->height = SHORT(oldPatch->height);
-    patch->leftoffset = SHORT(oldPatch->leftoffset);
-    patch->topoffset = SHORT(oldPatch->topoffset);
-    patch->flags = 0;
-    if (getPatchIsNotTileable(oldPatch))
-        patch->flags |= PATCH_ISNOTTILEABLE;
-
-    // work out how much memory we need to allocate for this patch's data
-    pixelDataSize = (patch->width * patch->height + 4) & ~3;
-    columnsDataSize = sizeof(rcolumn_t) * patch->width;
-
-    // count the number of posts in each column
-    numPostsInColumn = malloc(sizeof(int) * patch->width);
-    numPostsTotal = 0;
-
-    for (x = 0; x < patch->width; ++x)
-    {
-        oldColumn = (const column_t *)((const byte *)oldPatch + LONG(oldPatch->columnofs[x]));
-        numPostsInColumn[x] = 0;
-        while (oldColumn->topdelta != 0xFF)
-        {
-            numPostsInColumn[x]++;
-            numPostsTotal++;
-            oldColumn = (const column_t *)((const byte *)oldColumn + oldColumn->length + 4);
-        }
-    }
-
-    postsDataSize = numPostsTotal * sizeof(rpost_t);
-
-    // allocate our data chunk
-    dataSize = pixelDataSize + columnsDataSize + postsDataSize;
-    patch->data = (unsigned char *)Z_Malloc(dataSize, PU_CACHE, (void **)&patch->data);
-    memset(patch->data, 0, dataSize);
-
-    // set out pixel, column, and post pointers into our data array
-    patch->pixels = patch->data;
-    patch->columns = (rcolumn_t *)((unsigned char *)patch->pixels + pixelDataSize);
-    patch->posts = (rpost_t *)((unsigned char *)patch->columns + columnsDataSize);
-
-    // sanity check that we've got all the memory allocated we need
-    assert((((byte*)patch->posts + numPostsTotal * sizeof(rpost_t))
-        - (byte *)patch->data) == dataSize);
-
-    memset(patch->pixels, 0xFF, (patch->width*patch->height));
-
-    // fill in the pixels, posts, and columns
-    numPostsUsedSoFar = 0;
-    for (x = 0; x < patch->width; ++x)
-    {
-        int             top = -1;
-        const column_t  *oldPrevColumn;
-        const column_t  *oldNextColumn;
-
-        oldColumn = (const column_t *)((const byte *)oldPatch + LONG(oldPatch->columnofs[x]));
-
-        if (patch->flags & PATCH_ISNOTTILEABLE)
-        {
-            // non-tiling
-            if (!x)
-                oldPrevColumn = 0;
-            else
-                oldPrevColumn = (const column_t *)((const byte *)oldPatch
-                    + LONG(oldPatch->columnofs[x - 1]));
-            if (x == patch->width - 1)
-                oldNextColumn = 0;
-            else
-                oldNextColumn = (const column_t *)((const byte *)oldPatch
-                    + LONG(oldPatch->columnofs[x + 1]));
-        }
-        else
-        {
-            // tiling
-            int prevColumnIndex = x - 1;
-            int nextColumnIndex = x + 1;
-
-            while (prevColumnIndex < 0)
-                prevColumnIndex += patch->width;
-            while (nextColumnIndex >= patch->width)
-                nextColumnIndex -= patch->width;
-            oldPrevColumn = (const column_t *)((const byte *)oldPatch
-                + LONG(oldPatch->columnofs[prevColumnIndex]));
-            oldNextColumn = (const column_t *)((const byte *)oldPatch
-                + LONG(oldPatch->columnofs[nextColumnIndex]));
-        }
-
-        // setup the column's data
-        patch->columns[x].pixels = patch->pixels + x * patch->height;
-        patch->columns[x].numPosts = numPostsInColumn[x];
-        patch->columns[x].posts = patch->posts + numPostsUsedSoFar;
-
-        while (oldColumn->topdelta != 0xFF)
-        {
-            int len = oldColumn->length;
-
-            //e6y: support for DeePsea's true tall patches
-            if (oldColumn->topdelta <= top)
-                top += oldColumn->topdelta;
-            else
-                top = oldColumn->topdelta;
-
-            // Clip posts that extend past the bottom
-            if (top + oldColumn->length > patch->height)
-                len = patch->height - top;
-
-            if (len > 0)
-            {
-                // set up the post's data
-                patch->posts[numPostsUsedSoFar].topdelta = top;
-                patch->posts[numPostsUsedSoFar].length = len;
-
-                // fill in the post's pixels
-                oldColumnPixelData = (const byte *)oldColumn + 3;
-                for (y = 0; y < len; y++)
-                    patch->pixels[x * patch->height + top + y] = oldColumnPixelData[y];
-            }
-            oldColumn = (const column_t *)((const byte *)oldColumn + oldColumn->length + 4);
-            numPostsUsedSoFar++;
-        }
-    }
-
-    if (1 || (patch->flags & PATCH_ISNOTTILEABLE))
-    {
-        const rcolumn_t *column, *prevColumn;
-
-        // copy the patch image down and to the right where there are
-        // holes to eliminate the black halo from bilinear filtering
-        for (x = 0; x < patch->width; ++x)
-        {
-            column = R_GetPatchColumnClamped(patch, x);
-            prevColumn = R_GetPatchColumnClamped(patch, x - 1);
-
-            if (column->pixels[0] == 0xFF)
-            {
-                // e6y: marking of all patches with holes
-                patch->flags |= PATCH_HASHOLES;
-
-                // force the first pixel (which is a hole), to use
-                // the color from the next solid spot in the column
-                for (y = 0; y < patch->height; y++)
-                    if (column->pixels[y] != 0xFF)
-                    {
-                        column->pixels[0] = column->pixels[y];
-                        break;
-                    }
-            }
-
-            // copy from above or to the left
-            for (y = 1; y < patch->height; ++y)
-            {
-                //if (getIsSolidAtSpot(oldColumn, y)) continue;
-                if (column->pixels[y] != 0xFF) continue;
-
-                // this pixel is a hole
-
-                // e6y: marking of all patches with holes
-                patch->flags |= PATCH_HASHOLES;
-
-                if (x && prevColumn->pixels[y - 1] != 0xFF)
-                    column->pixels[y] = prevColumn->pixels[y];  // copy the color from the left
-                else
-                    column->pixels[y] = column->pixels[y - 1];  // copy the color from above
-            }
-        }
-
-        // verify that the patch truly is non-rectangular since
-        // this determines tiling later on
-    }
-
-    W_ReleaseLumpNum(patchNum);
-    free(numPostsInColumn);
 }
 
 typedef struct
@@ -440,8 +242,8 @@ static void removePostFromColumn(rcolumn_t *column, int post)
 
 static void createTextureCompositePatch(int id)
 {
-    rpatch_t            *composite_patch;
-    texture_t           *texture;
+    rpatch_t            *composite_patch = &texture_composites[id];
+    texture_t           *texture = textures[id];
     texpatch_t          *texpatch;
     int                 patchNum;
     const patch_t       *oldPatch;
@@ -456,10 +258,6 @@ static void createTextureCompositePatch(int id)
     const unsigned char *oldColumnPixelData;
     int                 numPostsUsedSoFar;
     count_t             *countsInColumn;
-
-    composite_patch = &texture_composites[id];
-
-    texture = textures[id];
 
     composite_patch->width = texture->width;
     composite_patch->height = texture->height;
@@ -547,10 +345,8 @@ static void createTextureCompositePatch(int id)
 
         for (x = 0; x < SHORT(oldPatch->width); ++x)
         {
-            int                 top = -1;
-            int                 tx = texpatch->originx + x;
-            const column_t      *oldPrevColumn;
-            const column_t      *oldNextColumn;
+            int top = -1;
+            int tx = texpatch->originx + x;
 
             if (tx < 0)
                 continue;
@@ -558,21 +354,6 @@ static void createTextureCompositePatch(int id)
                 break;
 
             oldColumn = (const column_t *)((const byte *)oldPatch + LONG(oldPatch->columnofs[x]));
-
-            {
-                // tiling
-                int     prevColumnIndex = x - 1;
-                int     nextColumnIndex = x + 1;
-
-                while (prevColumnIndex < 0)
-                    prevColumnIndex += SHORT(oldPatch->width);
-                while (nextColumnIndex >= SHORT(oldPatch->width))
-                    nextColumnIndex -= SHORT(oldPatch->width);
-                oldPrevColumn = (const column_t *)((const byte *)oldPatch
-                    + LONG(oldPatch->columnofs[prevColumnIndex]));
-                oldNextColumn = (const column_t *)((const byte *)oldPatch
-                    + LONG(oldPatch->columnofs[nextColumnIndex]));
-            }
 
             while (oldColumn->topdelta != 0xFF)
             {
@@ -587,6 +368,7 @@ static void createTextureCompositePatch(int id)
                 oldColumnPixelData = (const byte *)oldColumn + 3;
                 oy = texpatch->originy;
                 count = oldColumn->length;
+
                 // the original renderer had several bugs which we reproduce here
                 if (countsInColumn[tx].patches > 1)
                 {
@@ -693,9 +475,9 @@ static void createTextureCompositePatch(int id)
         }
     }
 
-    if (1 || (composite_patch->flags & PATCH_ISNOTTILEABLE))
     {
-        const rcolumn_t *column, *prevColumn;
+        const rcolumn_t *column;
+        const rcolumn_t *prevColumn;
 
         // copy the patch image down and to the right where there are
         // holes to eliminate the black halo from bilinear filtering
@@ -738,9 +520,6 @@ static void createTextureCompositePatch(int id)
                     column->pixels[y] = column->pixels[y - 1];  // copy the color from above
             }
         }
-
-        // verify that the patch truly is non-rectangular since
-        // this determines tiling later on
     }
 
     free(countsInColumn);
@@ -748,8 +527,6 @@ static void createTextureCompositePatch(int id)
 
 rpatch_t *R_CacheTextureCompositePatchNum(int id)
 {
-    const int   locks = 1;
-
     if (!texture_composites)
         I_Error("R_CacheTextureCompositePatchNum: Composite patches not initialized");
 
@@ -757,22 +534,16 @@ rpatch_t *R_CacheTextureCompositePatchNum(int id)
         createTextureCompositePatch(id);
 
     // cph - if wasn't locked but now is, tell z_zone to hold it
-    if (!texture_composites[id].locks && locks)
+    if (!texture_composites[id].locks)
         Z_ChangeTag(texture_composites[id].data, PU_STATIC);
-    texture_composites[id].locks += locks;
+    texture_composites[id].locks++;
 
     return &texture_composites[id];
 }
 
 void R_UnlockTextureCompositePatchNum(int id)
 {
-    const int   unlocks = 1;
-
-    texture_composites[id].locks -= unlocks;
-
-    // cph - Note: must only tell z_zone to make purgeable if currently locked,
-    // else it might already have been purged
-    if (unlocks && !texture_composites[id].locks)
+    if (!--texture_composites[id].locks)
         Z_ChangeTag(texture_composites[id].data, PU_CACHE);
 }
 
@@ -786,17 +557,5 @@ rcolumn_t *R_GetPatchColumnWrapped(rpatch_t *patch, int columnIndex)
 
 rcolumn_t *R_GetPatchColumnClamped(rpatch_t *patch, int columnIndex)
 {
-    if (columnIndex < 0)
-        columnIndex = 0;
-    if (columnIndex >= patch->width)
-        columnIndex = patch->width - 1;
-    return &patch->columns[columnIndex];
-}
-
-rcolumn_t *R_GetPatchColumn(rpatch_t *patch, int columnIndex)
-{
-    if (patch->flags & PATCH_ISNOTTILEABLE)
-        return R_GetPatchColumnClamped(patch, columnIndex);
-    else
-        return R_GetPatchColumnWrapped(patch, columnIndex);
+    return &patch->columns[BETWEEN(0, columnIndex, patch->width - 1)];
 }
